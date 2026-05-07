@@ -13,7 +13,7 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', ...defaultTheme.fontFamily.sans],
             },
         },
     },
