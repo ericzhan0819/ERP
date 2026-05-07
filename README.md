@@ -31,7 +31,7 @@
     npm run dev
     php artisan serve
 
-    更新日誌
+更新日誌
 
     V1.0.0(2026-05-08)
 
