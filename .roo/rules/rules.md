@@ -18,3 +18,6 @@
 9.Reference the sophisticated restraint of a premium horological (watchmaking) workshop or a high-precision laboratory, emphasizing that this platform is a refined tool for professional precision.
 
 10.Ensure the final visual quality reflects a "less is more" philosophy, where sophistication arises from perfect proportions and the absence of unnecessary ornament, aligning with the integrity required for high-end automotive trade.
+11.no-explanation
+12.concise
+13.keep-it-short
