@@ -1,50 +1,105 @@
-國際車業官網兼內部管理系統
+# README.md
 
-專為中古車業設計的營運中樞，核心在於建立絕對透明的收車與財務秩序。
-系統核心邏輯
+# ERP
 
-    網格導向：基於 Swiss Style 的嚴謹數據佈局
+企業內部營運與管理系統。
 
-    作業序列：涵蓋收車、整備、銷售、帳務之全流程閉環
+本專案以 Laravel、Inertia.js、React 與 TailwindCSS 建構，整合公司官網與 ERP 後台，提供統一化的企業營運介面與模組化管理架構。
 
-    安全入口：前端採用物理底部隱藏式登入節點
+整體設計以現代企業化 UI 為核心，採用簡潔、高資訊密度與響應式設計，支援桌面與移動端裝置操作。
 
-技術架構
+---
 
-    框架：Laravel 13 / Inertia.js (React)
+## 系統狀態
 
-    資料庫：MySQL
+目前開發中（Early Development）
 
-    語言規範：PHP 8.4+, 繁體中文程式碼註解
+---
 
-部署流程
+## 已完成功能
 
-    安裝依賴：
-    composer install
-    npm install
+### 前台系統
 
-    環境配置：
-    cp .env.example .env
-    php artisan key:generate
+* Welcome 首頁
+* 響應式設計（RWD）
+* 新版企業化 UI 配色
+* 隱藏式登入入口
 
-    啟動環境：
-    npm run dev
-    php artisan serve
+### ERP 後台
 
-更新日誌
+* Dashboard Layout
+* Sidebar Navigation
+* Mobile Sidebar
+* Hamburger Menu 收合系統
+* Dashboard Widgets
+* KPI Cards
+* Recent Activities
+* System Status
+* Quick Actions
+* 三階權限系統基礎架構
 
-    V1.0.0(2026-05-08)
+---
 
-    升級核心框架至 Laravel 13.8.0 與 PHP 8.4.20。
+## 技術棧
 
-    完成主頁初步建置、完成登入、註冊頁面。
+* Laravel
+* Inertia.js
+* React
+* TailwindCSS
+* Vite
 
-    實作 Swiss Style 響應式佈局，優化在庫總量與成交筆數之數據展示層。
+---
 
-    調整管理登入路徑，將入口節點遷移至頁面底部物理區塊，防止行動端誤觸。
+## 開發紀錄
 
-    補全全域程式碼繁體中文註解，強化系統可維護性。
+### V1.0.0 (2026-05-08)
 
-版權宣告
+升級核心框架並完成前後端整合。
 
-(c) 2026 OO INTERNATIONAL. 保留所有權利。
+完成新版企業化 Welcome 首頁設計，建立響應式版面與整體視覺風格。
+
+完成隱藏式登入入口設計，作為後台 ERP 系統入口。
+
+完成基礎權限架構與登入流程調整，移除公開註冊功能。
+
+---
+
+### V1.1.0 (2026-05-09)
+
+完成 ERP Dashboard 核心架構建置。
+
+新增模組化 Dashboard Layout，建立 Sidebar、Mobile Sidebar 與 Header 系統，統一後台與 Welcome 頁面的企業化視覺語言。
+
+實作行動端 Hamburger Menu 收合邏輯，提升移動裝置操作效率。
+
+建立 Dashboard Widgets 基礎架構，包含 KPI Cards、Recent Activities、System Status 與 Quick Actions 區塊。
+
+完成三階權限系統前端顯示邏輯，依據角色動態控制 Sidebar 與 Dashboard 模組顯示內容。
+
+優化 Dashboard 響應式版面配置，支援 Desktop、Tablet 與 Mobile 顯示模式。
+
+---
+
+## 已知問題
+
+* 行動端仍存在白邊 overflow 問題
+* 部分 glow effect 於小尺寸裝置會產生溢出
+* Sidebar 分隔線尚未與主介面完全對齊
+* 權限系統仍存在部分顯示異常
+* staff-management 路由尚未正確連線
+
+---
+
+## 開發計畫
+
+* 修復權限系統
+* 修復 Mobile UI 問題
+* 建立 Vehicles Module
+* 建立 CRM Module
+* 建立 Finance Module
+
+---
+
+## 版權宣告
+
+* (c) 2026 OO INTERNATIONAL. 保留所有權利。
