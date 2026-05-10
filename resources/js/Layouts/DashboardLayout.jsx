@@ -10,6 +10,8 @@ import { useEffect, useMemo, useState } from 'react';
 export default function DashboardLayout({ title = 'Dashboard', children }) {
     const page = usePage();
     const user = page.props?.auth?.user ?? null;
+    // DEBUG: 驗證 Inertia 實際傳入的登入使用者 payload（任務完成後可移除）
+    console.log('[DashboardLayout] page.props.auth.user =', page.props?.auth?.user ?? null);
     const currentUrl = page.url;
     const { role, permissions, modules } = usePermission();
 
@@ -25,7 +27,11 @@ export default function DashboardLayout({ title = 'Dashboard', children }) {
     /**
      * 桌面側欄收合狀態：僅影響桌面版顯示，不干擾行動版抽屜。
      */
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+    /**
+     * 使用者手動展開後視為固定狀態；未固定時才允許滑鼠靠近自動展開、離開自動收合。
+     */
+    const [sidebarPinned, setSidebarPinned] = useState(false);
 
     /**
      * 路由切換時自動關閉行動版側欄，避免導頁後殘留開啟狀態。
@@ -36,7 +42,7 @@ export default function DashboardLayout({ title = 'Dashboard', children }) {
 
     return (
         <div
-            className="min-h-screen w-full overflow-x-hidden text-zinc-100"
+            className="min-h-screen w-full overflow-x-hidden text-zinc-100 antialiased"
             style={{
                 background:
                     'radial-gradient(circle at top left, rgba(34,211,238,0.06), transparent 28%), radial-gradient(circle at bottom right, rgba(168,85,247,0.06), transparent 35%), linear-gradient(135deg, #050816 0%, #0B1120 45%, #111827 100%)',
@@ -44,18 +50,36 @@ export default function DashboardLayout({ title = 'Dashboard', children }) {
         >
             <Head title={title} />
 
-            <div className="flex min-h-screen">
+            <div className="flex h-screen overflow-hidden">
                 <Sidebar
                     items={visibleSidebarItems}
                     collapsed={sidebarCollapsed}
-                    onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
+                    pinned={sidebarPinned}
+                    onMouseEnter={() => {
+                        if (!sidebarPinned) setSidebarCollapsed(false);
+                    }}
+                    onMouseLeave={() => {
+                        if (!sidebarPinned) setSidebarCollapsed(true);
+                    }}
                 />
 
-                <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-x-hidden">
-                    <Header user={user} onOpenMobileSidebar={() => setMobileOpen(true)} />
+                <div className="relative flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+                    <Header
+                        user={user}
+                        title={title}
+                        sidebarCollapsed={sidebarCollapsed}
+                        sidebarPinned={sidebarPinned}
+                        onToggleSidebar={() => {
+                            const nextPinned = !sidebarPinned;
 
-                    <main className="flex-1 p-4 sm:p-6 lg:p-8">
-                        <div className="mx-auto w-full max-w-7xl">{children}</div>
+                            setSidebarPinned(nextPinned);
+                            setSidebarCollapsed(!nextPinned);
+                        }}
+                        onOpenMobileSidebar={() => setMobileOpen(true)}
+                    />
+
+                    <main className="flex-1">
+                        <div className="mx-auto w-full max-w-screen-2xl p-4 md:p-6">{children}</div>
                     </main>
                 </div>
             </div>

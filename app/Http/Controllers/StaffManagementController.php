@@ -6,11 +6,23 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
+use Inertia\Response;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 
 class StaffManagementController extends Controller
 {
-    public function index()
+    /**
+     * 技術註解：集中白名單，避免任意 permission 被寫入。
+     */
+    private const ASSIGNABLE_PERMISSIONS = [
+        'module.accounting',
+        'module.crm',
+        'widget.financial_health',
+    ];
+
+    public function index(): Response
     {
         $staff = User::query()
             ->with(['roles:name', 'permissions:name'])
@@ -43,31 +55,37 @@ class StaffManagementController extends Controller
             ])
             ->values();
 
-        return view('staff.permissions', [
+        return Inertia::render('StaffManagement/Index', [
             'staff' => $staff,
             'permissionMatrix' => $permissionMatrix,
+            'roles' => Role::query()->orderBy('name')->pluck('name')->values(),
+            'assignablePermissions' => self::ASSIGNABLE_PERMISSIONS,
         ]);
     }
 
-    public function updatePermissions(Request $request): JsonResponse
+    public function update(Request $request, User $user): JsonResponse
     {
         $validated = $request->validate([
-            'user_id' => ['required', 'exists:users,id'],
-            'permissions' => ['required', 'array'],
-            'permissions.*' => ['string'],
+            'role' => ['required', 'string', 'exists:roles,name'],
+            'permissions' => ['sometimes', 'array'],
+            'permissions.*' => ['string', 'in:' . implode(',', self::ASSIGNABLE_PERMISSIONS)],
         ]);
 
-        $targetUser = User::findOrFail($validated['user_id']);
-        $targetUser->syncPermissions($validated['permissions']);
+        $permissions = array_values(array_unique($validated['permissions'] ?? []));
+
+        // 技術註解：角色採單一主角色同步，符合目前系統結構與最小改動策略。
+        $user->syncRoles([$validated['role']]);
+        $user->syncPermissions($permissions);
 
         Log::info('staff_permissions_updated', [
             'actor_id' => $request->user()?->id,
-            'target_user_id' => $targetUser->id,
-            'permissions' => $validated['permissions'],
+            'target_user_id' => $user->id,
+            'role' => $validated['role'],
+            'permissions' => $permissions,
         ]);
 
         return response()->json([
-            'message' => 'Permissions updated successfully.',
+            'message' => '員工權限更新成功。',
         ]);
     }
 }

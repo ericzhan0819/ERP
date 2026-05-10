@@ -1,175 +1,200 @@
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import usePermission from '@/hooks/usePermission';
 
-// 共用卡片樣式：沿用 Welcome 頁面玻璃感與深色系，並加上精簡 hover 反饋
-const cardClass =
-    'rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-300/30 hover:bg-white/[0.05] hover:shadow-[0_0_28px_rgba(34,211,238,0.08)]';
+const panelClass = 'rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl md:p-6';
+const mutedLabelClass = 'text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500';
 
-// KPI 靜態資料：先用 mock data，後續可由 API 取代
-const kpiData = [
-    { label: '在庫總量', value: '128', unit: '輛', trend: '+6.2%' },
-    { label: '本月成交', value: '34', unit: '筆', trend: '+3.8%' },
-    { label: '平均毛利', value: '12.4', unit: '%', trend: '+1.1%' },
-    { label: '待處理款項', value: '5', unit: '項', trend: '-2.0%' },
+const metricCards = [
+    { label: '在庫總量', value: '128', unit: '輛', change: '+6.2%', tone: 'text-emerald-300', accent: 'bg-cyan-300/12 text-cyan-100' },
+    { label: '本月成交', value: '34', unit: '筆', change: '+3.8%', tone: 'text-emerald-300', accent: 'bg-emerald-300/12 text-emerald-100' },
+    { label: '平均毛利', value: '12.4', unit: '%', change: '+1.1%', tone: 'text-emerald-300', accent: 'bg-violet-300/12 text-violet-100' },
+    { label: '待處理款項', value: '5', unit: '項', change: '-2.0%', tone: 'text-amber-300', accent: 'bg-amber-300/12 text-amber-100' },
 ];
 
-// 活動動態靜態資料：不串接 API，僅示意近期作業紀錄
+const pipelineRows = [
+    { stage: '收車估價', count: 18, ratio: '72%', tone: 'bg-cyan-300' },
+    { stage: '整備維修', count: 27, ratio: '58%', tone: 'bg-violet-300' },
+    { stage: '待銷售上架', count: 42, ratio: '84%', tone: 'bg-emerald-300' },
+    { stage: '交車結案', count: 16, ratio: '44%', tone: 'bg-amber-300' },
+];
+
+const financeRows = [
+    { label: '採購成本', value: 'NT$ 18.6M', delta: '+4.1%' },
+    { label: '整備費用', value: 'NT$ 2.4M', delta: '-1.8%' },
+    { label: '銷售佣金', value: 'NT$ 0.9M', delta: '+2.6%' },
+];
+
+const recentVehicles = [
+    { vin: 'A102', model: 'BMW 320i Touring', status: '整備完成', margin: '13.8%', tone: 'text-emerald-300 bg-emerald-300/10' },
+    { vin: 'B884', model: 'Lexus NX 200', status: '待估價', margin: '—', tone: 'text-amber-300 bg-amber-300/10' },
+    { vin: 'C719', model: 'Mercedes-Benz C300', status: '銷售洽談', margin: '11.2%', tone: 'text-cyan-200 bg-cyan-300/10' },
+    { vin: 'D431', model: 'Toyota RAV4 Hybrid', status: '待交車', margin: '9.7%', tone: 'text-violet-200 bg-violet-300/10' },
+];
+
 const activities = [
-    { time: '09:12', text: 'VIN#A102 完成整備結案，成本已歸戶。' },
-    { time: '10:40', text: '新增收車案件 2 筆，待估價審核。' },
-    { time: '13:05', text: '銷售佣金批次核算完成，等待出帳。' },
+    { time: '09:12', text: 'VIN#A102 整備結案，維修成本已歸戶。' },
+    { time: '10:40', text: '新增收車案件 2 筆，等待主管估價審核。' },
+    { time: '13:05', text: '銷售佣金批次核算完成，等待出帳確認。' },
     { time: '16:22', text: '保固風險警示 1 筆，已指派維修顧問。' },
 ];
 
-// 系統狀態靜態資料：用高對比文字呈現健康度與異常提醒
-const systemStatus = [
-    { label: '資料同步', value: '正常', tone: 'text-emerald-400' },
-    { label: '排程任務', value: '執行中', tone: 'text-cyan-300' },
-    { label: '風險警示', value: '1 筆待處理', tone: 'text-amber-300' },
-];
+const quickActions = ['新增收車', '建立銷售單', '查看應收款'];
 
-// 快速操作靜態資料：維持簡潔行動入口，不引入額外元件庫
-const quickActions = [
-    { label: '新增收車', hint: '建立新車輛檔案' },
-    { label: '建立銷售單', hint: '快速開立交易流程' },
-    { label: '查看應收款', hint: '追蹤待入帳款項' },
-];
-
-// 公告區靜態資料：做為首頁資訊溝通區塊
-const announcements = [
-    '本週五 18:00 將進行例行維護，預估 20 分鐘。',
-    '請於月底前完成高風險車輛保固資料檢核。',
-];
-
-// 小型模組元件：統一標題格式，維持 Dashboard 區塊視覺一致
-function WidgetFrame({ title, children }) {
+function MetricCard({ item }) {
     return (
-        <section className={cardClass}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-400">Widget</p>
-            <h2 className="mt-2 text-base font-semibold text-zinc-100">{title}</h2>
-            <div className="mt-4">{children}</div>
-        </section>
+        <article className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 transition-colors duration-150 hover:border-cyan-300/30 hover:bg-white/[0.04] md:p-5">
+            <div className="flex items-start justify-between gap-3">
+                <div className={`grid h-11 w-11 place-items-center rounded-xl ${item.accent}`}>
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                        <path d="M4 19V5M4 19h16M8 15v-4M12 15V8M16 15v-6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </div>
+                <span className={`rounded-full bg-white/[0.04] px-2.5 py-1 text-xs font-semibold ${item.tone}`}>{item.change}</span>
+            </div>
+            <p className="mt-5 text-sm text-zinc-400">{item.label}</p>
+            <div className="mt-2 flex items-end gap-2">
+                <p className="text-3xl font-semibold tracking-tight text-zinc-50">{item.value}</p>
+                <span className="pb-1 text-sm text-zinc-500">{item.unit}</span>
+            </div>
+        </article>
+    );
+}
+
+function PanelHeader({ eyebrow, title, action }) {
+    return (
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+                <p className={mutedLabelClass}>{eyebrow}</p>
+                <h2 className="mt-2 text-lg font-semibold tracking-tight text-zinc-50">{title}</h2>
+            </div>
+            {action}
+        </div>
     );
 }
 
 export default function DashboardIndex() {
     const { can, hasRole } = usePermission();
-
-    // Widget 設定陣列：用最小結構實作 modular 與 permission 控制
-    const widgets = [
-        {
-            key: 'kpi-cards',
-            title: 'KPI Cards',
-            requiredPermissions: [],
-            render: () => (
-                <div className="grid grid-cols-1 gap-2.5 sm:gap-3 sm:grid-cols-2">
-                    {kpiData.map((item) => (
-                        <article key={item.label} className="rounded-xl border border-white/10 bg-white/[0.02] p-3.5 sm:p-4">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">{item.label}</p>
-                            <div className="mt-2 flex items-end justify-between">
-                                <p className="text-2xl font-light text-zinc-100">
-                                    {item.value}
-                                    <span className="ml-1 text-xs font-normal text-zinc-400">{item.unit}</span>
-                                </p>
-                                <p className={item.trend.startsWith('+') ? 'text-xs font-semibold text-emerald-400' : 'text-xs font-semibold text-rose-400'}>
-                                    {item.trend}
-                                </p>
-                            </div>
-                        </article>
-                    ))}
-                </div>
-            ),
-        },
-        {
-            key: 'recent-activities',
-            title: 'Recent Activities',
-            access: { permission: 'dashboard.activities.view', module: 'dashboard' },
-            render: () => (
-                <ul className="space-y-2.5 sm:space-y-3">
-                    {activities.map((item) => (
-                        <li key={`${item.time}-${item.text}`} className="flex gap-3 border-l-2 border-white/10 pl-3">
-                            <span className="text-xs font-semibold text-cyan-300">{item.time}</span>
-                            <span className="text-sm text-zinc-300">{item.text}</span>
-                        </li>
-                    ))}
-                </ul>
-            ),
-        },
-        {
-            key: 'system-status',
-            title: 'System Status',
-            access: { permission: 'dashboard.system.view', module: 'dashboard' },
-            render: () => (
-                <div className="space-y-2">
-                    {systemStatus.map((item) => (
-                        <div key={item.label} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5">
-                            <p className="text-sm text-zinc-300">{item.label}</p>
-                            <p className={`text-sm font-semibold ${item.tone}`}>{item.value}</p>
-                        </div>
-                    ))}
-                </div>
-            ),
-        },
-        {
-            key: 'quick-actions',
-            title: 'Quick Actions',
-            access: { permission: 'dashboard.actions.view', module: 'dashboard' },
-            render: () => (
-                <div className="space-y-2">
-                    {quickActions.map((item) => (
-                        <button
-                            key={item.label}
-                            type="button"
-                            className="w-full min-h-11 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-left transition-colors active:scale-[0.99] hover:border-cyan-300/40 hover:bg-white/[0.04]"
-                        >
-                            <p className="text-sm font-medium text-zinc-100">{item.label}</p>
-                            <p className="text-xs text-zinc-400">{item.hint}</p>
-                        </button>
-                    ))}
-                </div>
-            ),
-        },
-        {
-            key: 'announcement-area',
-            title: 'Announcement Area',
-            access: null,
-            render: () => (
-                <ul className="space-y-2">
-                    {announcements.map((item) => (
-                        <li key={item} className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-zinc-300">
-                            {item}
-                        </li>
-                    ))}
-                </ul>
-            ),
-        },
-    ];
-
-    // 權限過濾：只渲染可見 widgets，未授權項目不顯示
-    const visibleWidgets = widgets.filter((widget) => !widget.access || can(widget.access));
+    const canUseActions = hasRole(['Admin', 'Manager']) || can({ permission: 'dashboard.actions.view', module: 'dashboard' });
 
     return (
-        <DashboardLayout title="Dashboard">
-            {/* 頁面按鈕示範：同時支援 role + module + permission */}
-            {(hasRole(['Admin', 'Manager']) || can({ permission: 'dashboard.actions.view', module: 'dashboard' })) && (
-                <div className="mb-3 sm:mb-4 flex justify-end">
-                    <button
-                        type="button"
-                        className="min-h-11 rounded-xl border border-cyan-300/40 bg-cyan-300/10 px-4 py-2.5 text-sm font-medium text-cyan-100 transition-colors active:scale-[0.99] hover:bg-cyan-300/20"
-                    >
-                        匯出營運摘要
-                    </button>
-                </div>
-            )}
+        <div className="space-y-4 md:space-y-6">
+            <section className="grid grid-cols-12 gap-4 md:gap-6">
+                <div className="col-span-12 space-y-4 md:space-y-6 xl:col-span-7">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
+                        {metricCards.map((item) => (
+                            <MetricCard key={item.label} item={item} />
+                        ))}
+                    </div>
 
-            {/* 響應式格線：mobile 1 欄 / tablet 2 欄 / desktop 4 欄 */}
-            <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
-                {visibleWidgets.map((widget) => (
-                    <WidgetFrame key={widget.key} title={widget.title}>
-                        {widget.render()}
-                    </WidgetFrame>
-                ))}
-            </div>
-        </DashboardLayout>
+                    <section className={panelClass}>
+                        <PanelHeader eyebrow="Inventory Flow" title="車輛生命週期管制" />
+                        <div className="space-y-5">
+                            {pipelineRows.map((row) => (
+                                <div key={row.stage}>
+                                    <div className="mb-2 flex items-center justify-between text-sm">
+                                        <span className="font-medium text-zinc-200">{row.stage}</span>
+                                        <span className="text-zinc-500">{row.count} 輛</span>
+                                    </div>
+                                    <div className="h-2 rounded-full bg-white/[0.06]">
+                                        <div className={`h-2 rounded-full ${row.tone}`} style={{ width: row.ratio }} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                </div>
+
+                <div className="col-span-12 space-y-4 md:space-y-6 xl:col-span-5">
+                    <section className={panelClass}>
+                        <PanelHeader
+                            eyebrow="Finance Clarity"
+                            title="財務健康度"
+                            action={
+                                canUseActions ? (
+                                    <button className="min-h-10 rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-4 text-sm font-medium text-cyan-100 transition-colors hover:bg-cyan-300/15" type="button">
+                                        匯出摘要
+                                    </button>
+                                ) : null
+                            }
+                        />
+                        <div className="rounded-2xl border border-white/10 bg-[#050816]/35 p-5">
+                            <p className="text-sm text-zinc-400">本月預估毛利</p>
+                            <p className="mt-3 text-4xl font-semibold tracking-tight text-zinc-50">NT$ 4.82M</p>
+                            <p className="mt-2 text-sm font-medium text-emerald-300">較上月 +8.4%</p>
+                        </div>
+                        <div className="mt-4 divide-y divide-white/10">
+                            {financeRows.map((row) => (
+                                <div key={row.label} className="flex items-center justify-between py-3">
+                                    <span className="text-sm text-zinc-400">{row.label}</span>
+                                    <div className="text-right">
+                                        <p className="text-sm font-semibold text-zinc-100">{row.value}</p>
+                                        <p className="text-xs text-zinc-500">{row.delta}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    <section className={panelClass}>
+                        <PanelHeader eyebrow="Precision Actions" title="快速操作" />
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                            {quickActions.map((label) => (
+                                <button
+                                    key={label}
+                                    type="button"
+                                    className="min-h-12 rounded-xl border border-white/10 bg-white/[0.02] px-4 text-left text-sm font-medium text-zinc-200 transition-colors duration-150 hover:border-cyan-300/30 hover:bg-white/[0.05]"
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section className="grid grid-cols-12 gap-4 md:gap-6">
+                <section className={`${panelClass} col-span-12 xl:col-span-7`}>
+                    <PanelHeader eyebrow="Vehicle Records" title="近期車輛紀錄" />
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full">
+                            <thead>
+                                <tr className="border-y border-white/10 text-left">
+                                    <th className="py-3 pr-4 text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">VIN</th>
+                                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">車型</th>
+                                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">狀態</th>
+                                    <th className="py-3 pl-4 text-right text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">毛利</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/10">
+                                {recentVehicles.map((vehicle) => (
+                                    <tr key={vehicle.vin} className="transition-colors hover:bg-white/[0.02]">
+                                        <td className="py-4 pr-4 text-sm font-semibold text-zinc-100">{vehicle.vin}</td>
+                                        <td className="px-4 py-4 text-sm text-zinc-300">{vehicle.model}</td>
+                                        <td className="px-4 py-4">
+                                            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${vehicle.tone}`}>{vehicle.status}</span>
+                                        </td>
+                                        <td className="py-4 pl-4 text-right text-sm font-semibold text-zinc-100">{vehicle.margin}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section className={`${panelClass} col-span-12 xl:col-span-5`}>
+                    <PanelHeader eyebrow="Audit Trail" title="作業動態" />
+                    <div className="space-y-3">
+                        {activities.map((item) => (
+                            <div key={`${item.time}-${item.text}`} className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                                <span className="shrink-0 text-xs font-semibold text-cyan-300">{item.time}</span>
+                                <p className="text-sm leading-6 text-zinc-300">{item.text}</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            </section>
+        </div>
     );
 }
+
+DashboardIndex.layout = (page) => <DashboardLayout title="Operations Overview">{page}</DashboardLayout>;

@@ -1,8 +1,8 @@
 import { Link } from '@inertiajs/react';
 import { useMemo } from 'react';
 
-const shellClass = 'hidden shrink-0 border-r border-white/10 bg-[#0B1120]/90 backdrop-blur-xl lg:flex lg:flex-col';
-const itemBaseClass = 'group flex items-center gap-3 rounded-xl border px-3 py-2 text-sm tracking-wide transition-all';
+const shellClass = 'hidden shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[#0B1120]/95 backdrop-blur-xl lg:flex';
+const itemBaseClass = 'group relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium tracking-wide transition-all duration-150';
 
 const iconMap = {
     dashboard: (
@@ -70,22 +70,22 @@ const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
     const icon = iconMap[item.icon] ?? iconMap.dashboard;
     const hasChildren = (item.children ?? []).length > 0;
 
-    const paddingLeftClass = level > 0 ? 'pl-6' : '';
+    const paddingLeftClass = level > 0 && !collapsed ? 'pl-9' : '';
 
     if (item.route) {
         return (
             <div className="space-y-2">
                 <Link
                     href={route(item.route)}
-                    className={`${itemBaseClass} ${paddingLeftClass} ${
+                    className={`${itemBaseClass} ${collapsed ? 'justify-center px-0' : paddingLeftClass} ${
                         active
-                            ? 'border-cyan-300/40 bg-cyan-300/10 text-cyan-200'
-                            : 'border-white/10 bg-white/[0.02] text-zinc-300 hover:border-cyan-300/30 hover:text-cyan-200'
+                            ? 'bg-cyan-300/10 text-cyan-100 shadow-[inset_3px_0_0_rgba(103,232,249,0.85)]'
+                            : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100'
                     }`}
                     title={collapsed ? item.title : undefined}
                 >
-                    <span className="text-cyan-300/90">{icon}</span>
-                    {!collapsed && <span>{item.title}</span>}
+                    <span className={active ? 'text-cyan-200' : 'text-zinc-500 group-hover:text-cyan-300'}>{icon}</span>
+                    {!collapsed && <span className="truncate">{item.title}</span>}
                 </Link>
 
                 {!collapsed && hasChildren && (
@@ -102,13 +102,13 @@ const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
     return (
         <div className="space-y-2">
             <div
-                className={`${itemBaseClass} ${paddingLeftClass} ${
-                    active ? 'border-cyan-300/30 bg-cyan-300/5 text-cyan-200' : 'border-white/10 bg-white/[0.02] text-zinc-300'
+                className={`${itemBaseClass} ${collapsed ? 'justify-center px-0' : paddingLeftClass} ${
+                    active ? 'bg-cyan-300/10 text-cyan-100 shadow-[inset_3px_0_0_rgba(103,232,249,0.85)]' : 'text-zinc-400'
                 }`}
                 title={collapsed ? item.title : undefined}
             >
-                <span className="text-cyan-300/90">{icon}</span>
-                {!collapsed && <span>{item.title}</span>}
+                <span className={active ? 'text-cyan-200' : 'text-zinc-500'}>{icon}</span>
+                {!collapsed && <span className="truncate">{item.title}</span>}
             </div>
 
             {!collapsed && hasChildren && (
@@ -122,27 +122,39 @@ const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
     );
 };
 
-export default function Sidebar({ items = [], collapsed = false, onToggleCollapse }) {
-    const widthClass = useMemo(() => (collapsed ? 'w-20' : 'w-64'), [collapsed]);
+export default function Sidebar({ items = [], collapsed = false, pinned = false, onMouseEnter, onMouseLeave }) {
+    const widthClass = useMemo(() => (collapsed ? 'w-[90px]' : 'w-[290px]'), [collapsed]);
 
     return (
-        <aside className={`${shellClass} ${widthClass}`}>
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-5">
-                {!collapsed && <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-cyan-300/70">ERP Dashboard</p>}
-                <button
-                    type="button"
-                    onClick={onToggleCollapse}
-                    className="rounded-md border border-white/15 px-2 py-1 text-xs text-zinc-300"
-                    aria-label="Toggle sidebar collapse"
-                >
-                    {collapsed ? '展開' : '收合'}
-                </button>
+        <aside
+            className={`${shellClass} ${widthClass} transition-[width] duration-200 ease-out`}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+            data-sidebar-pinned={pinned ? 'true' : 'false'}
+        >
+            <div className={`flex h-[88px] items-center px-5 ${collapsed ? 'justify-center' : 'justify-between'}`}>
+                <div className="flex items-center gap-3">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-300/30 bg-cyan-300/10 text-sm font-semibold text-cyan-100">
+                        ERP
+                    </div>
+                    {!collapsed && (
+                        <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-cyan-300/70">Used Car</p>
+                            <p className="mt-1 text-sm font-semibold tracking-wide text-zinc-100">ERP Dashboard</p>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <nav className="space-y-2 p-4">
-                {items.map((item) => (
-                    <SidebarNode key={item.id} item={item} collapsed={collapsed} />
-                ))}
+            <nav className="flex-1 overflow-y-auto px-4 py-6">
+                <div className="mb-4 px-3 text-[10px] font-semibold uppercase leading-5 tracking-[0.28em] text-zinc-500">
+                    {collapsed ? '•••' : 'Menu'}
+                </div>
+                <div className="flex flex-col gap-2">
+                    {items.map((item) => (
+                        <SidebarNode key={item.id} item={item} collapsed={collapsed} />
+                    ))}
+                </div>
             </nav>
         </aside>
     );

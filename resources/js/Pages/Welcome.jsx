@@ -15,6 +15,10 @@ const processSteps = [
 ];
 
 export default function Welcome({ auth }) {
+    const employeeEntryHref = auth?.user
+        ? route('employee-system.overview')
+        : route('login');
+
     return (
         <>
             <Head>
@@ -141,11 +145,11 @@ export default function Welcome({ auth }) {
                         </p>
                     </footer>
 
-                    <div className="flex justify-end pb-10">
-                        <Link 
-                            href={route('login')} 
-                            className="group flex items-center gap-2 text-[10px] font-bold tracking-[0.4em] text-zinc-500 hover:text-cyan-300 transition-colors"
-                        >
+                     <div className="flex justify-end pb-10">
+                         <Link 
+                             href={employeeEntryHref} 
+                             className="group flex items-center gap-2 text-[10px] font-bold tracking-[0.4em] text-zinc-500 hover:text-cyan-300 transition-colors"
+                         >
                             <span>員工入口</span>
                             <span className="text-lg transition-transform group-hover:translate-x-1">
                                 →

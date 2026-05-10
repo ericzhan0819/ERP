@@ -21,3 +21,5 @@
 11.no-explanation
 12.concise
 13.keep-it-short
+14.請勿大幅度重購
+15.最小風險修復

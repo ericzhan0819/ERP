@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -33,7 +34,18 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $targetRouteName = 'employee-system.overview';
+        $targetUrl = route($targetRouteName, absolute: false);
+
+        Log::info('Auth store post-login diagnostics', [
+            'auth_id' => Auth::id(),
+            'session_id' => $request->session()->getId(),
+            'cookie_keys' => array_keys($request->cookies->all()),
+            'redirect_route' => $targetRouteName,
+            'redirect_url' => $targetUrl,
+        ]);
+
+        return redirect()->intended($targetUrl);
     }
 
     /**

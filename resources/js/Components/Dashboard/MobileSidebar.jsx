@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 
-const itemBaseClass = 'group flex items-center gap-3 rounded-xl border px-3 py-2 text-sm tracking-wide transition-all';
+const itemBaseClass = 'group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium tracking-wide transition-all duration-150';
 
 const iconMap = {
     dashboard: (
@@ -71,7 +71,7 @@ const isItemActive = (item) => {
 const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
     const active = isItemActive(item);
     const hasChildren = (item.children ?? []).length > 0;
-    const paddingLeftClass = level > 0 ? 'pl-6' : '';
+    const paddingLeftClass = level > 0 ? 'pl-9' : '';
 
     if (item.route) {
         return (
@@ -81,11 +81,11 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
                     onClick={onClose}
                     className={`${itemBaseClass} ${paddingLeftClass} ${
                         active
-                            ? 'border-cyan-300/40 bg-cyan-300/10 text-cyan-200'
-                            : 'border-white/10 bg-white/[0.02] text-zinc-300 hover:border-cyan-300/30 hover:text-cyan-200'
+                            ? 'bg-cyan-300/10 text-cyan-100 shadow-[inset_3px_0_0_rgba(103,232,249,0.85)]'
+                            : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100'
                     }`}
                 >
-                    <span className="text-cyan-300/90">{iconMap[item.icon] ?? iconMap.dashboard}</span>
+                    <span className={active ? 'text-cyan-200' : 'text-zinc-500 group-hover:text-cyan-300'}>{iconMap[item.icon] ?? iconMap.dashboard}</span>
                     <span>{item.title}</span>
                 </Link>
 
@@ -104,10 +104,10 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
         <div className="space-y-2">
             <div
                 className={`${itemBaseClass} ${paddingLeftClass} ${
-                    active ? 'border-cyan-300/30 bg-cyan-300/5 text-cyan-200' : 'border-white/10 bg-white/[0.02] text-zinc-300'
+                    active ? 'bg-cyan-300/10 text-cyan-100 shadow-[inset_3px_0_0_rgba(103,232,249,0.85)]' : 'text-zinc-400'
                 }`}
             >
-                <span className="text-cyan-300/90">{iconMap[item.icon] ?? iconMap.dashboard}</span>
+                <span className={active ? 'text-cyan-200' : 'text-zinc-500'}>{iconMap[item.icon] ?? iconMap.dashboard}</span>
                 <span>{item.title}</span>
             </div>
 
@@ -136,25 +136,40 @@ export default function MobileSidebar({ open = false, onClose, items = [] }) {
             />
 
             <aside
-                className={`relative h-full w-72 max-w-[86vw] border-r border-white/10 bg-[#0B1120] p-4 shadow-2xl transition-transform duration-300 ease-out ${
+                className={`relative flex h-full w-[290px] max-w-[86vw] flex-col overflow-hidden border-r border-white/10 bg-[#0B1120] shadow-2xl transition-transform duration-200 ease-out ${
                     open ? 'translate-x-0' : '-translate-x-full'
                 }`}
             >
-                <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-cyan-300/70">ERP Dashboard</p>
+                {/* 行動版品牌區固定 88px，讓抽屜分線與 Header 下緣維持同一水平基準。 */}
+                <div className="flex h-[88px] shrink-0 items-center justify-between border-b border-white/10 px-5">
+                    <div className="flex items-center gap-3">
+                        <div className="grid h-10 w-10 place-items-center rounded-xl border border-cyan-300/30 bg-cyan-300/10 text-sm font-semibold text-cyan-100">
+                            ERP
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-cyan-300/70">Used Car</p>
+                            <p className="mt-1 text-sm font-semibold tracking-wide text-zinc-100">ERP Dashboard</p>
+                        </div>
+                    </div>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-md border border-white/15 px-3 py-2 text-xs text-zinc-300 active:scale-[0.98]"
+                        className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-zinc-300 active:scale-[0.98]"
+                        aria-label="Close sidebar"
                     >
-                        關閉
+                        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
+                        </svg>
                     </button>
                 </div>
 
-                <nav className="space-y-2 overflow-y-auto pb-6">
-                    {items.map((item) => (
-                        <MobileSidebarNode key={item.id} item={item} onClose={onClose} />
-                    ))}
+                <nav className="flex-1 overflow-y-auto px-4 py-6">
+                    <div className="mb-4 px-3 text-[10px] font-semibold uppercase leading-5 tracking-[0.28em] text-zinc-500">Menu</div>
+                    <div className="flex flex-col gap-2">
+                        {items.map((item) => (
+                            <MobileSidebarNode key={item.id} item={item} onClose={onClose} />
+                        ))}
+                    </div>
                 </nav>
             </aside>
         </div>
