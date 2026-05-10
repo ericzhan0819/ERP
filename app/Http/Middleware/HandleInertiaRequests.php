@@ -54,7 +54,15 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 // 技術註解：改為直接共享使用者資料，避免測試/序列化階段 lazy prop 未展開造成 auth.user 判定為 null。
-                'user' => $request->user()?->only('id', 'name', 'email', 'phone'),
+                // 技術註解：Sidebar RBAC 需要固定拿到 id/role/permissions，避免前端判斷誤隱藏。
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'role' => $user->getRoleNames()->first(),
+                    'permissions' => $user->getAllPermissions()->pluck('name')->values()->all(),
+                ] : null,
                 'roles' => $user?->getRoleNames()?->values()?->all() ?? [],
                 'permissions' => $user?->getAllPermissions()?->pluck('name')?->values()?->all() ?? [],
             ],

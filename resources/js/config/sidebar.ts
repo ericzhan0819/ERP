@@ -6,10 +6,10 @@ export type SidebarItem = {
     title: string;
     icon: string;
     route: string | null;
-    permission: string[];
+    permissions?: string[];
     roles?: string[];
-    modules?: string[];
-    children: SidebarItem[];
+    users?: number[];
+    children?: SidebarItem[];
 };
 
 /**
@@ -21,12 +21,9 @@ export type SidebarItem = {
 export const sidebarItems: SidebarItem[] = [
     {
         id: 'dashboard',
-        title: 'Operations Overview',
+        title: '總覽',
         icon: 'dashboard',
         route: 'employee-system.overview',
-        permission: [],
-        roles: ['Admin', 'Manager', 'Staff'],
-        modules: ['dashboard'],
         children: [],
     },
     {
@@ -34,10 +31,8 @@ export const sidebarItems: SidebarItem[] = [
         title: '員工管理',
         icon: 'employees',
         route: 'staff-management.index',
-        permission: [],
         // 技術註解：前端僅顯示 Admin，與後端路由 role:Admin 雙保護。
         roles: ['Admin'],
-        modules: [],
         children: [],
     },
 ];

@@ -2,7 +2,6 @@ import Header from '@/Components/Dashboard/Header';
 import MobileSidebar from '@/Components/Dashboard/MobileSidebar';
 import Sidebar from '@/Components/Dashboard/Sidebar';
 import { sidebarItems } from '@/config/sidebar.ts';
-import usePermission from '@/hooks/usePermission';
 import { filterSidebarByPermission } from '@/utils/permission';
 import { Head, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
@@ -10,17 +9,21 @@ import { useEffect, useMemo, useState } from 'react';
 export default function DashboardLayout({ title = 'Dashboard', children }) {
     const page = usePage();
     const user = page.props?.auth?.user ?? null;
-    // DEBUG: 驗證 Inertia 實際傳入的登入使用者 payload（任務完成後可移除）
-    console.log('[DashboardLayout] page.props.auth.user =', page.props?.auth?.user ?? null);
     const currentUrl = page.url;
-    const { role, permissions, modules } = usePermission();
+    const role = user?.role ?? null;
+    const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
 
     /**
      * 以容錯方式統整權限來源，避免後端欄位命名不同時出錯。
      */
     const visibleSidebarItems = useMemo(
-        () => filterSidebarByPermission(sidebarItems, permissions, role, modules),
-        [permissions, role, modules],
+        () =>
+            filterSidebarByPermission(sidebarItems, {
+                id: user?.id,
+                role,
+                permissions,
+            }),
+        [permissions, role, user?.id],
     );
 
     const [mobileOpen, setMobileOpen] = useState(false);

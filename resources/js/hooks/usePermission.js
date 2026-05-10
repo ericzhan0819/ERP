@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import { usePage } from '@inertiajs/react';
-import { can as canHelper, hasRole as hasRoleHelper, resolveModules, resolvePermissions, resolveRole } from '@/utils/permission';
+import { can as canHelper, hasRole as hasRoleHelper, resolvePermissions, resolveRole } from '@/utils/permission';
 
 /**
  * 可重用權限 Hook：
  * - 沿用 Inertia page props 既有 auth/user 資料來源
- * - 統一提供 role / permissions / modules 給 UI 使用
+ * - 統一提供 role / permissions 給 UI 使用
  * - 暴露 can()、hasRole() 讓 Sidebar、Widget、按鈕可直接判斷
  */
 export default function usePermission() {
@@ -13,15 +13,13 @@ export default function usePermission() {
 
     const role = useMemo(() => resolveRole(page.props), [page.props]);
     const permissions = useMemo(() => resolvePermissions(page.props), [page.props]);
-    const modules = useMemo(() => resolveModules(page.props), [page.props]);
 
     const subject = useMemo(
         () => ({
             role,
             permissions,
-            modules,
         }),
-        [role, permissions, modules],
+        [role, permissions],
     );
 
     /**
@@ -37,7 +35,6 @@ export default function usePermission() {
     return {
         role,
         permissions,
-        modules,
         can,
         hasRole,
     };

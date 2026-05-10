@@ -1,5 +1,12 @@
 const toArray = (value) => (Array.isArray(value) ? value : []);
 
+const normalizeIdArray = (value) => {
+    if (!Array.isArray(value)) return [];
+    return value
+        .map((item) => Number(item))
+        .filter((item) => Number.isInteger(item) && item > 0);
+};
+
 /**
  * 將單值/陣列轉為乾淨字串陣列，避免 null/空字串污染判斷。
  */
@@ -13,6 +20,15 @@ const normalizeArray = (value) => {
     }
 
     return [];
+};
+
+/**
+ * 角色字串正規化：統一去空白並轉小寫，避免大小寫不一致造成誤判。
+ */
+const normalizeRoleValue = (value) => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim().toLowerCase();
+    return normalized === '' ? null : normalized;
 };
 
 /**
@@ -51,27 +67,17 @@ export const resolveRole = (pageProps = {}) => {
 /**
  * 解析模組存取清單，支援多種欄位命名。
  */
-export const resolveModules = (pageProps = {}) => {
-    const authUser = pageProps?.auth?.user ?? {};
-    const merged = [
-        ...toArray(pageProps?.modules),
-        ...toArray(pageProps?.auth?.modules),
-        ...toArray(authUser?.modules),
-        ...toArray(authUser?.module_access),
-        ...toArray(authUser?.module_names),
-    ];
-
-    return [...new Set(normalizeArray(merged).filter(Boolean))];
-};
-
 /**
  * 角色判斷：支援單一角色或多角色陣列。
  */
 export const hasRole = (currentRole, requiredRoles = []) => {
-    const required = normalizeArray(requiredRoles);
+    const required = normalizeArray(requiredRoles)
+        .map((role) => normalizeRoleValue(role))
+        .filter(Boolean);
     if (required.length === 0) return true;
-    if (!currentRole || typeof currentRole !== 'string') return false;
-    return required.includes(currentRole);
+    const normalizedCurrentRole = normalizeRoleValue(currentRole);
+    if (!normalizedCurrentRole) return false;
+    return required.includes(normalizedCurrentRole);
 };
 
 /**
@@ -86,7 +92,6 @@ export const can = (
 ) => {
     const role = subject?.role ?? null;
     const permissions = new Set(normalizeArray(subject?.permissions));
-    const modules = new Set(normalizeArray(subject?.modules));
 
     // 簡寫：can(ctx, 'permission.name')
     if (typeof requirement === 'string') {
@@ -98,15 +103,10 @@ export const can = (
     }
 
     const requiredPermission = typeof requirement.permission === 'string' ? requirement.permission : null;
-    const requiredModule = typeof requirement.module === 'string' ? requirement.module : null;
-    const requiredModules = normalizeArray(requirement.modules);
     const requiredRoles = normalizeArray(requirement.role ?? requirement.roles);
 
     if (requiredRoles.length > 0 && !hasRole(role, requiredRoles)) return false;
     if (requiredPermission && !permissions.has(requiredPermission)) return false;
-    if (requiredModule && !modules.has(requiredModule)) return false;
-    if (requiredModules.length > 0 && !requiredModules.some((moduleKey) => modules.has(moduleKey))) return false;
-
     return true;
 };
 
@@ -132,39 +132,37 @@ const getRequiredRoles = (item = {}) => {
     return Array.isArray(item?.roles) ? item.roles : normalizeArray(item?.role);
 };
 
-const getRequiredModules = (item = {}) => {
-    return Array.isArray(item?.modules) ? item.modules : normalizeArray(item?.module);
+const canSeeItem = (item = {}, user = {}) => {
+    const role = user?.role ?? null;
+    const permissions = normalizeArray(user?.permissions);
+    const userId = Number(user?.id ?? 0);
+
+    const requiredRoles = normalizeArray(item?.roles);
+    const requiredPermissions = normalizeArray(item?.permissions);
+    const requiredUsers = normalizeIdArray(item?.users);
+
+    const roleOk = requiredRoles.length === 0 || hasRole(role, requiredRoles);
+    const permissionOk =
+        requiredPermissions.length === 0 || requiredPermissions.some((permission) => permissions.includes(permission));
+    const userOk = requiredUsers.length === 0 || requiredUsers.includes(userId);
+
+    return roleOk && permissionOk && userOk;
 };
 
 /**
  * 依權限遞迴過濾 Sidebar 項目，保留巢狀結構。
  */
-export const filterSidebarByPermission = (items = [], userPermissions = [], currentRole = null, userModules = []) => {
-    const subject = {
-        role: currentRole,
-        permissions: userPermissions,
-        modules: userModules,
-    };
-
+export const filterSidebarByPermission = (items = [], user = {}) => {
     return toArray(items)
         .map((item) => {
-            const filteredChildren = filterSidebarByPermission(item?.children ?? [], userPermissions, currentRole, userModules);
+            const filteredChildren = filterSidebarByPermission(item?.children ?? [], user);
             return {
                 ...item,
                 children: filteredChildren,
             };
         })
         .filter((item) => {
-            const requiredPermissions = getRequiredPermissions(item);
-            const requiredRoles = getRequiredRoles(item);
-            const requiredModules = getRequiredModules(item);
-
-            const canSeeSelf =
-                hasAnyPermission(userPermissions, requiredPermissions) &&
-                can(subject, {
-                    role: requiredRoles.length > 0 ? requiredRoles : undefined,
-                    modules: requiredModules,
-                });
+            const canSeeSelf = canSeeItem(item, user);
             const hasVisibleChildren = toArray(item?.children).length > 0;
             return canSeeSelf || hasVisibleChildren;
         });
