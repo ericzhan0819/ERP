@@ -14,6 +14,12 @@ class StaffManagementVisibilityTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_staff_management_named_route_uses_employee_system_prefix(): void
+    {
+        // 技術註解：最小風險補強路徑規則，確保非 dashboard 模組走 /employee-system/*。
+        $this->assertSame('/employee-system/staff-management', route('staff-management.index', absolute: false));
+    }
+
     public function test_admin_can_access_staff_management_page(): void
     {
         $this->seed(RoleSeeder::class);

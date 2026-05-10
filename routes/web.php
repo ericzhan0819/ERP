@@ -46,7 +46,8 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', 'role:Admin'])
-    ->prefix('staff-management')
+    // 技術註解：依新規則將非 dashboard 模組統一路徑收斂至 /employee-system/*。
+    ->prefix('employee-system/staff-management')
     ->name('staff-management.')
     ->group(function () {
         Route::get('/', [StaffManagementController::class, 'index'])
