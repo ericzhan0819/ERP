@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 技術註解：第二階段僅建立基本 Admin 測試帳號，不建立角色或權限資料。
-        $this->call(UserSeeder::class);
+        // 技術註解：統一由 RBAC Seeder 建立測試帳號、角色與最小模組權限。
+        $this->call(RolePermissionSeeder::class);
     }
 }

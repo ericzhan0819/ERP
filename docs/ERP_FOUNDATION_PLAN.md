@@ -105,3 +105,16 @@ resources/js/
 - visibleModules 是 Sidebar 顯示依據。
 - PermissionService 是權限判斷唯一入口。
 - UI 結構保持透明、有序、穩定，支援後續 ERP 模組漸進擴充。
+
+## 11. Permission Cache Policy
+
+- 使用 Spatie 後，凡新增角色、修改角色、修改權限，或執行 assignRole、syncRoles、givePermissionTo、syncPermissions 後，必須呼叫 PermissionRegistrar::forgetCachedPermissions()。
+- Sidebar 不使用 localStorage 快取 visibleModules；每次都從 Inertia shared props 取得最新 visibleModules。
+- 目前 modules 先放 config/modules.php；未來若要支援後台新增模組，改為 modules table。
+- 開發環境若遇到權限與畫面不同步，先執行：
+  ```bash
+  ./vendor/bin/sail artisan optimize:clear
+  ./vendor/bin/sail artisan permission:cache-reset
+  ```
+  然後重新登入。
+- 未來建立員工管理功能時，新增員工與修改角色後必須重新清 Spatie permission cache。

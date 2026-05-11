@@ -2,11 +2,14 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
+    public function __construct(private readonly PermissionService $permissionService) {}
+
     /**
      * The root template that is loaded on the first page visit.
      *
@@ -29,14 +32,18 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
         return [
             ...parent::share($request),
             'auth' => [
-                // 技術註解：只共享登入頁與主控台必要辨識資料，避免外洩密碼、角色或權限資訊。
-                'user' => $request->user()?->only('id', 'name', 'email'),
+                // 技術註解：只共享 RBAC 驗證需要的最小資料，權限可見性委派 PermissionService。
+                'user' => $user?->only('id', 'name', 'email'),
+                'roles' => $user?->getRoleNames()->values()->all() ?? [],
+                'visibleModules' => $user ? $this->permissionService->visibleModules($user) : [],
             ],
             // 技術註解：帳號狀態獨立於權限系統，僅提供前端呈現帳號可用狀態。
-            'accountStatus' => $request->user()?->account_status,
+            'accountStatus' => $user?->account_status,
         ];
     }
 }

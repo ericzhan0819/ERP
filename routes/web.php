@@ -19,9 +19,14 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->name('logout');
 
 Route::get('/employee-system', function () {
-    // 技術註解：Employee System 僅要求已登入，不在此處處理角色、權限或模組可見性。
+    // 技術註解：Dashboard 存取交由 module.access 統一檢查，不在路由閉包接觸權限 API。
     return Inertia::render('Dashboard/index');
-})->middleware('auth')->name('employee-system.overview');
+})->middleware(['auth', 'module.access:dashboard'])->name('employee-system.overview');
+
+Route::get('/employee-system/test-module', function () {
+    // 技術註解：測試模組只驗證 RBAC 門禁，不建立 CRUD 或管理後台。
+    return Inertia::render('TestModule');
+})->middleware(['auth', 'module.access:test-module'])->name('employee-system.test-module');
 
 Route::get('/dashboard', function () {
     // 技術註解：保留舊入口相容性，導向新的純展示主控台路徑。

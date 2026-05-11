@@ -1,5 +1,5 @@
 /**
- * 側欄項目型別：key 為穩定識別，moduleKey 僅預留給後續權限層使用。
+ * 側欄項目型別：moduleKey 對應後端 auth.visibleModules，不在前端判斷角色。
  */
 export type SidebarItem = {
     key: string;
@@ -12,7 +12,7 @@ export type SidebarItem = {
 };
 
 /**
- * MVP 側欄唯一選單來源：現階段只保留可到達入口，不在前端做角色或權限判斷。
+ * 側欄唯一選單來源：僅保留 Dashboard 與測試模組入口。
  */
 export const sidebarItems: SidebarItem[] = [
     {
@@ -21,6 +21,14 @@ export const sidebarItems: SidebarItem[] = [
         icon: 'dashboard',
         routeName: 'employee-system.overview',
         moduleKey: 'dashboard',
+        children: [],
+    },
+    {
+        key: 'test-module.index',
+        label: '測試模塊',
+        icon: 'test-module',
+        routeName: 'employee-system.test-module',
+        moduleKey: 'test-module',
         children: [],
     },
 ];

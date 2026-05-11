@@ -1,4 +1,5 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
+import { useMemo } from 'react';
 import { sidebarItems } from '@/config/sidebar.ts';
 
 const itemBaseClass = 'group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium tracking-wide transition-all duration-150';
@@ -17,6 +18,20 @@ const iconMap = {
             <path d="M4.5 19a5 5 0 0 1 9 0M14 19a4 4 0 0 1 6 0" strokeLinecap="round" />
         </svg>
     ),
+    'test-module': (
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M4 7h16M7 4v16M17 4v16M4 17h16" strokeLinecap="round" />
+        </svg>
+    ),
+};
+
+/**
+ * 技術註解：行動版同樣只依 auth.visibleModules 過濾，避免重複 RBAC 邏輯。
+ */
+const filterVisibleItems = (items, visibleModuleKeys) => {
+    return items
+        .map((item) => ({ ...item, children: filterVisibleItems(item.children ?? [], visibleModuleKeys) }))
+        .filter((item) => !item.moduleKey || visibleModuleKeys.has(item.moduleKey) || item.children.length > 0);
 };
 
 /**
@@ -102,6 +117,13 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
 };
 
 export default function MobileSidebar({ open = false, onClose, items = sidebarItems }) {
+    const { auth } = usePage().props;
+    const visibleItems = useMemo(() => {
+        const visibleModuleKeys = new Set((auth?.visibleModules ?? []).map((module) => module.key));
+
+        return filterVisibleItems(items, visibleModuleKeys);
+    }, [auth?.visibleModules, items]);
+
     return (
         <div
             className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-200 ${open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
@@ -145,7 +167,7 @@ export default function MobileSidebar({ open = false, onClose, items = sidebarIt
                 <nav className="flex-1 overflow-y-auto px-4 py-6">
                     <div className="mb-4 px-3 text-[10px] font-semibold uppercase leading-5 tracking-[0.28em] text-zinc-500">Menu</div>
                     <div className="flex flex-col gap-2">
-                        {items.map((item) => (
+                        {visibleItems.map((item) => (
                             <MobileSidebarNode key={item.key} item={item} onClose={onClose} />
                         ))}
                     </div>

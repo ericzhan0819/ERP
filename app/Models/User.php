@@ -5,11 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     use HasFactory;
+    use HasRoles;
     use Notifiable;
+
+    /**
+     * 技術註解：固定使用 web guard，讓 RBAC 與既有登入 Auth guard 保持一致。
+     */
+    protected string $guard_name = 'web';
 
     /**
      * 技術註解：僅開放基本登入與帳號狀態欄位，避免混入角色或權限責任。
