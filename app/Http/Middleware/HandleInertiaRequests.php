@@ -32,9 +32,11 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                // 技術註解：純 UI Demo 固定不共享真實使用者，前端以展示資料呈現操作狀態。
-                'user' => null,
+                // 技術註解：只共享登入頁與主控台必要辨識資料，避免外洩密碼、角色或權限資訊。
+                'user' => $request->user()?->only('id', 'name', 'email'),
             ],
+            // 技術註解：帳號狀態獨立於權限系統，僅提供前端呈現帳號可用狀態。
+            'accountStatus' => $request->user()?->account_status,
         ];
     }
 }

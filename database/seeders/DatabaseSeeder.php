@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 技術註解：純 UI Demo 不建立使用者、角色或權限資料，避免展示環境依賴後端認證模型。
+        // 技術註解：第二階段僅建立基本 Admin 測試帳號，不建立角色或權限資料。
+        $this->call(UserSeeder::class);
     }
 }

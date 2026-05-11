@@ -1,34 +1,31 @@
 import Checkbox from '@/Components/Checkbox';
 import InputLabel from '@/Components/InputLabel';
+import InputError from '@/Components/InputError';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
-import { Head, router } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useState } from 'react';
 
 export default function Login() {
-    const [data, setData] = useState({
+    const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
         remember: false,
     });
-    const [isEntering, setIsEntering] = useState(false);
 
     const submit = (e) => {
         e.preventDefault();
 
-        // 技術註解：純 UI Demo 不送出認證請求，只以 Inertia 前端導向進入展示主控台。
-        const target = typeof route === 'function'
-            ? route('employee-system.overview')
-            : '/employee-system';
-
-        setIsEntering(true);
-        router.visit(target);
+        // 技術註解：改用 Inertia POST 呼叫後端 session auth，成功後由 Laravel 導向員工系統。
+        post(typeof route === 'function' ? route('login.store') : '/login', {
+            onFinish: () => reset('password'),
+        });
     };
 
     const updateField = (field, value) => {
-        // 技術註解：保留表單互動手感，但資料僅停留於前端展示狀態。
-        setData((current) => ({ ...current, [field]: value }));
+        // 技術註解：表單狀態交由 Inertia useForm 管理，與後端驗證錯誤保持同步。
+        setData(field, value);
     };
 
     const [passwordVisible, setPasswordVisible] = useState(false);
@@ -88,6 +85,7 @@ export default function Login() {
                                             required
                                         />
                                     </div>
+                                    <InputError message={errors.email} className="mt-2" />
                                 </div>
 
                                 <div className="relative">
@@ -112,6 +110,7 @@ export default function Login() {
                                             {passwordVisible ? <FaEyeSlash /> : <FaEye />}
                                         </button>
                                     </div>
+                                    <InputError message={errors.password} className="mt-2" />
                                 </div>
 
                                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
@@ -128,9 +127,9 @@ export default function Login() {
                                 <div className="pt-2">
                                     <PrimaryButton
                                         className="flex w-full items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-300/15 px-4 py-3 text-xs font-bold uppercase tracking-[0.25em] text-cyan-100 transition-all hover:border-cyan-300/50 hover:bg-cyan-300/20"
-                                        disabled={isEntering}
+                                        disabled={processing}
                                     >
-                                        {isEntering ? '進入中' : '登入'}
+                                        {processing ? '驗證中' : '登入'}
                                     </PrimaryButton>
                                 </div>
                             </form>
