@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { sidebarItems } from '@/config/sidebar.ts';
 
 const itemBaseClass = 'group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium tracking-wide transition-all duration-150';
 
@@ -28,9 +29,10 @@ const isRouteActive = (routeName) => {
 };
 
 const resolveHref = (item) => {
-    if (!item?.route) return '#';
-    if (typeof route === 'function' && route().has(item.route)) {
-        return route(item.route);
+    if (item?.href) return item.href;
+    if (!item?.routeName) return '#';
+    if (typeof route === 'function' && route().has(item.routeName)) {
+        return route(item.routeName);
     }
     return '#';
 };
@@ -39,7 +41,7 @@ const resolveHref = (item) => {
  * 遞迴判斷子節點是否為 active。
  */
 const isItemActive = (item) => {
-    return isRouteActive(item?.route) || (item?.children ?? []).some((child) => isItemActive(child));
+    return isRouteActive(item?.routeName) || (item?.children ?? []).some((child) => isItemActive(child));
 };
 
 /**
@@ -50,7 +52,7 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
     const hasChildren = (item.children ?? []).length > 0;
     const paddingLeftClass = level > 0 ? 'pl-9' : '';
 
-    if (item.route) {
+    if (item.routeName || item.href) {
         return (
             <div className="space-y-2">
                 <Link
@@ -63,13 +65,13 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
                     }`}
                 >
                     <span className={active ? 'text-cyan-200' : 'text-zinc-500 group-hover:text-cyan-300'}>{iconMap[item.icon] ?? iconMap.dashboard}</span>
-                    <span>{item.title}</span>
+                    <span>{item.label}</span>
                 </Link>
 
                 {hasChildren && (
                     <div className="space-y-2">
                         {item.children.map((child) => (
-                            <MobileSidebarNode key={child.id} item={child} onClose={onClose} level={level + 1} />
+                            <MobileSidebarNode key={child.key} item={child} onClose={onClose} level={level + 1} />
                         ))}
                     </div>
                 )}
@@ -85,13 +87,13 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
                 }`}
             >
                 <span className={active ? 'text-cyan-200' : 'text-zinc-500'}>{iconMap[item.icon] ?? iconMap.dashboard}</span>
-                <span>{item.title}</span>
+                <span>{item.label}</span>
             </div>
 
             {hasChildren && (
                 <div className="space-y-2">
                     {item.children.map((child) => (
-                        <MobileSidebarNode key={child.id} item={child} onClose={onClose} level={level + 1} />
+                        <MobileSidebarNode key={child.key} item={child} onClose={onClose} level={level + 1} />
                     ))}
                 </div>
             )}
@@ -99,7 +101,7 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
     );
 };
 
-export default function MobileSidebar({ open = false, onClose, items = [] }) {
+export default function MobileSidebar({ open = false, onClose, items = sidebarItems }) {
     return (
         <div
             className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-200 ${open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
@@ -144,7 +146,7 @@ export default function MobileSidebar({ open = false, onClose, items = [] }) {
                     <div className="mb-4 px-3 text-[10px] font-semibold uppercase leading-5 tracking-[0.28em] text-zinc-500">Menu</div>
                     <div className="flex flex-col gap-2">
                         {items.map((item) => (
-                            <MobileSidebarNode key={item.id} item={item} onClose={onClose} />
+                            <MobileSidebarNode key={item.key} item={item} onClose={onClose} />
                         ))}
                     </div>
                 </nav>

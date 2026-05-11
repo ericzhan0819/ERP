@@ -1,7 +1,6 @@
 import Header from '@/Components/Dashboard/Header';
 import MobileSidebar from '@/Components/Dashboard/MobileSidebar';
 import Sidebar from '@/Components/Dashboard/Sidebar';
-import { sidebarItems } from '@/config/sidebar.ts';
 import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -28,7 +27,6 @@ export default function DashboardLayout({ title = 'Dashboard', children }) {
 
             <div className="flex h-screen overflow-hidden">
                 <Sidebar
-                    items={sidebarItems}
                     collapsed={sidebarCollapsed}
                     pinned={sidebarPinned}
                     onMouseEnter={() => {
@@ -63,7 +61,6 @@ export default function DashboardLayout({ title = 'Dashboard', children }) {
                 <MobileSidebar
                     open={mobileOpen}
                     onClose={() => setMobileOpen(false)}
-                    items={sidebarItems}
                 />
             )}
         </div>

@@ -1,23 +1,26 @@
 /**
- * 側欄子項目型別：支援巢狀資料結構。
+ * 側欄項目型別：key 為穩定識別，moduleKey 僅預留給後續權限層使用。
  */
 export type SidebarItem = {
-    id: string;
-    title: string;
+    key: string;
+    label: string;
     icon: string;
-    route: string | null;
+    routeName?: string;
+    href?: string;
+    moduleKey?: string;
     children?: SidebarItem[];
 };
 
 /**
- * MVP 側欄模組設定：純 UI Demo 僅保留可到達的展示入口，避免無後端路由的死連結。
+ * MVP 側欄唯一選單來源：現階段只保留可到達入口，不在前端做角色或權限判斷。
  */
 export const sidebarItems: SidebarItem[] = [
     {
-        id: 'dashboard',
-        title: '總覽',
+        key: 'dashboard.overview',
+        label: '總覽',
         icon: 'dashboard',
-        route: 'employee-system.overview',
+        routeName: 'employee-system.overview',
+        moduleKey: 'dashboard',
         children: [],
     },
 ];

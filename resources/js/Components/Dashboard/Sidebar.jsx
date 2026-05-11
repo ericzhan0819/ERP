@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { useMemo } from 'react';
+import { sidebarItems } from '@/config/sidebar.ts';
 
 const shellClass = 'hidden shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[#0B1120]/95 backdrop-blur-xl lg:flex';
 const itemBaseClass = 'group relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium tracking-wide transition-all duration-150';
@@ -27,9 +28,10 @@ const isRouteActive = (routeName) => {
 };
 
 const resolveHref = (item) => {
-    if (!item?.route) return '#';
-    if (typeof route === 'function' && route().has(item.route)) {
-        return route(item.route);
+    if (item?.href) return item.href;
+    if (!item?.routeName) return '#';
+    if (typeof route === 'function' && route().has(item.routeName)) {
+        return route(item.routeName);
     }
     return '#';
 };
@@ -39,7 +41,7 @@ const hasActiveChild = (children = []) => {
 };
 
 const isItemActive = (item) => {
-    return isRouteActive(item?.route) || hasActiveChild(item?.children ?? []);
+    return isRouteActive(item?.routeName) || hasActiveChild(item?.children ?? []);
 };
 
 const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
@@ -49,7 +51,7 @@ const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
 
     const paddingLeftClass = level > 0 && !collapsed ? 'pl-9' : '';
 
-    if (item.route) {
+    if (item.routeName || item.href) {
         return (
             <div className="space-y-2">
                 <Link
@@ -59,16 +61,16 @@ const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
                             ? 'bg-cyan-300/10 text-cyan-100 shadow-[inset_3px_0_0_rgba(103,232,249,0.85)]'
                             : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100'
                     }`}
-                    title={collapsed ? item.title : undefined}
+                    title={collapsed ? item.label : undefined}
                 >
                     <span className={active ? 'text-cyan-200' : 'text-zinc-500 group-hover:text-cyan-300'}>{icon}</span>
-                    {!collapsed && <span className="truncate">{item.title}</span>}
+                    {!collapsed && <span className="truncate">{item.label}</span>}
                 </Link>
 
                 {!collapsed && hasChildren && (
                     <div className="space-y-2">
                         {item.children.map((child) => (
-                            <SidebarNode key={child.id} item={child} level={level + 1} collapsed={collapsed} />
+                            <SidebarNode key={child.key} item={child} level={level + 1} collapsed={collapsed} />
                         ))}
                     </div>
                 )}
@@ -82,16 +84,16 @@ const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
                 className={`${itemBaseClass} ${collapsed ? 'justify-center px-0' : paddingLeftClass} ${
                     active ? 'bg-cyan-300/10 text-cyan-100 shadow-[inset_3px_0_0_rgba(103,232,249,0.85)]' : 'text-zinc-400'
                 }`}
-                title={collapsed ? item.title : undefined}
+                title={collapsed ? item.label : undefined}
             >
                 <span className={active ? 'text-cyan-200' : 'text-zinc-500'}>{icon}</span>
-                {!collapsed && <span className="truncate">{item.title}</span>}
+                {!collapsed && <span className="truncate">{item.label}</span>}
             </div>
 
             {!collapsed && hasChildren && (
                 <div className="space-y-2">
                     {item.children.map((child) => (
-                        <SidebarNode key={child.id} item={child} level={level + 1} collapsed={collapsed} />
+                        <SidebarNode key={child.key} item={child} level={level + 1} collapsed={collapsed} />
                     ))}
                 </div>
             )}
@@ -99,7 +101,7 @@ const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
     );
 };
 
-export default function Sidebar({ items = [], collapsed = false, pinned = false, onMouseEnter, onMouseLeave }) {
+export default function Sidebar({ items = sidebarItems, collapsed = false, pinned = false, onMouseEnter, onMouseLeave }) {
     const widthClass = useMemo(() => (collapsed ? 'w-[90px]' : 'w-[290px]'), [collapsed]);
 
     return (
@@ -129,7 +131,7 @@ export default function Sidebar({ items = [], collapsed = false, pinned = false,
                 </div>
                 <div className="flex flex-col gap-2">
                     {items.map((item) => (
-                        <SidebarNode key={item.id} item={item} collapsed={collapsed} />
+                        <SidebarNode key={item.key} item={item} collapsed={collapsed} />
                     ))}
                 </div>
             </nav>
