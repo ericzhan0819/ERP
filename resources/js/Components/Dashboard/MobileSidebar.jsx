@@ -26,12 +26,12 @@ const iconMap = {
 };
 
 /**
- * 技術註解：行動版同樣只依 auth.visibleModules 過濾，避免重複 RBAC 邏輯。
+ * 技術註解：行動版可見性唯一來源為 auth.visibleModules；sidebar.ts 僅作 icon、路由與標籤 fallback。
  */
-const filterVisibleItems = (items, visibleModuleKeys) => {
-    return items
-        .map((item) => ({ ...item, children: filterVisibleItems(item.children ?? [], visibleModuleKeys) }))
-        .filter((item) => !item.moduleKey || visibleModuleKeys.has(item.moduleKey) || item.children.length > 0);
+const resolveVisibleItems = (items, visibleModules) => {
+    const itemByModuleKey = new Map(items.filter((item) => item.moduleKey).map((item) => [item.moduleKey, item]));
+
+    return visibleModules.map((module) => itemByModuleKey.get(module.key)).filter(Boolean);
 };
 
 /**
@@ -119,9 +119,7 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
 export default function MobileSidebar({ open = false, onClose, items = sidebarItems }) {
     const { auth } = usePage().props;
     const visibleItems = useMemo(() => {
-        const visibleModuleKeys = new Set((auth?.visibleModules ?? []).map((module) => module.key));
-
-        return filterVisibleItems(items, visibleModuleKeys);
+        return resolveVisibleItems(items, auth?.visibleModules ?? []);
     }, [auth?.visibleModules, items]);
 
     return (

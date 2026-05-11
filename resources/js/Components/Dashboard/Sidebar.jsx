@@ -27,12 +27,12 @@ const iconMap = {
 };
 
 /**
- * 技術註解：只用 Inertia shared 的 visibleModules 過濾側欄，不知道 Spatie 或角色存在。
+ * 技術註解：側欄可見性唯一來源為 Inertia shared 的 auth.visibleModules；sidebar.ts 只提供 UI 對應資料。
  */
-const filterVisibleItems = (items, visibleModuleKeys) => {
-    return items
-        .map((item) => ({ ...item, children: filterVisibleItems(item.children ?? [], visibleModuleKeys) }))
-        .filter((item) => !item.moduleKey || visibleModuleKeys.has(item.moduleKey) || item.children.length > 0);
+const resolveVisibleItems = (items, visibleModules) => {
+    const itemByModuleKey = new Map(items.filter((item) => item.moduleKey).map((item) => [item.moduleKey, item]));
+
+    return visibleModules.map((module) => itemByModuleKey.get(module.key)).filter(Boolean);
 };
 
 const isRouteActive = (routeName) => {
@@ -119,9 +119,7 @@ export default function Sidebar({ items = sidebarItems, collapsed = false, pinne
     const { auth } = usePage().props;
     const widthClass = useMemo(() => (collapsed ? 'w-[90px]' : 'w-[290px]'), [collapsed]);
     const visibleItems = useMemo(() => {
-        const visibleModuleKeys = new Set((auth?.visibleModules ?? []).map((module) => module.key));
-
-        return filterVisibleItems(items, visibleModuleKeys);
+        return resolveVisibleItems(items, auth?.visibleModules ?? []);
     }, [auth?.visibleModules, items]);
 
     return (

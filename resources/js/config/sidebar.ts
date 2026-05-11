@@ -12,7 +12,7 @@ export type SidebarItem = {
 };
 
 /**
- * 側欄唯一選單來源：僅保留 Dashboard 與測試模組入口。
+ * 側欄 UI 對應表：可見性不可由此檔判斷，只能由 auth.visibleModules 決定。
  */
 export const sidebarItems: SidebarItem[] = [
     {
@@ -21,6 +21,14 @@ export const sidebarItems: SidebarItem[] = [
         icon: 'dashboard',
         routeName: 'employee-system.overview',
         moduleKey: 'dashboard',
+        children: [],
+    },
+    {
+        key: 'staff-permission.index',
+        label: '員工權限',
+        icon: 'employees',
+        routeName: 'employee-system.staff-permissions.index',
+        moduleKey: 'staff-permission',
         children: [],
     },
     {

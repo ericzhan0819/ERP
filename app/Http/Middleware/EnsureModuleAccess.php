@@ -12,7 +12,7 @@ class EnsureModuleAccess
     public function __construct(private readonly PermissionService $permissionService) {}
 
     /**
-     * 技術註解：模組路由只委派 PermissionService 判斷，不直接呼叫任何 Spatie API。
+     * 技術註解：middleware 參數即 module key；資料庫找不到、停用或權限不足皆回 403。
      */
     public function handle(Request $request, Closure $next, string $moduleKey): Response
     {
