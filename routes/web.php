@@ -1,83 +1,24 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ModulePermissionController;
-use App\Http\Controllers\StaffManagementController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    // 技術註解：純 UI Demo 首頁不讀取認證狀態，維持透明且可預期的展示入口。
+    return Inertia::render('Welcome');
 });
+
+Route::get('/login', function () {
+    // 技術註解：登入頁僅作前端流程展示，不連接後端 Auth guard。
+    return Inertia::render('Auth/Login');
+})->name('login');
 
 Route::get('/employee-system', function () {
+    // 技術註解：Employee System 固定進入 Dashboard demo，避免權限資料造成展示阻斷。
     return Inertia::render('Dashboard/index');
-})->middleware(['auth'])->name('employee-system.overview');
+})->name('employee-system.overview');
 
 Route::get('/dashboard', function () {
-    return redirect()->route('employee-system.overview');
-})->middleware(['auth'])->name('dashboard');
-
-Route::middleware(['auth'])->group(function () {
-    Route::get('/employee-system/inventory', function () {
-        return Inertia::render('Inventory/Index');
-    })->name('inventory.index');
-
-    Route::get('/employee-system/orders', function () {
-        return Inertia::render('Orders/Index');
-    })->name('orders.index');
-
-    Route::get('/permission-test-module', function () {
-        return Inertia::render('PermissionTestModule');
-    })->name('permission-test-module');
-});
-
-Route::middleware(['auth'])->group(function () {
-
-    Route::get('/profile', [ProfileController::class, 'edit'])
-        ->name('profile.edit');
-
-    Route::patch('/profile', [ProfileController::class, 'update'])
-        ->name('profile.update');
-
-    Route::delete('/profile', [ProfileController::class, 'destroy'])
-        ->name('profile.destroy');
-
-});
-
-Route::middleware(['auth', 'role:Admin'])
-    // 技術註解：依新規則將非 dashboard 模組統一路徑收斂至 /employee-system/*。
-    ->prefix('employee-system/staff-management')
-    ->name('staff-management.')
-    ->group(function () {
-        Route::get('/', [StaffManagementController::class, 'index'])
-            ->name('index');
-
-        Route::patch('/users/{user}', [StaffManagementController::class, 'update'])
-            ->name('update');
-    });
-
-Route::middleware(['auth', 'role:Admin'])
-    ->prefix('admin/module-permissions')
-    ->name('admin.module-permissions.')
-    ->group(function () {
-        Route::get('/manage', function () {
-            return Inertia::render('Admin/ModulePermissions');
-        })->name('manage');
-
-        Route::get('/', [ModulePermissionController::class, 'index'])
-            ->name('index');
-
-        Route::put('/', [ModulePermissionController::class, 'update'])
-            ->name('update');
-
-        Route::put('/batch', [ModulePermissionController::class, 'batchUpdate'])
-            ->name('batch-update');
-    });
-
-require __DIR__.'/auth.php';
+    // 技術註解：保留舊入口相容性，導向新的純展示主控台路徑。
+    return redirect('/employee-system');
+})->name('dashboard');

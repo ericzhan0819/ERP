@@ -2,36 +2,10 @@ import Header from '@/Components/Dashboard/Header';
 import MobileSidebar from '@/Components/Dashboard/MobileSidebar';
 import Sidebar from '@/Components/Dashboard/Sidebar';
 import { sidebarItems } from '@/config/sidebar.ts';
-import { filterSidebarByPermission, mergeSidebarWithModulePermissions } from '@/utils/permission';
-import { Head, usePage } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { Head } from '@inertiajs/react';
+import { useState } from 'react';
 
 export default function DashboardLayout({ title = 'Dashboard', children }) {
-    const page = usePage();
-    const user = page.props?.auth?.user ?? null;
-    const currentUrl = page.url;
-    const role = user?.role ?? null;
-    const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
-    const modulePermissions = Array.isArray(page.props?.modulePermissions) ? page.props.modulePermissions : [];
-
-    const mergedSidebarItems = useMemo(
-        () => mergeSidebarWithModulePermissions(sidebarItems, modulePermissions),
-        [modulePermissions],
-    );
-
-    /**
-     * 以容錯方式統整權限來源，避免後端欄位命名不同時出錯。
-     */
-    const visibleSidebarItems = useMemo(
-        () =>
-            filterSidebarByPermission(mergedSidebarItems, {
-                id: user?.id,
-                role,
-                permissions,
-            }),
-        [mergedSidebarItems, permissions, role, user?.id],
-    );
-
     const [mobileOpen, setMobileOpen] = useState(false);
     /**
      * 桌面側欄收合狀態：僅影響桌面版顯示，不干擾行動版抽屜。
@@ -41,13 +15,6 @@ export default function DashboardLayout({ title = 'Dashboard', children }) {
      * 使用者手動展開後視為固定狀態；未固定時才允許滑鼠靠近自動展開、離開自動收合。
      */
     const [sidebarPinned, setSidebarPinned] = useState(false);
-
-    /**
-     * 路由切換時自動關閉行動版側欄，避免導頁後殘留開啟狀態。
-     */
-    useEffect(() => {
-        setMobileOpen(false);
-    }, [currentUrl]);
 
     return (
         <div
@@ -61,7 +28,7 @@ export default function DashboardLayout({ title = 'Dashboard', children }) {
 
             <div className="flex h-screen overflow-hidden">
                 <Sidebar
-                    items={visibleSidebarItems}
+                    items={sidebarItems}
                     collapsed={sidebarCollapsed}
                     pinned={sidebarPinned}
                     onMouseEnter={() => {
@@ -74,7 +41,6 @@ export default function DashboardLayout({ title = 'Dashboard', children }) {
 
                 <div className="relative flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
                     <Header
-                        user={user}
                         title={title}
                         sidebarCollapsed={sidebarCollapsed}
                         sidebarPinned={sidebarPinned}
@@ -93,11 +59,13 @@ export default function DashboardLayout({ title = 'Dashboard', children }) {
                 </div>
             </div>
 
-            <MobileSidebar
-                open={mobileOpen}
-                onClose={() => setMobileOpen(false)}
-                items={visibleSidebarItems}
-            />
+            {mobileOpen && (
+                <MobileSidebar
+                    open={mobileOpen}
+                    onClose={() => setMobileOpen(false)}
+                    items={sidebarItems}
+                />
+            )}
         </div>
     );
 }

@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,11 +14,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([
-            RoleSeeder::class,
-            UserSeeder::class,
-        ]);
-
-        // User::factory(10)->create();
+        // 技術註解：純 UI Demo 不建立使用者、角色或權限資料，避免展示環境依賴後端認證模型。
     }
 }

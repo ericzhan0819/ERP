@@ -1,5 +1,4 @@
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import usePermission from '@/hooks/usePermission';
 
 const panelClass = 'rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl md:p-6';
 const mutedLabelClass = 'text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500';
@@ -73,8 +72,8 @@ function PanelHeader({ eyebrow, title, action }) {
 }
 
 export default function DashboardIndex() {
-    const { can, hasRole } = usePermission();
-    const canUseActions = hasRole(['Admin', 'Manager']) || can({ permission: 'dashboard.actions.view', module: 'dashboard' });
+    // 技術註解：純 UI Demo 固定顯示主控台資料區塊，不再依賴角色或權限判斷。
+    const canUseActions = true;
 
     return (
         <div className="space-y-4 md:space-y-6">
@@ -106,33 +105,33 @@ export default function DashboardIndex() {
 
                 <div className="col-span-12 space-y-4 md:space-y-6 xl:col-span-5">
                     <section className={panelClass}>
-                        <PanelHeader
-                            eyebrow="Finance Clarity"
-                            title="財務健康度"
-                            action={
-                                canUseActions ? (
-                                    <button className="min-h-10 rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-4 text-sm font-medium text-cyan-100 transition-colors hover:bg-cyan-300/15" type="button">
-                                        匯出摘要
-                                    </button>
-                                ) : null
-                            }
-                        />
-                        <div className="rounded-2xl border border-white/10 bg-[#050816]/35 p-5">
-                            <p className="text-sm text-zinc-400">本月預估毛利</p>
-                            <p className="mt-3 text-4xl font-semibold tracking-tight text-zinc-50">NT$ 4.82M</p>
-                            <p className="mt-2 text-sm font-medium text-emerald-300">較上月 +8.4%</p>
-                        </div>
-                        <div className="mt-4 divide-y divide-white/10">
-                            {financeRows.map((row) => (
-                                <div key={row.label} className="flex items-center justify-between py-3">
-                                    <span className="text-sm text-zinc-400">{row.label}</span>
-                                    <div className="text-right">
-                                        <p className="text-sm font-semibold text-zinc-100">{row.value}</p>
-                                        <p className="text-xs text-zinc-500">{row.delta}</p>
+                            <PanelHeader
+                                eyebrow="Finance Clarity"
+                                title="帳務摘要 Widget"
+                                action={
+                                    canUseActions ? (
+                                        <button className="min-h-10 rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-4 text-sm font-medium text-cyan-100 transition-colors hover:bg-cyan-300/15" type="button">
+                                            匯出摘要
+                                        </button>
+                                    ) : null
+                                }
+                            />
+                            <div className="rounded-2xl border border-white/10 bg-[#050816]/35 p-5">
+                                <p className="text-sm text-zinc-400">本月預估毛利</p>
+                                <p className="mt-3 text-4xl font-semibold tracking-tight text-zinc-50">NT$ 4.82M</p>
+                                <p className="mt-2 text-sm font-medium text-emerald-300">較上月 +8.4%</p>
+                            </div>
+                            <div className="mt-4 divide-y divide-white/10">
+                                {financeRows.map((row) => (
+                                    <div key={row.label} className="flex items-center justify-between py-3">
+                                        <span className="text-sm text-zinc-400">{row.label}</span>
+                                        <div className="text-right">
+                                            <p className="text-sm font-semibold text-zinc-100">{row.value}</p>
+                                            <p className="text-xs text-zinc-500">{row.delta}</p>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
                     </section>
 
                     <section className={panelClass}>

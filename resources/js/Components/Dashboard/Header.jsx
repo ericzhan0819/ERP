@@ -1,15 +1,14 @@
-import { Link, useForm } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 
-export default function Header({ user, sidebarCollapsed = false, sidebarPinned = false, onToggleSidebar, onOpenMobileSidebar }) {
+export default function Header({ sidebarCollapsed = false, sidebarPinned = false, onToggleSidebar, onOpenMobileSidebar }) {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
-    const { post } = useForm();
-    const displayName = user?.username || user?.name || user?.email || '';
-
-    const handleLogout = () => {
-        // 維持既有 Laravel/Inertia 登出流程，僅由新下拉選單觸發 POST logout。
-        post(route('logout'));
+    const demoUser = {
+        name: 'Demo Operator',
+        email: 'demo@oo-international.test',
+        role: 'UI Demo',
     };
+    const displayName = demoUser.name;
 
     return (
         <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0B1120]/80 backdrop-blur-xl">
@@ -72,15 +71,9 @@ export default function Header({ user, sidebarCollapsed = false, sidebarPinned =
                             <div className="absolute right-0 top-full mt-3 w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#0B1120] shadow-2xl shadow-black/30" role="menu">
                                 <div className="border-b border-white/10 px-4 py-3">
                                     <p className="text-sm font-semibold text-zinc-100">{displayName}</p>
-                                    <p className="mt-1 text-xs text-zinc-400">{user?.email ?? '-'}</p>
+                                    <p className="mt-1 text-xs text-zinc-400">{demoUser.email}</p>
+                                    <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-cyan-300/60">{demoUser.role}</p>
                                 </div>
-                                <Link
-                                    href={route('profile.edit')}
-                                    className="block px-4 py-3 text-xs font-medium tracking-wide text-zinc-300 transition-colors hover:bg-white/[0.04] hover:text-cyan-100"
-                                    role="menuitem"
-                                >
-                                    設定檔案
-                                </Link>
                                 <Link
                                     href="/"
                                     className="block px-4 py-3 text-xs font-medium tracking-wide text-zinc-300 transition-colors hover:bg-white/[0.04] hover:text-cyan-100"
@@ -88,14 +81,13 @@ export default function Header({ user, sidebarCollapsed = false, sidebarPinned =
                                 >
                                     回到官網
                                 </Link>
-                                <button
-                                    type="button"
-                                    onClick={handleLogout}
+                                <Link
+                                    href="/login"
                                     className="block w-full px-4 py-3 text-left text-xs font-medium tracking-wide text-zinc-300 transition-colors hover:bg-white/[0.04] hover:text-cyan-100"
                                     role="menuitem"
                                 >
-                                    登出
-                                </button>
+                                    返回登入展示
+                                </Link>
                             </div>
                         )}
                     </div>

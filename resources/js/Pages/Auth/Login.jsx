@@ -1,25 +1,34 @@
 import Checkbox from '@/Components/Checkbox';
-import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
-import { Link, Head, useForm } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useState } from 'react';
 
-export default function Login({ status, canResetPassword }) {
-    const { data, setData, post, processing, errors, reset } = useForm({
+export default function Login() {
+    const [data, setData] = useState({
         email: '',
         password: '',
         remember: false,
     });
+    const [isEntering, setIsEntering] = useState(false);
 
     const submit = (e) => {
         e.preventDefault();
 
-        post(route('login'), {
-            onFinish: () => reset('password'),
-        });
+        // 技術註解：純 UI Demo 不送出認證請求，只以 Inertia 前端導向進入展示主控台。
+        const target = typeof route === 'function'
+            ? route('employee-system.overview')
+            : '/employee-system';
+
+        setIsEntering(true);
+        router.visit(target);
+    };
+
+    const updateField = (field, value) => {
+        // 技術註解：保留表單互動手感，但資料僅停留於前端展示狀態。
+        setData((current) => ({ ...current, [field]: value }));
     };
 
     const [passwordVisible, setPasswordVisible] = useState(false);
@@ -62,12 +71,6 @@ export default function Login({ status, canResetPassword }) {
                                 <span className="text-[10px] font-medium uppercase tracking-[0.3em] text-zinc-500">Secure Auth</span>
                             </div>
 
-                            {status && (
-                                <div className="mb-5 rounded-xl border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm font-medium text-emerald-200">
-                                    {status}
-                                </div>
-                            )}
-
                             <form onSubmit={submit} className="space-y-5">
                                 <div className="relative">
                                     <InputLabel htmlFor="email" value="手機號碼/帳號" className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400" />
@@ -81,11 +84,10 @@ export default function Login({ status, canResetPassword }) {
                                             className="block w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 pl-10 pr-4 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-cyan-300/50 focus:bg-white/[0.06] focus:ring-cyan-300/30"
                                             autoComplete="username"
                                             isFocused={true}
-                                            onChange={(e) => setData('email', e.target.value)}
+                                            onChange={(e) => updateField('email', e.target.value)}
                                             required
                                         />
                                     </div>
-                                    <InputError message={errors.email} className="mt-2 text-xs text-rose-300" />
                                 </div>
 
                                 <div className="relative">
@@ -99,7 +101,7 @@ export default function Login({ status, canResetPassword }) {
                                             value={data.password}
                                             className="block w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 pl-10 pr-10 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-cyan-300/50 focus:bg-white/[0.06] focus:ring-cyan-300/30"
                                             autoComplete="current-password"
-                                            onChange={(e) => setData('password', e.target.value)}
+                                            onChange={(e) => updateField('password', e.target.value)}
                                             required
                                         />
                                         <button
@@ -110,7 +112,6 @@ export default function Login({ status, canResetPassword }) {
                                             {passwordVisible ? <FaEyeSlash /> : <FaEye />}
                                         </button>
                                     </div>
-                                    <InputError message={errors.password} className="mt-2 text-xs text-rose-300" />
                                 </div>
 
                                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
@@ -118,27 +119,18 @@ export default function Login({ status, canResetPassword }) {
                                         <Checkbox
                                             name="remember"
                                             checked={data.remember}
-                                            onChange={(e) => setData('remember', e.target.checked)}
+                                            onChange={(e) => updateField('remember', e.target.checked)}
                                         />
                                         <span className="ms-2 text-sm text-zinc-300">記住我</span>
                                     </label>
-
-                                    {canResetPassword && (
-                                        <Link
-                                            href={route('password.request')}
-                                            className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-cyan-300"
-                                        >
-                                            忘記密碼
-                                        </Link>
-                                    )}
                                 </div>
 
                                 <div className="pt-2">
                                     <PrimaryButton
                                         className="flex w-full items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-300/15 px-4 py-3 text-xs font-bold uppercase tracking-[0.25em] text-cyan-100 transition-all hover:border-cyan-300/50 hover:bg-cyan-300/20"
-                                        disabled={processing}
+                                        disabled={isEntering}
                                     >
-                                        登入
+                                        {isEntering ? '進入中' : '登入'}
                                     </PrimaryButton>
                                 </div>
                             </form>

@@ -50,6 +50,19 @@
 
 ---
 
+## 權限 Seed 流程（MVP）
+
+權限名稱單一來源：[`config/permissions.php`](config/permissions.php)
+
+未來新增新模組權限時，必須先加入單一來源，再執行：
+
+```bash
+./vendor/bin/sail artisan db:seed --class=RoleSeeder
+./vendor/bin/sail artisan permission:cache-reset
+```
+
+---
+
 ## 版權宣告
 
 * (c) 2026 OO INTERNATIONAL. 保留所有權利。

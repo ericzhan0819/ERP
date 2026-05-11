@@ -14,10 +14,9 @@ const processSteps = [
     '單車獲利追蹤與風險預警',
 ];
 
-export default function Welcome({ auth }) {
-    const employeeEntryHref = auth?.user
-        ? route('employee-system.overview')
-        : route('login');
+export default function Welcome() {
+    // 技術註解：純 UI Demo 固定導向登入展示頁，不判斷後端認證狀態。
+    const employeeEntryHref = typeof route === 'function' ? route('login') : '/login';
 
     return (
         <>
