@@ -2,9 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ModulePermission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -50,6 +52,22 @@ class HandleInertiaRequests extends Middleware
             ]);
         }
 
+        $modulePermissions = [];
+
+        if (Schema::hasTable('module_permissions')) {
+            $modulePermissions = ModulePermission::query()
+                ->orderBy('id')
+                ->get([
+                    'module_key',
+                    'module_name',
+                    'allowed_roles',
+                    'allowed_user_ids',
+                    'enabled',
+                ])
+                ->values()
+                ->all();
+}
+
         return [
             ...parent::share($request),
             'auth' => [
@@ -68,6 +86,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'roles' => $user?->getRoleNames()?->values()?->all() ?? [],
             'permissions' => $user?->getAllPermissions()?->pluck('name')?->values()?->all() ?? [],
+            'modulePermissions' => $modulePermissions,
         ];
     }
 }

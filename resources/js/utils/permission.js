@@ -174,3 +174,41 @@ export const filterSidebarByPermission = (items = [], user = {}) => {
 export const canShowWidget = (userPermissions = [], requiredPermissions = []) => {
     return hasAnyPermission(userPermissions, requiredPermissions);
 };
+
+/**
+ * 依 modulePermissions 合併 Sidebar 設定：
+ * - 有對應 module_key：覆蓋 roles/users/enabled（permissions 維持 sidebar 原值）
+ * - 無對應資料：保留 sidebar 原設定（fallback）
+ * - enabled=false：直接排除該模組
+ */
+export const mergeSidebarWithModulePermissions = (sidebarItems = [], modulePermissions = []) => {
+    const moduleList = toArray(modulePermissions);
+
+    // 空陣列時完全 fallback，維持既有行為。
+    if (moduleList.length === 0) {
+        return toArray(sidebarItems);
+    }
+
+    const moduleMap = new Map(
+        moduleList
+            .filter((item) => item && typeof item === 'object' && typeof item.module_key === 'string')
+            .map((item) => [item.module_key, item]),
+    );
+
+    return toArray(sidebarItems)
+        .map((item) => {
+            const override = moduleMap.get(item?.id);
+            if (!override) return item;
+
+            const nextItem = {
+                ...item,
+                roles: Array.isArray(override?.roles) ? override.roles : item.roles,
+                users: Array.isArray(override?.users) ? override.users : item.users,
+                enabled: override?.enabled,
+            };
+
+            return nextItem;
+        })
+        .filter((item) => item?.enabled !== false)
+        .map(({ enabled, ...item }) => item);
+};

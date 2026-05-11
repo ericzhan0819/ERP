@@ -54,7 +54,16 @@ const iconMap = {
 
 const isRouteActive = (routeName) => {
     if (!routeName) return false;
-    return route().current(routeName);
+    if (typeof route !== 'function') return false;
+    return route().has(routeName) && route().current(routeName);
+};
+
+const resolveHref = (item) => {
+    if (!item?.route) return '#';
+    if (typeof route === 'function' && route().has(item.route)) {
+        return route(item.route);
+    }
+    return '#';
 };
 
 const hasActiveChild = (children = []) => {
@@ -76,7 +85,7 @@ const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
         return (
             <div className="space-y-2">
                 <Link
-                    href={route(item.route)}
+                    href={resolveHref(item)}
                     className={`${itemBaseClass} ${collapsed ? 'justify-center px-0' : paddingLeftClass} ${
                         active
                             ? 'bg-cyan-300/10 text-cyan-100 shadow-[inset_3px_0_0_rgba(103,232,249,0.85)]'

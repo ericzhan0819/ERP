@@ -35,4 +35,12 @@ export const sidebarItems: SidebarItem[] = [
         roles: ['Admin'],
         children: [],
     },
+    {
+        id: 'permission-test-module',
+        title: '測試模塊',
+        icon: 'dashboard',
+        route: 'permission-test-module',
+        // 技術註解：僅作為權限可見性測試入口，不對既有 dashboard/staff 語意做任何變更。
+        children: [],
+    },
 ];

@@ -55,7 +55,16 @@ const iconMap = {
  */
 const isRouteActive = (routeName) => {
     if (!routeName) return false;
-    return route().current(routeName);
+    if (typeof route !== 'function') return false;
+    return route().has(routeName) && route().current(routeName);
+};
+
+const resolveHref = (item) => {
+    if (!item?.route) return '#';
+    if (typeof route === 'function' && route().has(item.route)) {
+        return route(item.route);
+    }
+    return '#';
 };
 
 /**
@@ -77,7 +86,7 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
         return (
             <div className="space-y-2">
                 <Link
-                    href={route(item.route)}
+                    href={resolveHref(item)}
                     onClick={onClose}
                     className={`${itemBaseClass} ${paddingLeftClass} ${
                         active

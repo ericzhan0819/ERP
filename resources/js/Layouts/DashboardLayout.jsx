@@ -2,7 +2,7 @@ import Header from '@/Components/Dashboard/Header';
 import MobileSidebar from '@/Components/Dashboard/MobileSidebar';
 import Sidebar from '@/Components/Dashboard/Sidebar';
 import { sidebarItems } from '@/config/sidebar.ts';
-import { filterSidebarByPermission } from '@/utils/permission';
+import { filterSidebarByPermission, mergeSidebarWithModulePermissions } from '@/utils/permission';
 import { Head, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -12,18 +12,24 @@ export default function DashboardLayout({ title = 'Dashboard', children }) {
     const currentUrl = page.url;
     const role = user?.role ?? null;
     const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
+    const modulePermissions = Array.isArray(page.props?.modulePermissions) ? page.props.modulePermissions : [];
+
+    const mergedSidebarItems = useMemo(
+        () => mergeSidebarWithModulePermissions(sidebarItems, modulePermissions),
+        [modulePermissions],
+    );
 
     /**
      * 以容錯方式統整權限來源，避免後端欄位命名不同時出錯。
      */
     const visibleSidebarItems = useMemo(
         () =>
-            filterSidebarByPermission(sidebarItems, {
+            filterSidebarByPermission(mergedSidebarItems, {
                 id: user?.id,
                 role,
                 permissions,
             }),
-        [permissions, role, user?.id],
+        [mergedSidebarItems, permissions, role, user?.id],
     );
 
     const [mobileOpen, setMobileOpen] = useState(false);

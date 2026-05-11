@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ModulePermissionController;
 use App\Http\Controllers\StaffManagementController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/employee-system/orders', function () {
         return Inertia::render('Orders/Index');
     })->name('orders.index');
+
+    Route::get('/permission-test-module', function () {
+        return Inertia::render('PermissionTestModule');
+    })->name('permission-test-module');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -55,6 +60,24 @@ Route::middleware(['auth', 'role:Admin'])
 
         Route::patch('/users/{user}', [StaffManagementController::class, 'update'])
             ->name('update');
+    });
+
+Route::middleware(['auth', 'role:Admin'])
+    ->prefix('admin/module-permissions')
+    ->name('admin.module-permissions.')
+    ->group(function () {
+        Route::get('/manage', function () {
+            return Inertia::render('Admin/ModulePermissions');
+        })->name('manage');
+
+        Route::get('/', [ModulePermissionController::class, 'index'])
+            ->name('index');
+
+        Route::put('/', [ModulePermissionController::class, 'update'])
+            ->name('update');
+
+        Route::put('/batch', [ModulePermissionController::class, 'batchUpdate'])
+            ->name('batch-update');
     });
 
 require __DIR__.'/auth.php';
