@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,6 +13,10 @@ use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
+    public function __construct(private readonly AuditLogService $auditLogService)
+    {
+    }
+
     /**
      * 技術註解：登入頁由 Inertia 單一入口輸出，避免建立第二套 Blade 認證畫面。
      */
@@ -36,17 +41,27 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
-        $request->session()->regenerate();
+        $user = $request->user();
 
-        if ($request->user()->account_status !== 'active') {
+        // 技術註解：inactive 阻擋保留在認證流程內，成功驗證密碼後立即撤銷 session，不交由 middleware 補救。
+        if ($user->is_active === false || $user->account_status !== 'active') {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
             throw ValidationException::withMessages([
-                'email' => '此帳號目前不可登入。',
+                'email' => 'This account has been deactivated.',
             ]);
         }
+
+        $request->session()->regenerate();
+
+        // 技術註解：最後登入時間只在登入成功後寫入，避免每次 request 汙染真實登入事件。
+        $loginAt = now();
+        $user->forceFill(['last_login_at' => $loginAt])->save();
+        $this->auditLogService->log($user, 'auth.login.success', 'User logged in', $user, [
+            'login_at' => $loginAt->toISOString(),
+        ]);
 
         return redirect()->intended(route('employee-system.overview', absolute: false));
     }

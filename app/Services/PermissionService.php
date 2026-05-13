@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Module;
 use App\Models\User;
+use Spatie\Permission\PermissionRegistrar;
 
 class PermissionService
 {
@@ -40,6 +41,51 @@ class PermissionService
         return $module instanceof Module
             && $module->is_active
             && $this->canViewModule($user, $module);
+    }
+
+    /**
+     * 技術註解：集中同步單一角色，確保 Spatie 權限快取與使用者關聯在同一流程刷新。
+     */
+    public function syncUserRole(User $user, string $roleName): User
+    {
+        $user->syncRoles([$roleName]);
+
+        return $this->refreshPermissionCache($user);
+    }
+
+    /**
+     * 技術註解：集中同步直接權限，避免 Controller 分散呼叫 Spatie 寫入 API。
+     *
+     * @param array<int, string> $permissionNames
+     */
+    public function syncUserPermissions(User $user, array $permissionNames): User
+    {
+        $user->syncPermissions($permissionNames);
+
+        return $this->refreshPermissionCache($user);
+    }
+
+    /**
+     * 技術註解：角色與直接權限批次更新時只在結尾清除一次快取，降低重複刷新風險。
+     *
+     * @param array<int, string> $permissionNames
+     */
+    public function syncUserAccess(User $user, string $roleName, array $permissionNames): User
+    {
+        $user->syncRoles([$roleName]);
+        $user->syncPermissions($permissionNames);
+
+        return $this->refreshPermissionCache($user);
+    }
+
+    /**
+     * 技術註解：統一清除 Spatie 權限快取；傳入使用者時同步重載 roles 與 permissions 關聯。
+     */
+    public function refreshPermissionCache(?User $user = null): ?User
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        return $user?->load('roles', 'permissions');
     }
 
     /**

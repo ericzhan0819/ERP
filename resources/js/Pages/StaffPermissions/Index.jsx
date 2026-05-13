@@ -70,6 +70,22 @@ function RoleSelect({ value, options, disabled, onChange }) {
     );
 }
 
+function formatDateTime(value) {
+    // 技術註解：後端提供 UTC 時間字串，前端交由瀏覽器以使用者本機時區呈現，不寫死任何地區時區。
+    if (!value) {
+        return '尚未登入';
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    }).format(new Date(value));
+}
+
 export default function StaffPermissionIndex({ users = [], roles = [], permissions = [], can = {} }) {
     const initialRows = useMemo(
         () => Object.fromEntries(users.map((user) => [user.id, {
@@ -112,19 +128,23 @@ export default function StaffPermissionIndex({ users = [], roles = [], permissio
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-slate-950/40 backdrop-blur-xl">
-                    <div className="grid grid-cols-[1.1fr_1.2fr_0.8fr_1.4fr_1.6fr] border-b border-white/10 bg-white/[0.04] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                    <div className="grid grid-cols-[1fr_1.1fr_0.7fr_0.8fr_1fr_1.2fr_1.4fr] border-b border-white/10 bg-white/[0.04] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
                         <div>姓名</div>
                         <div>Email</div>
                         <div>電話</div>
+                        <div>狀態</div>
+                        <div>最後登入</div>
                         <div>目前角色</div>
                         <div>直接權限</div>
                     </div>
 
                     {users.map((user) => (
-                        <div key={user.id} className="relative grid grid-cols-[1.1fr_1.2fr_0.8fr_1.4fr_1.6fr] gap-4 border-b border-white/10 px-4 py-4 text-sm text-zinc-200 last:border-b-0">
+                        <div key={user.id} className="relative grid grid-cols-[1fr_1.1fr_0.7fr_0.8fr_1fr_1.2fr_1.4fr] gap-4 border-b border-white/10 px-4 py-4 text-sm text-zinc-200 last:border-b-0">
                             <div className="font-semibold text-zinc-50">{user.name}</div>
                             <div className="text-zinc-400">{user.email}</div>
                             <div className="text-zinc-400">{user.phone ?? '—'}</div>
+                            <div className={user.is_active ? 'font-semibold text-emerald-300' : 'font-semibold text-rose-300'}>{user.is_active ? 'Active' : 'Inactive'}</div>
+                            <div className="text-zinc-400">{formatDateTime(user.last_login_at)}</div>
                             <div className="space-y-3">
                                 <RoleSelect
                                     value={rows[user.id]?.role ?? ''}

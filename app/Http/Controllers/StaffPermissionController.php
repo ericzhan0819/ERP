@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\AuditLogService;
+use App\Services\PermissionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -10,10 +12,15 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use Spatie\Permission\PermissionRegistrar;
 
 class StaffPermissionController extends Controller
 {
+    public function __construct(
+        private readonly PermissionService $permissionService,
+        private readonly AuditLogService $auditLogService,
+    ) {
+    }
+
     public function index(Request $request): Response
     {
         $currentUser = $request->user();
@@ -23,11 +30,13 @@ class StaffPermissionController extends Controller
             'users' => User::query()
                 ->with(['roles:id,name', 'permissions:id,name'])
                 ->orderBy('name')
-                ->get(['id', 'name', 'email'])
+                ->get(['id', 'name', 'email', 'is_active', 'last_login_at'])
                 ->map(fn (User $user): array => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'is_active' => $user->is_active,
+                    'last_login_at' => $user->last_login_at?->toISOString(),
                     'phone' => $user->phone ?? null,
                     'roles' => $user->roles->pluck('name')->values(),
                     'direct_permissions' => $user->permissions->pluck('name')->values(),
@@ -57,10 +66,20 @@ class StaffPermissionController extends Controller
         ]);
 
         $this->denySelfModification($request, $user);
+        $oldRoles = $user->roles()->pluck('name')->values()->all();
 
-        // 技術註解：角色同步集中由 Spatie syncRoles 處理，避免自製 RBAC 分散邏輯。
-        $user->syncRoles([$validated['roles']]);
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        // 技術註解：角色同步統一委派 PermissionService，避免 Controller 直接操作 Spatie RBAC 寫入流程。
+        $this->permissionService->syncUserRole($user, $validated['roles']);
+        $this->auditLogService->log(
+            $request->user(),
+            'staff-permission.role.updated',
+            'Updated employee role',
+            $user,
+            [
+                'old_roles' => $oldRoles,
+                'new_role' => $validated['roles'],
+            ]
+        );
 
         return back()->with('success', '員工角色已更新');
     }
@@ -73,10 +92,21 @@ class StaffPermissionController extends Controller
         ]);
 
         $this->denySelfModification($request, $user);
+        $oldPermissions = $user->permissions()->pluck('name')->values()->all();
+        $newPermissions = $validated['permissions'] ?? [];
 
-        // 技術註解：直接權限只同步到目標使用者，不新增任何財務或 HR 權限結構。
-        $user->syncPermissions($validated['permissions'] ?? []);
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        // 技術註解：直接權限只透過 PermissionService 同步到目標使用者，不新增任何財務或 HR 權限結構。
+        $this->permissionService->syncUserPermissions($user, $newPermissions);
+        $this->auditLogService->log(
+            $request->user(),
+            'staff-permission.permissions.updated',
+            'Updated employee direct permissions',
+            $user,
+            [
+                'old_permissions' => $oldPermissions,
+                'new_permissions' => $newPermissions,
+            ]
+        );
 
         return back()->with('success', '員工直接權限已更新');
     }
