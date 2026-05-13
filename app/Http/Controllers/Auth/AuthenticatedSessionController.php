@@ -67,7 +67,7 @@ class AuthenticatedSessionController extends Controller
     }
 
     /**
-     * 技術註解：登出時完整清除 session 並固定回到登入頁，確保狀態透明可預期。
+     * 技術註解：登出時完整清除 session 並固定回到官網首頁，確保狀態透明可預期。
      */
     public function destroy(Request $request): RedirectResponse
     {
@@ -76,6 +76,6 @@ class AuthenticatedSessionController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login');
+        return redirect('/');
     }
 }

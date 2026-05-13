@@ -1,14 +1,31 @@
-import { Link } from '@inertiajs/react';
-import { useState } from 'react';
+import { Link, usePage } from '@inertiajs/react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function Header({ sidebarCollapsed = false, sidebarPinned = false, onToggleSidebar, onOpenMobileSidebar }) {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
-    const demoUser = {
-        name: 'Demo Operator',
-        email: 'demo@oo-international.test',
-        role: 'UI Demo',
-    };
-    const displayName = demoUser.name;
+    const menuRef = useRef(null);
+    const user = usePage().props.auth?.user ?? {};
+    const displayName = user.name || user.email || 'User';
+    // 技術註解：中文名稱以最後一個漢字作為識別，非中文維持首字母，避免改動既有頭像視覺結構。
+    const hanCharacters = displayName.match(/\p{Script=Han}/gu);
+    const avatarInitial = hanCharacters?.at(-1) ?? (displayName || 'U').charAt(0).toUpperCase();
+
+    useEffect(() => {
+        const closeMenu = (event) => {
+            // 技術註解：集中處理外部點擊與 ESC 關閉，避免 dropdown 狀態散落到其他模組。
+            if (event.key === 'Escape' || (menuRef.current && !menuRef.current.contains(event.target))) {
+                setUserMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', closeMenu);
+        document.addEventListener('keydown', closeMenu);
+
+        return () => {
+            document.removeEventListener('mousedown', closeMenu);
+            document.removeEventListener('keydown', closeMenu);
+        };
+    }, []);
 
     return (
         <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0B1120]/80 backdrop-blur-xl">
@@ -53,40 +70,50 @@ export default function Header({ sidebarCollapsed = false, sidebarPinned = false
                         通知
                     </button>
 
-                    <div className="relative hidden lg:block">
+                    <div className="relative" ref={menuRef}>
                         <button
                             type="button"
                             onClick={() => setUserMenuOpen((open) => !open)}
-                            className="flex min-h-11 items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-left transition-colors active:scale-[0.98] hover:border-cyan-300/40"
+                            className="flex min-h-11 max-w-[46vw] items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-left transition-colors active:scale-[0.98] hover:border-cyan-300/40 sm:max-w-none"
                             aria-expanded={userMenuOpen}
                             aria-haspopup="menu"
                         >
-                            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-300/25 bg-cyan-300/10 text-xs font-semibold text-cyan-100">
-                                {(displayName || 'U').charAt(0).toUpperCase()}
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-xs font-semibold text-cyan-100">
+                                {avatarInitial}
                             </span>
-                            <span className="block text-xs font-semibold tracking-wide text-zinc-100">{displayName}</span>
+                            <span className="block truncate text-xs font-semibold tracking-wide text-zinc-100">{displayName}</span>
                         </button>
 
                         {userMenuOpen && (
-                            <div className="absolute right-0 top-full mt-3 w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#0B1120] shadow-2xl shadow-black/30" role="menu">
+                            <div className="absolute right-0 top-full z-50 mt-3 w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#0B1120] shadow-2xl shadow-black/30" role="menu">
                                 <div className="border-b border-white/10 px-4 py-3">
-                                    <p className="text-sm font-semibold text-zinc-100">{displayName}</p>
-                                    <p className="mt-1 text-xs text-zinc-400">{demoUser.email}</p>
-                                    <p className="mt-1 text-[10px] uppercase tracking-[0.24em] text-cyan-300/60">{demoUser.role}</p>
+                                    <p className="truncate text-sm font-semibold text-zinc-100">{displayName}</p>
+                                    <p className="mt-1 truncate text-xs text-zinc-400">{user.email}</p>
                                 </div>
+                                <button
+                                    type="button"
+                                    className="block w-full cursor-not-allowed px-4 py-3 text-left text-xs font-medium tracking-wide text-zinc-500"
+                                    disabled
+                                    role="menuitem"
+                                >
+                                    設定檔案
+                                </button>
+                                <Link
+                                    href="/logout"
+                                    method="post"
+                                    as="button"
+                                    onSuccess={() => window.location.assign('/')}
+                                    className="block w-full px-4 py-3 text-left text-xs font-medium tracking-wide text-zinc-300 transition-colors hover:bg-white/[0.04] hover:text-cyan-100"
+                                    role="menuitem"
+                                >
+                                    登出
+                                </Link>
                                 <Link
                                     href="/"
                                     className="block px-4 py-3 text-xs font-medium tracking-wide text-zinc-300 transition-colors hover:bg-white/[0.04] hover:text-cyan-100"
                                     role="menuitem"
                                 >
-                                    回到官網
-                                </Link>
-                                <Link
-                                    href="/login"
-                                    className="block w-full px-4 py-3 text-left text-xs font-medium tracking-wide text-zinc-300 transition-colors hover:bg-white/[0.04] hover:text-cyan-100"
-                                    role="menuitem"
-                                >
-                                    返回登入展示
+                                    回首頁
                                 </Link>
                             </div>
                         )}
