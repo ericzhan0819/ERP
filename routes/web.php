@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StaffPermissionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -40,6 +41,18 @@ Route::patch('/employee-system/staff-permissions/{user}/roles', [StaffPermission
 Route::patch('/employee-system/staff-permissions/{user}/permissions', [StaffPermissionController::class, 'updatePermissions'])
     ->middleware(['auth', 'permission:staff-permission.update-permission'])
     ->name('employee-system.staff-permissions.permissions.update');
+
+Route::get('/employee-system/profile', [ProfileController::class, 'edit'])
+    ->middleware('auth')
+    ->name('employee-system.profile.edit');
+
+Route::patch('/employee-system/profile', [ProfileController::class, 'update'])
+    ->middleware('auth')
+    ->name('employee-system.profile.update');
+
+Route::put('/employee-system/profile/password', [ProfileController::class, 'updatePassword'])
+    ->middleware('auth')
+    ->name('employee-system.profile.password.update');
 
 Route::get('/dashboard', function () {
     // 技術註解：保留舊入口相容性，導向新的純展示主控台路徑。

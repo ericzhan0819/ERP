@@ -90,14 +90,13 @@ export default function Header({ sidebarCollapsed = false, sidebarPinned = false
                                     <p className="truncate text-sm font-semibold text-zinc-100">{displayName}</p>
                                     <p className="mt-1 truncate text-xs text-zinc-400">{user.email}</p>
                                 </div>
-                                <button
-                                    type="button"
-                                    className="block w-full cursor-not-allowed px-4 py-3 text-left text-xs font-medium tracking-wide text-zinc-500"
-                                    disabled
+                                <Link
+                                    href="/employee-system/profile"
+                                    className="block w-full px-4 py-3 text-left text-xs font-medium tracking-wide text-zinc-300 transition-colors hover:bg-white/[0.04] hover:text-cyan-100"
                                     role="menuitem"
                                 >
                                     設定檔案
-                                </button>
+                                </Link>
                                 <Link
                                     href="/logout"
                                     method="post"

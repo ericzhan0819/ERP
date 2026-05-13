@@ -70,7 +70,7 @@ export default function Login() {
 
                             <form onSubmit={submit} className="space-y-5">
                                 <div className="relative">
-                                    <InputLabel htmlFor="email" value="手機號碼/帳號" className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400" />
+                                    <InputLabel htmlFor="email" value="Email 或手機號碼" className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400" />
                                     <div className="relative mt-2 flex items-center">
                                         <FaUser className="pointer-events-none absolute left-4 text-xs text-zinc-500" />
                                         <TextInput
@@ -82,6 +82,7 @@ export default function Login() {
                                             autoComplete="username"
                                             isFocused={true}
                                             onChange={(e) => updateField('email', e.target.value)}
+                                            placeholder="Email 或手機號碼"
                                             required
                                         />
                                     </div>

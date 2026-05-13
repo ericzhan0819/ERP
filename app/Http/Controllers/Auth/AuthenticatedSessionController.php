@@ -31,11 +31,19 @@ class AuthenticatedSessionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'email' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        // 技術註解：維持單一登入欄位 email，實際可輸入 email 或 phone，避免擴大前後端改動範圍。
+        $loginInput = trim((string) $credentials['email']);
+        $loginField = filter_var($loginInput, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
+        $attemptCredentials = [
+            $loginField => $loginInput,
+            'password' => $credentials['password'],
+        ];
+
+        if (! Auth::attempt($attemptCredentials, $request->boolean('remember'))) {
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
             ]);
