@@ -1,42 +1,11 @@
 /**
- * 側欄項目型別：moduleKey 對應後端 auth.visibleModules，不在前端判斷角色。
+ * 技術註解：前端設定僅負責 icon component key 映射，
+ * 不可承擔權限、可見性、route 或模組文案來源，避免與後端 module registry 漂移。
  */
-export type SidebarItem = {
-    key: string;
-    label: string;
-    icon: string;
-    routeName?: string;
-    href?: string;
-    moduleKey?: string;
-    children?: SidebarItem[];
-};
+export type SidebarIconKey = string;
 
 /**
- * 側欄 UI 對應表：可見性不可由此檔判斷，只能由 auth.visibleModules 決定。
+ * 技術註解：此映射為 UI 安全 fallback，當後端傳入 icon key 未配置時，
+ * 由 Sidebar 退回 default icon 以維持可用性，不影響授權判斷。
  */
-export const sidebarItems: SidebarItem[] = [
-    {
-        key: 'dashboard.overview',
-        label: '總覽',
-        icon: 'dashboard',
-        routeName: 'employee-system.overview',
-        moduleKey: 'dashboard',
-        children: [],
-    },
-    {
-        key: 'staff-permission.index',
-        label: '員工權限',
-        icon: 'employees',
-        routeName: 'employee-system.staff-permissions.index',
-        moduleKey: 'staff-permission',
-        children: [],
-    },
-    {
-        key: 'test-module.index',
-        label: '測試模塊',
-        icon: 'test-module',
-        routeName: 'employee-system.test-module',
-        moduleKey: 'test-module',
-        children: [],
-    },
-];
+export const SIDEBAR_DEFAULT_ICON_KEY: SidebarIconKey = 'dashboard';

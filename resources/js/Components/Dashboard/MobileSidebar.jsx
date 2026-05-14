@@ -1,6 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
-import { sidebarItems } from '@/config/sidebar.ts';
+import { SIDEBAR_DEFAULT_ICON_KEY } from '@/config/sidebar.ts';
 
 const itemBaseClass = 'group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium tracking-wide transition-all duration-150';
 
@@ -26,12 +26,10 @@ const iconMap = {
 };
 
 /**
- * 技術註解：行動版可見性唯一來源為 auth.visibleModules；sidebar.ts 僅作 icon、路由與標籤 fallback。
+ * 技術註解：行動版與桌面版一致，僅以後端 visibleModules 決定可見項目，避免前端主資料漂移。
  */
-const resolveVisibleItems = (items, visibleModules) => {
-    const itemByModuleKey = new Map(items.filter((item) => item.moduleKey).map((item) => [item.moduleKey, item]));
-
-    return visibleModules.map((module) => itemByModuleKey.get(module.key)).filter(Boolean);
+const resolveVisibleItems = (visibleModules) => {
+    return [...visibleModules].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 };
 
 /**
@@ -45,9 +43,9 @@ const isRouteActive = (routeName) => {
 
 const resolveHref = (item) => {
     if (item?.href) return item.href;
-    if (!item?.routeName) return '#';
-    if (typeof route === 'function' && route().has(item.routeName)) {
-        return route(item.routeName);
+    if (!item?.route_name) return '#';
+    if (typeof route === 'function' && route().has(item.route_name)) {
+        return route(item.route_name);
     }
     return '#';
 };
@@ -56,7 +54,7 @@ const resolveHref = (item) => {
  * 遞迴判斷子節點是否為 active。
  */
 const isItemActive = (item) => {
-    return isRouteActive(item?.routeName) || (item?.children ?? []).some((child) => isItemActive(child));
+    return isRouteActive(item?.route_name) || (item?.children ?? []).some((child) => isItemActive(child));
 };
 
 /**
@@ -67,7 +65,7 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
     const hasChildren = (item.children ?? []).length > 0;
     const paddingLeftClass = level > 0 ? 'pl-9' : '';
 
-    if (item.routeName || item.href) {
+    if (item.route_name || item.href) {
         return (
             <div className="space-y-2">
                 <Link
@@ -79,7 +77,7 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
                             : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100'
                     }`}
                 >
-                    <span className={active ? 'text-cyan-200' : 'text-zinc-500 group-hover:text-cyan-300'}>{iconMap[item.icon] ?? iconMap.dashboard}</span>
+                    <span className={active ? 'text-cyan-200' : 'text-zinc-500 group-hover:text-cyan-300'}>{iconMap[item.icon] ?? iconMap[SIDEBAR_DEFAULT_ICON_KEY]}</span>
                     <span>{item.label}</span>
                 </Link>
 
@@ -101,7 +99,7 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
                     active ? 'bg-cyan-300/10 text-cyan-100 shadow-[inset_3px_0_0_rgba(103,232,249,0.85)]' : 'text-zinc-400'
                 }`}
             >
-                <span className={active ? 'text-cyan-200' : 'text-zinc-500'}>{iconMap[item.icon] ?? iconMap.dashboard}</span>
+                <span className={active ? 'text-cyan-200' : 'text-zinc-500'}>{iconMap[item.icon] ?? iconMap[SIDEBAR_DEFAULT_ICON_KEY]}</span>
                 <span>{item.label}</span>
             </div>
 
@@ -116,11 +114,11 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
     );
 };
 
-export default function MobileSidebar({ open = false, onClose, items = sidebarItems }) {
+export default function MobileSidebar({ open = false, onClose }) {
     const { auth } = usePage().props;
     const visibleItems = useMemo(() => {
-        return resolveVisibleItems(items, auth?.visibleModules ?? []);
-    }, [auth?.visibleModules, items]);
+        return resolveVisibleItems(auth?.visibleModules ?? []);
+    }, [auth?.visibleModules]);
 
     return (
         <div

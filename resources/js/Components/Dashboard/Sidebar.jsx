@@ -1,6 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
-import { sidebarItems } from '@/config/sidebar.ts';
+import { SIDEBAR_DEFAULT_ICON_KEY } from '@/config/sidebar.ts';
 
 const shellClass = 'hidden shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[#0B1120]/95 backdrop-blur-xl lg:flex';
 const itemBaseClass = 'group relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium tracking-wide transition-all duration-150';
@@ -27,12 +27,10 @@ const iconMap = {
 };
 
 /**
- * 技術註解：側欄可見性唯一來源為 Inertia shared 的 auth.visibleModules；sidebar.ts 只提供 UI 對應資料。
+ * 技術註解：側欄主資料只採用後端 visibleModules，避免前端重複維護 route/label 導致授權顯示漂移。
  */
-const resolveVisibleItems = (items, visibleModules) => {
-    const itemByModuleKey = new Map(items.filter((item) => item.moduleKey).map((item) => [item.moduleKey, item]));
-
-    return visibleModules.map((module) => itemByModuleKey.get(module.key)).filter(Boolean);
+const resolveVisibleItems = (visibleModules) => {
+    return [...visibleModules].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 };
 
 const isRouteActive = (routeName) => {
@@ -43,9 +41,9 @@ const isRouteActive = (routeName) => {
 
 const resolveHref = (item) => {
     if (item?.href) return item.href;
-    if (!item?.routeName) return '#';
-    if (typeof route === 'function' && route().has(item.routeName)) {
-        return route(item.routeName);
+    if (!item?.route_name) return '#';
+    if (typeof route === 'function' && route().has(item.route_name)) {
+        return route(item.route_name);
     }
     return '#';
 };
@@ -55,17 +53,17 @@ const hasActiveChild = (children = []) => {
 };
 
 const isItemActive = (item) => {
-    return isRouteActive(item?.routeName) || hasActiveChild(item?.children ?? []);
+    return isRouteActive(item?.route_name) || hasActiveChild(item?.children ?? []);
 };
 
 const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
     const active = isItemActive(item);
-    const icon = iconMap[item.icon] ?? iconMap.dashboard;
+    const icon = iconMap[item.icon] ?? iconMap[SIDEBAR_DEFAULT_ICON_KEY];
     const hasChildren = (item.children ?? []).length > 0;
 
     const paddingLeftClass = level > 0 && !collapsed ? 'pl-9' : '';
 
-    if (item.routeName || item.href) {
+    if (item.route_name || item.href) {
         return (
             <div className="space-y-2">
                 <Link
@@ -115,12 +113,12 @@ const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
     );
 };
 
-export default function Sidebar({ items = sidebarItems, collapsed = false, pinned = false, onMouseEnter, onMouseLeave }) {
+export default function Sidebar({ collapsed = false, pinned = false, onMouseEnter, onMouseLeave }) {
     const { auth } = usePage().props;
     const widthClass = useMemo(() => (collapsed ? 'w-[90px]' : 'w-[290px]'), [collapsed]);
     const visibleItems = useMemo(() => {
-        return resolveVisibleItems(items, auth?.visibleModules ?? []);
-    }, [auth?.visibleModules, items]);
+        return resolveVisibleItems(auth?.visibleModules ?? []);
+    }, [auth?.visibleModules]);
 
     return (
         <aside

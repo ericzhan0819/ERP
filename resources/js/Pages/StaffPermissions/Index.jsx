@@ -110,7 +110,7 @@ export default function StaffPermissionIndex({ users = [], roles = [], permissio
         router.patch(
             url,
             isRoles
-                ? { role: rows[userId].role }
+                ? { roles: rows[userId].role ? [rows[userId].role] : [] }
                 : { permissions: rows[userId].permissions },
             { preserveScroll: true }
         );
