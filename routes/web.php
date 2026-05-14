@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StaffPermissionController;
+use App\Http\Controllers\VehicleController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -41,6 +42,15 @@ Route::patch('/employee-system/staff-permissions/{user}/roles', [StaffPermission
 Route::patch('/employee-system/staff-permissions/{user}/permissions', [StaffPermissionController::class, 'updatePermissions'])
     ->middleware(['auth', 'permission:staff-permission.update-permission'])
     ->name('employee-system.staff-permissions.permissions.update');
+
+Route::get('/employee-system/vehicles', [VehicleController::class, 'index'])
+    ->middleware('auth')
+    ->name('employee-system.vehicles.index');
+
+Route::get('/employee-system/vehicles/{vehicle}', [VehicleController::class, 'show'])
+    ->middleware('auth')
+    ->whereNumber('vehicle')
+    ->name('employee-system.vehicles.show');
 
 Route::get('/employee-system/profile', [ProfileController::class, 'edit'])
     ->middleware('auth')
