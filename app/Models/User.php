@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -24,6 +25,8 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
+        'company_id',
+        'branch_id',
         'name',
         'email',
         'phone',
@@ -56,5 +59,21 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
         ];
+    }
+
+    /**
+     * 技術註解：使用者隸屬公司是 tenant 邊界核心，集中於 model relation 方便 policy 與查詢一致使用。
+     */
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Company::class);
+    }
+
+    /**
+     * 技術註解：分店關聯獨立於角色權限，避免將資料邊界責任混入 RBAC 判斷。
+     */
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Branch::class);
     }
 }
