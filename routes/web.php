@@ -44,11 +44,13 @@ Route::patch('/employee-system/staff-permissions/{user}/permissions', [StaffPerm
     ->name('employee-system.staff-permissions.permissions.update');
 
 Route::get('/employee-system/vehicles', [VehicleController::class, 'index'])
-    ->middleware('auth')
+    // 技術註解：車輛模組門禁統一採用複數 vehicles key，對齊現行 RBAC/Seeder 命名，降低單數舊名造成授權漂移風險。
+    ->middleware(['auth', 'module.access:vehicles'])
     ->name('employee-system.vehicles.index');
 
 Route::get('/employee-system/vehicles/{vehicle}', [VehicleController::class, 'show'])
-    ->middleware('auth')
+    // 技術註解：明細頁與列表頁使用同一模組門禁，避免直接 URL 存取繞過前端可見性控制。
+    ->middleware(['auth', 'module.access:vehicles'])
     ->whereNumber('vehicle')
     ->name('employee-system.vehicles.show');
 

@@ -26,17 +26,11 @@ const iconMap = {
     ),
 };
 
-/**
- * 技術註解：側欄主資料只採用後端 visibleModules，避免前端重複維護 route/label 導致授權顯示漂移。
- */
-const resolveVisibleItems = (visibleModules) => {
-    return [...visibleModules].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-};
+const resolveSectionedModules = (visibleModules) => (Array.isArray(visibleModules) ? visibleModules : []);
 
-const isRouteActive = (routeName) => {
-    if (!routeName) return false;
+const isRouteActive = (patterns = []) => {
     if (typeof route !== 'function') return false;
-    return route().has(routeName) && route().current(routeName);
+    return patterns.some((pattern) => route().current(pattern));
 };
 
 const resolveHref = (item) => {
@@ -53,7 +47,7 @@ const hasActiveChild = (children = []) => {
 };
 
 const isItemActive = (item) => {
-    return isRouteActive(item?.route_name) || hasActiveChild(item?.children ?? []);
+    return isRouteActive(item?.active ?? []) || hasActiveChild(item?.children ?? []);
 };
 
 const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
@@ -116,8 +110,8 @@ const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
 export default function Sidebar({ collapsed = false, pinned = false, onMouseEnter, onMouseLeave }) {
     const { auth } = usePage().props;
     const widthClass = useMemo(() => (collapsed ? 'w-[90px]' : 'w-[290px]'), [collapsed]);
-    const visibleItems = useMemo(() => {
-        return resolveVisibleItems(auth?.visibleModules ?? []);
+    const visibleSections = useMemo(() => {
+        return resolveSectionedModules(auth?.visibleModules ?? []);
     }, [auth?.visibleModules]);
 
     return (
@@ -145,9 +139,18 @@ export default function Sidebar({ collapsed = false, pinned = false, onMouseEnte
                 <div className="mb-4 px-3 text-[10px] font-semibold uppercase leading-5 tracking-[0.28em] text-zinc-500">
                     {collapsed ? '•••' : 'Menu'}
                 </div>
-                <div className="flex flex-col gap-2">
-                    {visibleItems.map((item) => (
-                        <SidebarNode key={item.key} item={item} collapsed={collapsed} />
+                <div className="flex flex-col gap-4">
+                    {visibleSections.map((section) => (
+                        <section key={section.section}>
+                            {!collapsed && (
+                                <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-600">{section.section}</div>
+                            )}
+                            <div className="flex flex-col gap-2">
+                                {(section.items ?? []).map((item) => (
+                                    <SidebarNode key={item.key} item={item} collapsed={collapsed} />
+                                ))}
+                            </div>
+                        </section>
                     ))}
                 </div>
             </nav>

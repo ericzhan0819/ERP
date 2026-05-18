@@ -1,4 +1,5 @@
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { usePage } from '@inertiajs/react';
 
 const panelClass = 'rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl md:p-6';
 const mutedLabelClass = 'text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500';
@@ -72,8 +73,14 @@ function PanelHeader({ eyebrow, title, action }) {
 }
 
 export default function DashboardIndex() {
-    // 技術註解：純 UI Demo 固定顯示主控台資料區塊，不再依賴角色或權限判斷。
-    const canUseActions = true;
+    const { auth } = usePage().props;
+    const capabilities = auth?.capabilities ?? {};
+
+    // 技術註解：Dashboard 權限僅採用後端白名單能力鍵，避免前端自行推導真實授權。
+    const canUseActions = Boolean(capabilities['dashboard.quick_actions']);
+    const canViewFinanceSummary = Boolean(capabilities['dashboard.finance_summary']);
+    const canExportSummary = Boolean(capabilities['dashboard.export_summary']);
+    const canViewRiskPanel = Boolean(capabilities['dashboard.risk_panel']);
 
     return (
         <div className="space-y-4 md:space-y-6">
@@ -109,29 +116,35 @@ export default function DashboardIndex() {
                                 eyebrow="Finance Clarity"
                                 title="帳務摘要 Widget"
                                 action={
-                                    canUseActions ? (
+                                    canExportSummary ? (
                                         <button className="min-h-10 rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-4 text-sm font-medium text-cyan-100 transition-colors hover:bg-cyan-300/15" type="button">
                                             匯出摘要
                                         </button>
                                     ) : null
                                 }
                             />
-                            <div className="rounded-2xl border border-white/10 bg-[#050816]/35 p-5">
-                                <p className="text-sm text-zinc-400">本月預估毛利</p>
-                                <p className="mt-3 text-4xl font-semibold tracking-tight text-zinc-50">NT$ 4.82M</p>
-                                <p className="mt-2 text-sm font-medium text-emerald-300">較上月 +8.4%</p>
-                            </div>
-                            <div className="mt-4 divide-y divide-white/10">
-                                {financeRows.map((row) => (
-                                    <div key={row.label} className="flex items-center justify-between py-3">
-                                        <span className="text-sm text-zinc-400">{row.label}</span>
-                                        <div className="text-right">
-                                            <p className="text-sm font-semibold text-zinc-100">{row.value}</p>
-                                            <p className="text-xs text-zinc-500">{row.delta}</p>
-                                        </div>
+                            {canViewFinanceSummary ? (
+                                <>
+                                    <div className="rounded-2xl border border-white/10 bg-[#050816]/35 p-5">
+                                        <p className="text-sm text-zinc-400">本月預估毛利（Placeholder）</p>
+                                        <p className="mt-3 text-4xl font-semibold tracking-tight text-zinc-50">NT$ 4.82M</p>
+                                        <p className="mt-2 text-sm font-medium text-emerald-300">較上月 +8.4%</p>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="mt-4 divide-y divide-white/10">
+                                        {financeRows.map((row) => (
+                                            <div key={row.label} className="flex items-center justify-between py-3">
+                                                <span className="text-sm text-zinc-400">{row.label}</span>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-semibold text-zinc-100">{row.value}</p>
+                                                    <p className="text-xs text-zinc-500">{row.delta}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="rounded-2xl border border-white/10 bg-[#050816]/35 p-5 text-sm text-zinc-400">無帳務摘要檢視權限</div>
+                            )}
                     </section>
 
                     <section className={panelClass}>
@@ -181,15 +194,19 @@ export default function DashboardIndex() {
                 </section>
 
                 <section className={`${panelClass} col-span-12 xl:col-span-5`}>
-                    <PanelHeader eyebrow="Audit Trail" title="作業動態" />
-                    <div className="space-y-3">
-                        {activities.map((item) => (
-                            <div key={`${item.time}-${item.text}`} className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
-                                <span className="shrink-0 text-xs font-semibold text-cyan-300">{item.time}</span>
-                                <p className="text-sm leading-6 text-zinc-300">{item.text}</p>
-                            </div>
-                        ))}
-                    </div>
+                    <PanelHeader eyebrow="Audit Trail" title="作業動態 / 風險" />
+                    {canViewRiskPanel ? (
+                        <div className="space-y-3">
+                            {activities.map((item) => (
+                                <div key={`${item.time}-${item.text}`} className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                                    <span className="shrink-0 text-xs font-semibold text-cyan-300">{item.time}</span>
+                                    <p className="text-sm leading-6 text-zinc-300">{item.text}</p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-sm text-zinc-400">無風險面板檢視權限</div>
+                    )}
                 </section>
             </section>
         </div>

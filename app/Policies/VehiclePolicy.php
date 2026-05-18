@@ -8,11 +8,11 @@ use App\Models\Vehicle;
 class VehiclePolicy
 {
     /**
-     * 技術註解：所有存取都必須先通過 module.vehicle.view 權限，避免前端可見性被誤當成授權。
+     * 技術註解：所有存取都必須先通過 module.vehicles.view 權限，避免前端可見性被誤當成授權。
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('module.vehicle.view');
+        return $user->can('module.vehicles.view');
     }
 
     /**
@@ -20,7 +20,7 @@ class VehiclePolicy
      */
     public function view(User $user, Vehicle $vehicle): bool
     {
-        if (! $user->can('module.vehicle.view')) {
+        if (! $user->can('module.vehicles.view')) {
             return false;
         }
 
@@ -36,7 +36,7 @@ class VehiclePolicy
 
     public function create(User $user): bool
     {
-        return $user->can('module.vehicle.create');
+        return $user->can('module.vehicles.create');
     }
 
     /**
@@ -44,7 +44,7 @@ class VehiclePolicy
      */
     public function update(User $user, Vehicle $vehicle): bool
     {
-        if (! $user->can('module.vehicle.update')) {
+        if (! $user->can('module.vehicles.update')) {
             return false;
         }
 
@@ -58,4 +58,3 @@ class VehiclePolicy
         return $userBranchId === null || (int) $userBranchId === (int) $vehicle->branch_id;
     }
 }
-

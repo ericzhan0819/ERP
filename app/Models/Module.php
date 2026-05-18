@@ -15,11 +15,18 @@ class Module extends Model
     protected $fillable = [
         'key',
         'label',
+        'section',
+        'parent_id',
+        'parent_key',
         'route_name',
+        'permission_prefix',
         'base_permission',
+        'icon_key',
         'icon',
         'sort_order',
+        'is_enabled',
         'is_active',
+        'active_patterns',
     ];
 
     /**
@@ -28,9 +35,28 @@ class Module extends Model
     protected function casts(): array
     {
         return [
+            'parent_id' => 'integer',
+            'is_enabled' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
+            'active_patterns' => 'array',
         ];
+    }
+
+    /**
+     * 技術註解：提供階層式模組關聯，後續可用於群組化側欄與權限繼承判斷。
+     */
+    public function parent()
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    /**
+     * 技術註解：集中子模組關聯，避免階層查詢散落造成維護風險。
+     */
+    public function children()
+    {
+        return $this->hasMany(self::class, 'parent_id');
     }
 
     /**

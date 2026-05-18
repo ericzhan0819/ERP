@@ -12,6 +12,11 @@ use Spatie\Permission\PermissionRegistrar;
 class RolePermissionSeeder extends Seeder
 {
     /**
+     * 權限 action 白名單（僅允許統一命名的固定動作）。
+     */
+    private const ACTION_WHITELIST = ['view', 'create', 'update', 'delete', 'export'];
+
+    /**
      * Seed the application's RBAC foundation.
      */
     public function run(): void
@@ -22,27 +27,65 @@ class RolePermissionSeeder extends Seeder
         $modules = [
             'dashboard' => [
                 'label' => '總覽',
+                'section' => 'system',
+                'parent_id' => null,
+                'parent_key' => null,
                 'route_name' => 'employee-system.overview',
+                'permission_prefix' => 'module.dashboard',
                 'base_permission' => 'module.dashboard.view',
+                'icon_key' => 'LayoutDashboard',
                 'icon' => 'LayoutDashboard',
                 'sort_order' => 10,
+                'is_enabled' => true,
                 'is_active' => true,
+                'active_patterns' => ['employee-system.overview'],
             ],
             'test-module' => [
                 'label' => '測試模塊',
+                'section' => 'testing',
+                'parent_id' => null,
+                'parent_key' => null,
                 'route_name' => 'employee-system.test-module',
+                'permission_prefix' => 'module.test-module',
                 'base_permission' => 'module.test-module.view',
+                'icon_key' => 'FlaskConical',
                 'icon' => 'FlaskConical',
                 'sort_order' => 90,
+                'is_enabled' => true,
                 'is_active' => true,
+                'active_patterns' => ['employee-system.test-module'],
             ],
             'staff-permission' => [
                 'label' => '員工權限管理',
+                'section' => 'administration',
+                'parent_id' => null,
+                'parent_key' => null,
                 'route_name' => 'employee-system.staff-permissions.index',
+                'permission_prefix' => 'staff-permission',
                 'base_permission' => 'staff-permission.view',
+                'icon_key' => 'ShieldCheck',
                 'icon' => 'ShieldCheck',
                 'sort_order' => 20,
+                'is_enabled' => true,
                 'is_active' => true,
+                'active_patterns' => [
+                    'employee-system.staff-permissions.*',
+                ],
+            ],
+            'vehicles' => [
+                'label' => '車輛管理',
+                'section' => 'operations',
+                'parent_id' => null,
+                'parent_key' => null,
+                'route_name' => 'employee-system.vehicles.index',
+                'permission_prefix' => 'module.vehicles',
+                'base_permission' => 'module.vehicles.view',
+                'icon_key' => 'car',
+                'icon' => 'car',
+                'sort_order' => 30,
+                'is_enabled' => true,
+                'is_active' => true,
+                'active_patterns' => ['vehicles.*'],
             ],
         ];
 
@@ -52,29 +95,41 @@ class RolePermissionSeeder extends Seeder
         }
 
         $permissionDefinitions = [
-            'module.dashboard.view' => [
-                'label' => '查看總覽',
-                'group' => '系統',
-            ],
-            'module.test-module.view' => [
-                'label' => '查看測試模塊',
-                'group' => '測試',
-            ],
-            'staff-permission.view' => [
-                'label' => '查看員工權限管理',
-                'group' => '權限管理',
-            ],
-            'staff-permission.update-role' => [
-                'label' => '變更員工角色',
-                'group' => '權限管理',
-            ],
-            'staff-permission.update-permission' => [
-                'label' => '變更員工直接權限',
-                'group' => '權限管理',
-            ],
+            // 技術註解：主要邏輯已切換到 module.{module_key}.{action} 統一命名。
+            'module.dashboard.view' => ['label' => '查看總覽', 'group' => '系統'],
+            'module.staff.view' => ['label' => '查看員工資料', 'group' => '人事'],
+            'module.permissions.view' => ['label' => '查看權限管理', 'group' => '權限管理'],
+            'module.vehicles.view' => ['label' => '查看車輛', 'group' => '車輛'],
+            'module.vehicles.create' => ['label' => '建立車輛', 'group' => '車輛'],
+            'module.vehicles.update' => ['label' => '更新車輛', 'group' => '車輛'],
+            'module.vehicles.delete' => ['label' => '刪除車輛', 'group' => '車輛'],
+            'module.vehicles.export' => ['label' => '匯出車輛', 'group' => '車輛'],
+            'module.test-module.view' => ['label' => '查看測試模塊', 'group' => '測試'],
         ];
 
+        // 技術註解：deprecated 相容層僅為過渡期保留，避免舊檢查點造成中斷；新功能不得再依賴舊命名。
+        $deprecatedPermissionDefinitions = [
+            'staff-permission.view' => ['label' => '[Deprecated] 查看員工權限管理', 'group' => 'Deprecated'],
+            'staff-permission.update-role' => ['label' => '[Deprecated] 變更員工角色', 'group' => 'Deprecated'],
+            'staff-permission.update-permission' => ['label' => '[Deprecated] 變更員工直接權限', 'group' => 'Deprecated'],
+            'vehicle.view' => ['label' => '[Deprecated] 查看車輛', 'group' => 'Deprecated'],
+            'module.vehicle.view' => ['label' => '[Deprecated] 查看車輛（單數 module）', 'group' => 'Deprecated'],
+        ];
+
+        $permissionDefinitions = $permissionDefinitions + $deprecatedPermissionDefinitions;
+
         $permissions = collect($permissionDefinitions)
+            ->filter(function (array $definition, string $name): bool {
+                // 技術註解：統一命名必須符合 module.{module_key}.{action}，且 action 僅可來自白名單。
+                if (!str_starts_with($name, 'module.')) {
+                    return true;
+                }
+
+                $segments = explode('.', $name);
+                $action = $segments[2] ?? null;
+
+                return count($segments) === 3 && in_array($action, self::ACTION_WHITELIST, true);
+            })
             ->mapWithKeys(fn (array $definition, string $name) => [
                 $name => Permission::updateOrCreate(
                     ['name' => $name, 'guard_name' => 'web'],
@@ -85,18 +140,74 @@ class RolePermissionSeeder extends Seeder
                 ),
             ]);
 
-        $admin = Role::updateOrCreate(
-            ['name' => 'admin', 'guard_name' => 'web'],
-            ['label' => '管理員']
+        $roles = [
+            'admin' => ['label' => '管理員'],
+            'owner' => ['label' => '負責人'],
+            'sales' => ['label' => '業務'],
+            'accounting' => ['label' => '會計'],
+            'inventory' => ['label' => '庫存'],
+            'viewer' => ['label' => '檢視者'],
+        ];
+
+        $resolvedRoles = collect($roles)->mapWithKeys(fn (array $definition, string $name) => [
+            $name => Role::updateOrCreate(
+                ['name' => $name, 'guard_name' => 'web'],
+                ['label' => $definition['label']]
+            ),
+        ]);
+
+        $modulePermissions = $permissions->filter(
+            fn (Permission $permission) => str_starts_with($permission->name, 'module.')
         );
 
-        $staff = Role::updateOrCreate(
-            ['name' => 'staff', 'guard_name' => 'web'],
-            ['label' => '員工']
-        );  
+        $roleTemplates = [
+            'admin' => $modulePermissions
+                ->pluck('name')
+                // 技術註解：保留 legacy 權限以維持既有 module.access:staff-permission/舊流程相容，避免過渡期授權中斷。
+                ->push('staff-permission.view')
+                ->unique()
+                ->values()
+                ->all(),
+            'owner' => [
+                'module.dashboard.view',
+                'module.staff.view',
+                'module.permissions.view',
+                'module.vehicles.view',
+                'module.vehicles.create',
+                'module.vehicles.update',
+                'module.vehicles.delete',
+                'module.vehicles.export',
+            ],
+            'sales' => [
+                'module.dashboard.view',
+                'module.vehicles.view',
+                'module.vehicles.create',
+                'module.vehicles.update',
+            ],
+            'accounting' => [
+                'module.dashboard.view',
+                'module.vehicles.view',
+                'module.vehicles.export',
+            ],
+            'inventory' => [
+                'module.dashboard.view',
+                'module.vehicles.view',
+                'module.vehicles.update',
+            ],
+            'viewer' => [
+                'module.dashboard.view',
+                'module.vehicles.view',
+            ],
+        ];
 
-        $admin->syncPermissions($permissions->values());
-        $staff->syncPermissions([$permissions['module.dashboard.view']]);
+        foreach ($roleTemplates as $roleName => $permissionNames) {
+            $resolvedRoles[$roleName]->syncPermissions(
+                collect($permissionNames)
+                    ->filter(fn (string $name) => $permissions->has($name))
+                    ->map(fn (string $name) => $permissions[$name])
+                    ->values()
+            );
+        }
 
         $adminUser = User::updateOrCreate(
             ['email' => 'admin@example.com'],
@@ -119,7 +230,7 @@ class RolePermissionSeeder extends Seeder
         );
 
         $adminUser->syncRoles(['admin']);
-        $staffUser->syncRoles(['staff']);
+        $staffUser->syncRoles(['viewer']);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }

@@ -37,9 +37,12 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                // 技術註解：只共享 RBAC 驗證需要的最小資料，權限可見性委派 PermissionService。
+                // 技術註解：僅傳遞必要身份欄位，避免前端獲得過量使用者資料。
                 'user' => $user?->only('id', 'name', 'email'),
+                // 技術註解：導覽由後端白名單輸出，前端僅負責展示。
                 'visibleModules' => $user ? $this->permissionService->getVisibleModules($user) : [],
+                // 技術註解：Dashboard 能力採最小白名單，不外洩完整 permission 陣列。
+                'capabilities' => $user ? $this->permissionService->getDashboardCapabilities($user) : [],
             ],
             // 技術註解：帳號狀態獨立於權限系統，僅提供前端呈現帳號可用狀態。
             'accountStatus' => $user?->account_status,

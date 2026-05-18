@@ -25,20 +25,14 @@ const iconMap = {
     ),
 };
 
-/**
- * 技術註解：行動版與桌面版一致，僅以後端 visibleModules 決定可見項目，避免前端主資料漂移。
- */
-const resolveVisibleItems = (visibleModules) => {
-    return [...visibleModules].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-};
+const resolveSectionedModules = (visibleModules) => (Array.isArray(visibleModules) ? visibleModules : []);
 
 /**
  * 以 route name 判定 active，避免 null route 造成錯誤。
  */
-const isRouteActive = (routeName) => {
-    if (!routeName) return false;
+const isRouteActive = (patterns = []) => {
     if (typeof route !== 'function') return false;
-    return route().has(routeName) && route().current(routeName);
+    return patterns.some((pattern) => route().current(pattern));
 };
 
 const resolveHref = (item) => {
@@ -54,7 +48,7 @@ const resolveHref = (item) => {
  * 遞迴判斷子節點是否為 active。
  */
 const isItemActive = (item) => {
-    return isRouteActive(item?.route_name) || (item?.children ?? []).some((child) => isItemActive(child));
+    return isRouteActive(item?.active ?? []) || (item?.children ?? []).some((child) => isItemActive(child));
 };
 
 /**
@@ -116,8 +110,8 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
 
 export default function MobileSidebar({ open = false, onClose }) {
     const { auth } = usePage().props;
-    const visibleItems = useMemo(() => {
-        return resolveVisibleItems(auth?.visibleModules ?? []);
+    const visibleSections = useMemo(() => {
+        return resolveSectionedModules(auth?.visibleModules ?? []);
     }, [auth?.visibleModules]);
 
     return (
@@ -162,9 +156,16 @@ export default function MobileSidebar({ open = false, onClose }) {
 
                 <nav className="flex-1 overflow-y-auto px-4 py-6">
                     <div className="mb-4 px-3 text-[10px] font-semibold uppercase leading-5 tracking-[0.28em] text-zinc-500">Menu</div>
-                    <div className="flex flex-col gap-2">
-                        {visibleItems.map((item) => (
-                            <MobileSidebarNode key={item.key} item={item} onClose={onClose} />
+                    <div className="flex flex-col gap-4">
+                        {visibleSections.map((section) => (
+                            <section key={section.section}>
+                                <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-600">{section.section}</div>
+                                <div className="flex flex-col gap-2">
+                                    {(section.items ?? []).map((item) => (
+                                        <MobileSidebarNode key={item.key} item={item} onClose={onClose} />
+                                    ))}
+                                </div>
+                            </section>
                         ))}
                     </div>
                 </nav>

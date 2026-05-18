@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\Module;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
@@ -11,7 +12,25 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     app(PermissionRegistrar::class)->forgetCachedPermissions();
-    Permission::findOrCreate('module.vehicle.view', 'web');
+
+    // 技術註解：路由會先經過 module.access:vehicles，測試需顯式建立 modules registry 記錄，避免因缺模組資料而誤判為授權失敗。
+    Module::updateOrCreate(
+        ['key' => 'vehicles'],
+        [
+            'label' => '車輛管理',
+            'section' => 'operations',
+            'route_name' => 'employee-system.vehicles.index',
+            'base_permission' => 'module.vehicles.view',
+            'permission_prefix' => 'module.vehicles',
+            'icon_key' => 'car',
+            'sort_order' => 30,
+            'is_enabled' => true,
+            'is_active' => true,
+            'active_patterns' => ['employee-system.vehicles.*'],
+        ]
+    );
+
+    Permission::findOrCreate('module.vehicles.view', 'web');
 });
 
 /**
@@ -58,7 +77,7 @@ function createVehicleRecord(int $companyId, int $branchId, string $stock, strin
 
 it('same company visible', function (): void {
     $user = createVehicleReadUser('vehicle-read-same-company@example.com', 1, 10);
-    $user->givePermissionTo('module.vehicle.view');
+    $user->givePermissionTo('module.vehicles.view');
     $vehicle = createVehicleRecord(1, 10, 'SAME-001', 'same-001');
 
     $this->actingAs($user)
@@ -68,7 +87,7 @@ it('same company visible', function (): void {
 
 it('cross-company 404', function (): void {
     $user = createVehicleReadUser('vehicle-read-cross-company@example.com', 1, 10);
-    $user->givePermissionTo('module.vehicle.view');
+    $user->givePermissionTo('module.vehicles.view');
     $vehicle = createVehicleRecord(2, 10, 'CROSS-COMPANY-001', 'cross-company-001');
 
     $this->actingAs($user)
@@ -78,7 +97,7 @@ it('cross-company 404', function (): void {
 
 it('cross-branch denied', function (): void {
     $user = createVehicleReadUser('vehicle-read-cross-branch@example.com', 1, 10);
-    $user->givePermissionTo('module.vehicle.view');
+    $user->givePermissionTo('module.vehicles.view');
     createVehicleRecord(1, 10, 'BRANCH-SELF-001', 'branch-self-001');
     createVehicleRecord(1, 20, 'BRANCH-OTHER-001', 'branch-other-001');
 
@@ -91,7 +110,7 @@ it('cross-branch denied', function (): void {
 
 it('company-level cross-branch allowed', function (): void {
     $user = createVehicleReadUser('vehicle-read-company-level@example.com', 1, null);
-    $user->givePermissionTo('module.vehicle.view');
+    $user->givePermissionTo('module.vehicles.view');
     createVehicleRecord(1, 10, 'COMPANY-L1', 'company-l1');
     createVehicleRecord(1, 20, 'COMPANY-L2', 'company-l2');
 
@@ -113,7 +132,7 @@ it('no permission denied', function (): void {
 it('direct permission override allowed', function (): void {
     $user = createVehicleReadUser('vehicle-read-direct-permission@example.com', 1, 10);
     // 技術註解：此案例驗證 direct permission 不依賴角色也可授權通過，避免誤把 role 當唯一授權來源。
-    $user->givePermissionTo('module.vehicle.view');
+    $user->givePermissionTo('module.vehicles.view');
     $vehicle = createVehicleRecord(1, 10, 'DIRECT-001', 'direct-001');
 
     $this->actingAs($user)
@@ -123,7 +142,7 @@ it('direct permission override allowed', function (): void {
 
 it('soft deleted hidden', function (): void {
     $user = createVehicleReadUser('vehicle-read-soft-deleted@example.com', 1, 10);
-    $user->givePermissionTo('module.vehicle.view');
+    $user->givePermissionTo('module.vehicles.view');
     $visible = createVehicleRecord(1, 10, 'VISIBLE-001', 'visible-001');
     $deleted = createVehicleRecord(1, 10, 'DELETED-001', 'deleted-001');
     $deleted->delete();
@@ -138,4 +157,3 @@ it('soft deleted hidden', function (): void {
         ->get(route('employee-system.vehicles.show', $deleted->id))
         ->assertNotFound();
 });
-

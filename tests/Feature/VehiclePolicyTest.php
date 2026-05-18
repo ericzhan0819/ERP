@@ -12,8 +12,8 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-    Permission::findOrCreate('module.vehicle.view', 'web');
-    Permission::findOrCreate('module.vehicle.update', 'web');
+    Permission::findOrCreate('module.vehicles.view', 'web');
+    Permission::findOrCreate('module.vehicles.update', 'web');
 });
 
 /**
@@ -76,7 +76,7 @@ function makeVehicle(int $companyId, int $branchId, string $stock, string $vin):
 
 it('同 company 可 view vehicle', function (): void {
     $user = makeVehicleUser('vehicle-view-same-company@example.com', 1, 10);
-    $user->givePermissionTo('module.vehicle.view');
+    $user->givePermissionTo('module.vehicles.view');
     $vehicle = makeVehicle(1, 10, 'STK-001', 'vin-001');
 
     expect($user->can('view', $vehicle))->toBeTrue();
@@ -84,7 +84,7 @@ it('同 company 可 view vehicle', function (): void {
 
 it('不同 company 不可 view vehicle', function (): void {
     $user = makeVehicleUser('vehicle-view-cross-company@example.com', 1, 10);
-    $user->givePermissionTo('module.vehicle.view');
+    $user->givePermissionTo('module.vehicles.view');
     $vehicle = makeVehicle(2, 10, 'STK-002', 'vin-002');
 
     expect($user->can('view', $vehicle))->toBeFalse();
@@ -92,7 +92,7 @@ it('不同 company 不可 view vehicle', function (): void {
 
 it('branch user 不可 view 其他 branch vehicle', function (): void {
     $user = makeVehicleUser('vehicle-view-cross-branch@example.com', 1, 10);
-    $user->givePermissionTo('module.vehicle.view');
+    $user->givePermissionTo('module.vehicles.view');
     $vehicle = makeVehicle(1, 20, 'STK-003', 'vin-003');
 
     expect($user->can('view', $vehicle))->toBeFalse();
@@ -101,13 +101,13 @@ it('branch user 不可 view 其他 branch vehicle', function (): void {
 it('admin 可 view 同 company 不同 branch', function (): void {
     // 技術註解：branch_id 為 null 代表公司層級使用者，可跨分店但不得跨公司。
     $admin = makeVehicleUser('vehicle-admin-view@example.com', 1, null);
-    $admin->givePermissionTo('module.vehicle.view');
+    $admin->givePermissionTo('module.vehicles.view');
     $vehicle = makeVehicle(1, 99, 'STK-004', 'vin-004');
 
     expect($admin->can('view', $vehicle))->toBeTrue();
 });
 
-it('無 module.vehicle.view 權限者 denied', function (): void {
+it('無 module.vehicles.view 權限者 denied', function (): void {
     $user = makeVehicleUser('vehicle-no-view-permission@example.com', 1, 10);
     $vehicle = makeVehicle(1, 10, 'STK-005', 'vin-005');
 
@@ -117,7 +117,7 @@ it('無 module.vehicle.view 權限者 denied', function (): void {
 it('direct permission override 可 view', function (): void {
     // 技術註解：驗證 direct permission 可直接通過 policy 權限檢查，不依賴角色綁定。
     $user = makeVehicleUser('vehicle-direct-permission-view@example.com', 1, 10);
-    $user->givePermissionTo('module.vehicle.view');
+    $user->givePermissionTo('module.vehicles.view');
     $vehicle = makeVehicle(1, 10, 'STK-006', 'vin-006');
 
     expect($user->can('view', $vehicle))->toBeTrue();
@@ -125,7 +125,7 @@ it('direct permission override 可 view', function (): void {
 
 it('update permission 正常運作', function (): void {
     $user = makeVehicleUser('vehicle-update-same-tenant@example.com', 1, 10);
-    $user->givePermissionTo('module.vehicle.update');
+    $user->givePermissionTo('module.vehicles.update');
     $vehicle = makeVehicle(1, 10, 'STK-007', 'vin-007');
 
     expect($user->can('update', $vehicle))->toBeTrue();
@@ -133,7 +133,7 @@ it('update permission 正常運作', function (): void {
 
 it('cross-company update denied', function (): void {
     $user = makeVehicleUser('vehicle-update-cross-company@example.com', 1, 10);
-    $user->givePermissionTo('module.vehicle.update');
+    $user->givePermissionTo('module.vehicles.update');
     $vehicle = makeVehicle(2, 10, 'STK-008', 'vin-008');
 
     expect($user->can('update', $vehicle))->toBeFalse();

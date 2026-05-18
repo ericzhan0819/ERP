@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Module;
 use App\Models\User;
+use Illuminate\Support\Arr;
 use Spatie\Permission\PermissionRegistrar;
 
 class PermissionService
@@ -15,20 +16,79 @@ class PermissionService
      */
     public function getVisibleModules(User $user): array
     {
-        return Module::query()
-            ->active()
+        $modules = Module::query()
+            ->where('is_enabled', true)
+            ->where('is_active', true)
             ->ordered()
-            ->get(['key', 'label', 'route_name', 'base_permission', 'icon', 'sort_order'])
+            ->get([
+                'id',
+                'key',
+                'label',
+                'section',
+                'parent_id',
+                'route_name',
+                'base_permission',
+                'permission_prefix',
+                'icon_key',
+                'icon',
+                'sort_order',
+                'active_patterns',
+            ])
             ->filter(fn (Module $module): bool => $this->canViewModule($user, $module))
-            ->map(fn (Module $module): array => [
+            ->values();
+
+        $byParentId = $modules->groupBy('parent_id');
+
+        $buildNode = function (Module $module) use (&$buildNode, $byParentId): array {
+            $children = $byParentId
+                ->get($module->id, collect())
+                ->sortBy('sort_order')
+                ->map(fn (Module $child): array => $buildNode($child))
+                ->values()
+                ->all();
+
+            return [
                 'key' => $module->key,
                 'label' => $module->label,
+                'href' => $this->resolveModuleHref($module),
                 'route_name' => $module->route_name,
-                'icon' => $module->icon,
+                'icon_key' => $module->icon_key ?: $module->icon,
+                'active' => $this->resolveModuleActive($module),
+                'children' => $children,
                 'sort_order' => $module->sort_order,
-            ])
+            ];
+        };
+
+        return $modules
+            ->whereNull('parent_id')
+            ->groupBy(fn (Module $module): string => $module->section ?: 'general')
+            ->map(function ($sectionModules, string $section) use ($buildNode): array {
+                return [
+                    'section' => $section,
+                    'items' => $sectionModules
+                        ->sortBy('sort_order')
+                        ->map(fn (Module $module): array => $buildNode($module))
+                        ->values()
+                        ->all(),
+                ];
+            })
             ->values()
             ->all();
+    }
+
+    /**
+     * 技術註解：Dashboard 顯示能力採白名單輸出，避免將完整 permission 清單暴露到前端。
+     *
+     * @return array<string, bool>
+     */
+    public function getDashboardCapabilities(User $user): array
+    {
+        return [
+            'dashboard.quick_actions' => $user->can('module.dashboard.quick-actions'),
+            'dashboard.finance_summary' => $user->can('module.dashboard.finance-summary'),
+            'dashboard.export_summary' => $user->can('module.dashboard.export-summary'),
+            'dashboard.risk_panel' => $user->can('module.dashboard.risk-panel'),
+        ];
     }
 
     /**
@@ -93,6 +153,66 @@ class PermissionService
      */
     private function canViewModule(User $user, Module $module): bool
     {
-        return $module->base_permission === null || $user->can($module->base_permission);
+        if ($module->base_permission === null) {
+            return true;
+        }
+
+        if ($user->can($module->base_permission)) {
+            return true;
+        }
+
+        $legacyPermission = $this->resolveLegacyPermissionName($module->base_permission);
+
+        // 技術註解：為降低命名遷移期間風險，僅在主命名未命中時嘗試舊命名相容判斷。
+        return $legacyPermission !== null && $user->can($legacyPermission);
+    }
+
+    /**
+     * 技術註解：集中處理模組導向網址，若 route 不存在則回傳 null，避免前端自行推導。
+     */
+    private function resolveModuleHref(Module $module): ?string
+    {
+        if ($module->route_name === null) {
+            return null;
+        }
+
+        if (!app('router')->has($module->route_name)) {
+            return null;
+        }
+
+        return route($module->route_name);
+    }
+
+    /**
+     * 技術註解：active 判斷字串由後端統一提供，避免 Sidebar/MobileSidebar 重複維護 route 判斷邏輯。
+     *
+     * @return array<int, string>
+     */
+    private function resolveModuleActive(Module $module): array
+    {
+        $patterns = Arr::wrap($module->active_patterns);
+
+        if (is_string($module->route_name) && $module->route_name !== '') {
+            $patterns[] = $module->route_name;
+            $patterns[] = $module->route_name . '.*';
+        }
+
+        return collect($patterns)
+            ->filter(fn ($pattern): bool => is_string($pattern) && $pattern !== '')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * 技術註解：支援舊命名（底線）到新命名（連字號）過渡，降低權限鍵變更造成的可見性中斷。
+     */
+    private function resolveLegacyPermissionName(string $permission): ?string
+    {
+        if (!str_contains($permission, '_')) {
+            return null;
+        }
+
+        return str_replace('_', '-', $permission);
     }
 }
