@@ -26,40 +26,31 @@ export default function Welcome() {
             </Head>
 
             {/* 背景層 */}
-            <div 
-                className="min-h-screen w-full text-zinc-100 overflow-x-hidden m-0 p-0 selection:bg-cyan-300/20"
-                style={{ 
-                    background: `
-                        radial-gradient(circle at top left, rgba(34,211,238,0.08), transparent 30%),
-                        radial-gradient(circle at bottom right, rgba(168,85,247,0.08), transparent 35%),
-                        linear-gradient(135deg, #050816 0%, #0B1120 45%, #111827 100%)
-                    `
-                }} 
-            >
+            <div className="min-h-screen w-full overflow-x-hidden m-0 bg-surface p-0 text-primary selection:bg-accent-subtle">
                 {/* 內容容器 */}
                 <div className="flex min-h-screen w-full flex-col px-6 py-12 lg:px-20 max-w-[1600px] mx-auto">
                     
                     {/* Header */}
-                    <header className="grid grid-cols-1 gap-10 border-b border-white/10 pb-10 lg:grid-cols-12 lg:items-end">
+                    <header className="grid grid-cols-1 gap-10 border-b border-default pb-10 lg:grid-cols-12 lg:items-end">
                         <div className="relative lg:col-span-8">
                             {/* 小標 */}
-                            <p className="mb-4 whitespace-nowrap ps-1 text-[11px] font-medium uppercase tracking-[0.4em] text-cyan-300/60">
+                            <p className="mb-4 whitespace-nowrap ps-1 text-[11px] font-medium uppercase tracking-[0.4em] text-muted">
                                 EST. 2026 / OO INTERNATIONAL
                             </p>
 
                             {/* 品牌名稱 */}
-                            <h1 className="text-4xl whitespace-nowrap font-extralight uppercase tracking-[0.2em] text-white sm:text-6xl lg:text-7xl">
+                            <h1 className="text-4xl whitespace-nowrap font-extralight uppercase tracking-[0.2em] text-primary sm:text-6xl lg:text-7xl">
                                 OO國際車業
                             </h1>
 
                             {/* 副標 */}
-                            <p className="mt-6 ps-0.5 max-w-2xl text-sm font-normal leading-8 tracking-wider text-zinc-400 whitespace-normal lg:whitespace-nowrap">
+                            <p className="mt-6 ps-0.5 max-w-2xl whitespace-normal text-sm font-normal leading-8 tracking-wider text-secondary lg:whitespace-nowrap">
                                 以「絕對透明、系統秩序、專業可靠」為核心，<br className="sm:hidden" />
                                 建立擇車如擇友的中古車管理中樞。
                             </p>
     
                             {/* slogan */}
-                            <p className="mt-3 whitespace-nowrap ps-0.5 text-xs font-medium tracking-[0.5em] text-cyan-300">
+                            <p className="mt-3 whitespace-nowrap ps-0.5 text-xs font-medium tracking-[0.5em] text-accent">
                                 擇車如擇友，敘白如敘舊
                             </p>
                         </div>
@@ -69,12 +60,12 @@ export default function Welcome() {
                     <main className="grid flex-1 grid-cols-1 gap-8 py-12 lg:grid-cols-12">
                         
                         {/* 左側：營運總覽 */}
-                        <section className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-8 shadow-[0_0_60px_rgba(0,0,0,0.35)] lg:col-span-8">
-                            <div className="mb-8 flex items-end justify-between border-b border-white/5 pb-5">
-                                <h2 className="text-xl font-bold uppercase tracking-[0.2em] text-white">
+                        <section className="rounded-[28px] border border-default bg-elevated p-8 shadow-card lg:col-span-8">
+                            <div className="mb-8 flex items-end justify-between border-b border-default pb-5">
+                                <h2 className="text-xl font-bold uppercase tracking-[0.2em] text-primary">
                                     營運總覽
                                 </h2>
-                                <span className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 font-medium">
+                                <span className="text-[10px] font-medium uppercase tracking-[0.3em] text-muted">
                                     Real-time Snapshot
                                 </span>
                             </div>
@@ -83,15 +74,15 @@ export default function Welcome() {
                                 {kpiCards.map((card) => (
                                     <article
                                         key={card.label}
-                                        className="group rounded-2xl border border-white/6 bg-gradient-to-br from-white/[0.06] to-white/[0.02] p-6 transition-all duration-300 hover:border-cyan-300/30 hover:bg-white/[0.08] hover:shadow-[0_0_35px_rgba(34,211,238,0.08)]"
+                                        className="group rounded-2xl border border-default bg-surface p-6 transition-all duration-300 hover:border-active hover:bg-hover hover:shadow-card"
                                     >
-                                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 group-hover:text-cyan-200/80 transition-colors">
+                                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted transition-colors group-hover:text-accent">
                                             {card.label}
                                         </p>
                                         <div className="mt-4 flex items-end justify-between">
-                                            <p className="text-4xl font-light text-white">
+                                            <p className="text-4xl font-light text-primary">
                                                 {card.value}
-                                                <span className="ml-2 text-sm font-normal text-zinc-500">
+                                                <span className="ml-2 text-sm font-normal text-muted">
                                                     {card.unit}
                                                 </span>
                                             </p>
@@ -109,12 +100,12 @@ export default function Welcome() {
                         </section>
 
                         {/* 右側：作業流程 */}
-                        <section className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-8 shadow-[0_0_60px_rgba(0,0,0,0.35)] lg:col-span-4">
-                            <h2 className="text-xl font-bold uppercase tracking-[0.2em] text-white">
+                        <section className="rounded-[28px] border border-default bg-elevated p-8 shadow-card lg:col-span-4">
+                            <h2 className="text-xl font-bold uppercase tracking-[0.2em] text-primary">
                                 作業序列
                             </h2>
 
-                            <p className="mt-4 text-xs leading-7 tracking-widest text-zinc-400 font-normal">
+                            <p className="mt-4 text-xs font-normal leading-7 tracking-widest text-secondary">
                                 極簡但嚴謹的流程設計，確保每一筆收支、每一台車況、每一次佣金計算，都可在系統中閉環管理。
                             </p>
 
@@ -122,13 +113,13 @@ export default function Welcome() {
                                 {processSteps.map((step, index) => (
                                     <li
                                         key={step}
-                                        className="flex items-start gap-4 border-l-2 border-white/10 pl-4 transition-all hover:border-cyan-300"
+                                        className="flex items-start gap-4 border-l-2 border-default pl-4 transition-all hover:border-active"
                                     >
-                                        <span className="mt-0.5 text-[10px] font-bold text-cyan-300">
+                                        <span className="mt-0.5 text-[10px] font-bold text-accent">
                                             {String(index + 1).padStart(2, '0')}
                                         </span>
 
-                                        <span className="text-sm font-medium tracking-wide text-zinc-300">
+                                        <span className="text-sm font-medium tracking-wide text-secondary">
                                             {step}
                                         </span>
                                     </li>
@@ -139,7 +130,7 @@ export default function Welcome() {
 
                     {/* Footer */}
                     <footer className="mt-auto py-10 text-center">
-                        <p className="text-[10px] font-bold tracking-[0.5em] text-zinc-700 uppercase">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-muted">
                             Secure Management System Center
                         </p>
                     </footer>
@@ -147,7 +138,7 @@ export default function Welcome() {
                      <div className="flex justify-end pb-10">
                          <Link 
                              href={employeeEntryHref} 
-                             className="group flex items-center gap-2 text-[10px] font-bold tracking-[0.4em] text-zinc-500 hover:text-cyan-300 transition-colors"
+                             className="group flex items-center gap-2 text-[10px] font-bold tracking-[0.4em] text-muted transition-colors hover:text-accent"
                          >
                             <span>員工入口</span>
                             <span className="text-lg transition-transform group-hover:translate-x-1">
@@ -161,10 +152,10 @@ export default function Welcome() {
             {/* 優化捲動條與基本樣式 */}
             <style dangerouslySetInnerHTML={{ __html: `
                 body { 
-                    background: #050816 !important;
+                    background: var(--color-bg-surface) !important;
                     margin: 0 !important; 
                     padding: 0 !important;
-                    color: #fff;
+                    color: var(--color-text-primary);
                 }
 
                 ::-webkit-scrollbar {
@@ -172,16 +163,16 @@ export default function Welcome() {
                 }
 
                 ::-webkit-scrollbar-track {
-                    background: #0B1120;
+                    background: var(--color-bg-elevated);
                 }
 
                 ::-webkit-scrollbar-thumb {
-                    background: rgba(255,255,255,0.12);
+                    background: var(--color-border-default);
                     border-radius: 10px;
                 }
 
                 ::-webkit-scrollbar-thumb:hover {
-                    background: rgba(34,211,238,0.45);
+                    background: var(--color-border-active);
                 }
             `}} />
         </>

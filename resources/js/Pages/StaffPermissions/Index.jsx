@@ -275,43 +275,43 @@ export default function StaffPermissionIndex({ roles = [], permissionMatrix = {}
                 </div>
 
                 <Modal show={createModalOpen} maxWidth="md" onClose={() => setCreateModalOpen(false)}>
-                    <div className="bg-slate-900 p-5">
-                        <h3 className="text-sm font-semibold text-zinc-100">新增角色</h3>
+                    <div className="bg-elevated p-5">
+                        <h3 className="text-sm font-semibold text-primary">新增角色</h3>
                         <div className="mt-3 space-y-2">
-                            <input value={newRoleLabel} onChange={(e) => setNewRoleLabel(e.target.value)} placeholder="角色名稱（顯示用）」" className="w-full rounded-lg border border-white/10 bg-slate-950/70 px-2 py-2 text-xs text-zinc-100" />
-                            <input value={newRoleName} onChange={(e) => setNewRoleName(e.target.value)} placeholder="角色代碼（小寫與-）" className="w-full rounded-lg border border-white/10 bg-slate-950/70 px-2 py-2 text-xs text-zinc-100" />
+                            <input value={newRoleLabel} onChange={(e) => setNewRoleLabel(e.target.value)} placeholder="角色名稱" className="w-full rounded-lg border border-default bg-surface px-2 py-2 text-xs text-primary" />
+                            <input value={newRoleName} onChange={(e) => setNewRoleName(e.target.value)} placeholder="角色代碼" className="w-full rounded-lg border border-default bg-surface px-2 py-2 text-xs text-primary" />
                         </div>
                         <div className="mt-4 flex justify-end gap-2">
-                            <button type="button" onClick={() => setCreateModalOpen(false)} className="rounded border border-white/20 px-3 py-2 text-xs text-zinc-200">取消</button>
-                            <button type="button" onClick={submitCreateRole} disabled={submitting || !capabilities.canUpdatePermissions || !newRoleName.trim()} className="rounded border border-cyan-300/30 px-3 py-2 text-xs text-cyan-200 disabled:opacity-40">建立</button>
+                            <button type="button" onClick={() => setCreateModalOpen(false)} className="rounded border border-default px-3 py-2 text-xs text-secondary">取消</button>
+                            <button type="button" onClick={submitCreateRole} disabled={submitting || !capabilities.canUpdatePermissions || !newRoleName.trim()} className="rounded border border-active bg-accent-subtle px-3 py-2 text-xs text-accent disabled:opacity-40">建立</button>
                         </div>
                     </div>
                 </Modal>
 
                 <Modal show={editModalOpen} maxWidth="2xl" onClose={closeEditModal}>
-                    <div className="bg-slate-900 p-5">
+                    <div className="bg-elevated p-5">
                         <div className="mb-4 flex items-center justify-between">
-                            <h3 className="text-sm font-semibold text-zinc-100">編輯角色權限</h3>
-                            <button type="button" onClick={submit} disabled={!dirty || submitting || !capabilities.canUpdatePermissions || editingRoleId !== selectedRoleId} className="rounded-full border border-cyan-300/30 px-4 py-2 text-xs font-semibold text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40">
+                            <h3 className="text-sm font-semibold text-primary">編輯角色權限</h3>
+                            <button type="button" onClick={submit} disabled={!dirty || submitting || !capabilities.canUpdatePermissions || editingRoleId !== selectedRoleId} className="rounded-full border border-active bg-accent-subtle px-4 py-2 text-xs font-semibold text-accent disabled:cursor-not-allowed disabled:opacity-40">
                                 {submitting ? '儲存中...' : '儲存角色權限'}
                             </button>
                         </div>
                         {flash && <p className={`mb-3 text-xs ${flash.type === 'success' ? 'text-emerald-300' : 'text-rose-300'}`}>{flash.message}</p>}
-                        <div className="mb-4 space-y-2 rounded-xl border border-white/10 p-3">
+                        <div className="mb-4 space-y-2 rounded-xl border border-default p-3">
                             <input
                                 value={editingRoleLabel}
                                 onChange={(e) => setEditingRoleLabel(e.target.value)}
                                 placeholder="角色名稱"
-                                className="w-full rounded-lg border border-white/10 bg-slate-950/70 px-2 py-2 text-xs text-zinc-100"
+                                className="w-full rounded-lg border border-default bg-surface px-2 py-2 text-xs text-primary"
                             />
                             <input
                                 value={editingRoleName}
                                 onChange={(e) => setEditingRoleName(e.target.value)}
                                 placeholder="角色代碼"
-                                className="w-full rounded-lg border border-white/10 bg-slate-950/70 px-2 py-2 text-xs text-zinc-100"
+                                className="w-full rounded-lg border border-default bg-surface px-2 py-2 text-xs text-primary"
                             />
                             <div className="flex justify-end">
-                                <button type="button" onClick={submitUpdateRoleInfo} disabled={!roleInfoDirty || submitting || !capabilities.canUpdatePermissions} className="rounded border border-cyan-300/30 px-3 py-2 text-xs text-cyan-200 disabled:opacity-40">儲存角色資料</button>
+                                <button type="button" onClick={submitUpdateRoleInfo} disabled={!roleInfoDirty || submitting || !capabilities.canUpdatePermissions} className="rounded border border-active bg-accent-subtle px-3 py-2 text-xs text-accent disabled:opacity-40">儲存角色資料</button>
                             </div>
                         </div>
                         <div className="space-y-3">
@@ -323,17 +323,17 @@ export default function StaffPermissionIndex({ roles = [], permissionMatrix = {}
                                     && modulePermissions.every((permissionName) => selectedPermissionSet.has(permissionName));
 
                                 return (
-                                    <div key={`modal-${moduleKey}`} className="rounded-xl border border-white/10 p-3">
+                                    <div key={`modal-${moduleKey}`} className="rounded-xl border border-default p-3">
                                         <div className="mb-2 flex items-center justify-between">
-                                            <p className="text-sm font-semibold text-zinc-100">{moduleData.label}</p>
-                                            <label className="text-xs text-zinc-300">
+                                            <p className="text-sm font-semibold text-primary">{moduleData.label}</p>
+                                            <label className="text-xs text-secondary">
                                                 <input type="checkbox" checked={allChecked} onChange={(e) => toggleModuleAll(moduleKey, e.target.checked)} disabled={!capabilities.canUpdatePermissions || editingRoleId !== selectedRoleId} className="mr-2" />
                                                 全選/取消
                                             </label>
                                         </div>
                                         <div className="grid grid-cols-4 gap-2">
                                             {Object.entries(moduleData.actions).map(([actionKey, actionData]) => (
-                                                <label key={`modal-${moduleKey}-${actionKey}`} className="rounded-lg border border-white/10 px-2 py-2 text-xs text-zinc-200">
+                                                <label key={`modal-${moduleKey}-${actionKey}`} className="rounded-lg border border-default px-2 py-2 text-xs text-secondary">
                                                     <input
                                                         type="checkbox"
                                                         className="mr-2"
@@ -350,17 +350,17 @@ export default function StaffPermissionIndex({ roles = [], permissionMatrix = {}
                             })}
                         </div>
                         <div className="mt-4 flex justify-end">
-                            <button type="button" onClick={closeEditModal} className="rounded border border-white/20 px-3 py-2 text-xs text-zinc-200">關閉</button>
+                            <button type="button" onClick={closeEditModal} className="rounded border border-default px-3 py-2 text-xs text-secondary">關閉</button>
                         </div>
                     </div>
                 </Modal>
 
                 <Modal show={Boolean(deleteRoleTarget)} maxWidth="md" onClose={() => setDeleteRoleTarget(null)}>
-                    <div className="bg-slate-900 p-5">
-                        <h3 className="text-sm font-semibold text-zinc-100">確認刪除角色</h3>
-                        <p className="mt-2 text-xs text-zinc-400">你即將刪除「{deleteRoleTarget?.label ?? deleteRoleTarget?.name}」，此操作無法復原。</p>
+                    <div className="bg-elevated p-5">
+                        <h3 className="text-sm font-semibold text-primary">確認刪除角色</h3>
+                        <p className="mt-2 text-xs text-muted">你即將刪除「{deleteRoleTarget?.label ?? deleteRoleTarget?.name}」，此操作無法復原。</p>
                         <div className="mt-4 flex justify-end gap-2">
-                            <button type="button" onClick={() => setDeleteRoleTarget(null)} className="rounded border border-white/20 px-3 py-2 text-xs text-zinc-200">取消</button>
+                            <button type="button" onClick={() => setDeleteRoleTarget(null)} className="rounded border border-default px-3 py-2 text-xs text-secondary">取消</button>
                             <button type="button" onClick={() => submitDeleteRole(deleteRoleTarget)} disabled={submitting || !deleteRoleTarget} className="rounded border border-rose-300/30 px-3 py-2 text-xs text-rose-200 disabled:opacity-40">確認刪除</button>
                         </div>
                     </div>

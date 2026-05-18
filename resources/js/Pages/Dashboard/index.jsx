@@ -172,9 +172,9 @@ export default function DashboardIndex() {
                             <thead>
                                 <tr className="border-y border-default text-left">
                                     <th className="py-3 pr-4 text-xs font-semibold uppercase tracking-[0.22em] text-muted">VIN</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">車型</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">狀態</th>
-                                    <th className="py-3 pl-4 text-right text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">毛利</th>
+                                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">車型</th>
+                                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">狀態</th>
+                                    <th className="py-3 pl-4 text-right text-xs font-semibold uppercase tracking-[0.22em] text-muted">毛利</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-default">
@@ -199,7 +199,7 @@ export default function DashboardIndex() {
                         <div className="space-y-3">
                             {activities.map((item) => (
                                 <div key={`${item.time}-${item.text}`} className="flex gap-3 rounded-xl border border-default bg-surface p-3">
-                                    <span className="shrink-0 text-xs font-semibold text-cyan-300">{item.time}</span>
+                                    <span className="shrink-0 text-xs font-semibold text-accent">{item.time}</span>
                                     <p className="text-sm leading-6 text-secondary">{item.text}</p>
                                 </div>
                             ))}
