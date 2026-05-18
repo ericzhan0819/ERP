@@ -243,3 +243,75 @@ it('未登入使用者存取員工權限頁會被導向 login', function (): voi
     $this->get(route('employee-system.staff-permissions.index'))
         ->assertRedirect(route('login'));
 });
+
+it('允許具備 staff-permission.update-role 的管理者更新一般角色 name 與 label', function (): void {
+    $admin = User::create([
+        'name' => 'Meta Admin',
+        'email' => 'meta-admin-role-update@example.com',
+        'password' => 'password',
+        'account_status' => 'active',
+        'is_active' => true,
+    ]);
+    $admin->assignRole('admin');
+    $admin->givePermissionTo('staff-permission.update-role');
+
+    $role = Role::findByName('staff', 'web');
+
+    $this->actingAs($admin)
+        ->patch(route('employee-system.staff-permissions.roles.update.meta', $role), [
+            'name' => 'staff-ops',
+            'label' => '營運人員',
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('success', '角色資料已更新');
+
+    $role->refresh();
+    expect($role->name)->toBe('staff-ops');
+    expect($role->label)->toBe('營運人員');
+});
+
+it('拒絕更新角色為重複代碼，避免角色識別衝突', function (): void {
+    $admin = User::create([
+        'name' => 'Meta Admin Duplicate',
+        'email' => 'meta-admin-duplicate-role-update@example.com',
+        'password' => 'password',
+        'account_status' => 'active',
+        'is_active' => true,
+    ]);
+    $admin->assignRole('admin');
+    $admin->givePermissionTo('staff-permission.update-role');
+
+    Role::findOrCreate('staff-dup-source', 'web');
+    $targetRole = Role::findOrCreate('staff-dup-target', 'web');
+
+    $this->actingAs($admin)
+        ->patch(route('employee-system.staff-permissions.roles.update.meta', $targetRole), [
+            'name' => 'staff-dup-source',
+            'label' => '重複測試',
+        ])
+        ->assertSessionHasErrors(['name']);
+});
+
+it('拒絕修改系統角色代碼，維持既有保護規則', function (): void {
+    $admin = User::create([
+        'name' => 'Meta Admin Protected',
+        'email' => 'meta-admin-protected-role-update@example.com',
+        'password' => 'password',
+        'account_status' => 'active',
+        'is_active' => true,
+    ]);
+    $admin->assignRole('admin');
+    $admin->givePermissionTo('staff-permission.update-role');
+
+    $adminRole = Role::findByName('admin', 'web');
+
+    $this->actingAs($admin)
+        ->patch(route('employee-system.staff-permissions.roles.update.meta', $adminRole), [
+            'name' => 'admin-core',
+            'label' => '系統管理員',
+        ])
+        ->assertStatus(422);
+
+    $adminRole->refresh();
+    expect($adminRole->name)->toBe('admin');
+});

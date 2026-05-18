@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Module;
 use App\Models\User;
 use Illuminate\Support\Arr;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class PermissionService
@@ -136,6 +137,49 @@ class PermissionService
         $user->syncPermissions($permissionNames);
 
         return $this->refreshPermissionCache($user);
+    }
+
+    /**
+     * 技術註解：角色建立集中於服務層，避免 Controller 分散處理唯一性與快取刷新，降低權限設定不一致風險。
+     */
+    public function createRole(string $name, ?string $label = null): Role
+    {
+        $role = Role::create([
+            'name' => $name,
+            'guard_name' => 'web',
+            'label' => $label ?: $name,
+        ]);
+
+        $this->refreshPermissionCache();
+
+        return $role;
+    }
+
+    /**
+     * 技術註解：刪除角色需先檢查是否仍綁定使用者，避免產生孤兒授權狀態與存取邏輯漂移。
+     */
+    public function deleteRole(Role $role): void
+    {
+        if ($role->users()->exists()) {
+            abort(422, '角色仍綁定使用者，無法刪除');
+        }
+
+        $role->delete();
+        $this->refreshPermissionCache();
+    }
+
+    /**
+     * 技術註解：角色基本資料更新集中於服務層，統一刷新 Spatie 權限快取，避免 RBAC 判斷使用過期角色名稱。
+     */
+    public function updateRoleMeta(Role $role, string $name, ?string $label = null): Role
+    {
+        $role->name = $name;
+        $role->label = $label ?: $name;
+        $role->save();
+
+        $this->refreshPermissionCache();
+
+        return $role->fresh();
     }
 
     /**

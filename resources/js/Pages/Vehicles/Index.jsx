@@ -7,15 +7,15 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 export default function VehiclesIndex({ auth, vehicles = [] }) {
     return (
         <DashboardLayout user={auth.user}>
-            <div className="p-6 space-y-4">
-                <h1 className="text-xl font-semibold">Vehicles</h1>
+            <div className="space-y-4 p-6">
+                <h1 className="text-xl font-semibold text-primary">Vehicles</h1>
 
                 <ul className="space-y-2">
                     {vehicles.map((vehicle) => (
-                        <li key={vehicle.id} className="border rounded p-3">
+                        <li key={vehicle.id} className="rounded-xl border border-default bg-surface p-3">
                             <a
                                 href={route('employee-system.vehicles.show', vehicle.id)}
-                                className="underline"
+                                className="text-accent underline decoration-1 underline-offset-2 hover:text-secondary"
                             >
                                 {vehicle.stock_number} - {vehicle.brand} {vehicle.model}
                             </a>

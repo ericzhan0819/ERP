@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Module;
 use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\PermissionService;
@@ -16,6 +17,17 @@ use Spatie\Permission\Models\Role;
 
 class StaffPermissionController extends Controller
 {
+    /**
+     * @var array<string>
+     */
+    private const DEPRECATED_MATRIX_PERMISSIONS = [
+        'module.vehicle.view',
+        'module.vehicle.create',
+        'module.vehicle.update',
+        'module.vehicle.delete',
+        'module.vehicle.export',
+    ];
+
     public function __construct(
         private readonly PermissionService $permissionService,
         private readonly AuditLogService $auditLogService,
@@ -26,42 +38,182 @@ class StaffPermissionController extends Controller
     {
         $currentUser = $request->user();
 
-        // 技術註解：在 Controller 內再次驗證讀取權限，避免僅依賴路由 middleware 造成授權邏輯漂移，
-        // 導致敏感 RBAC/HR 權限矩陣被已登入但未授權者直接以 URL 存取。
-        abort_unless($currentUser->can('staff-permission.view'), 403);
+        // 技術註解：後端強制雙權限其一，防止僅靠前端可見性造成越權讀取（Broken Access Control）。
+        abort_unless(
+            $currentUser->can('staff-permission.view') || $currentUser->can('module.permissions.view'),
+            403
+        );
+
+        $actions = ['view', 'create', 'update', 'delete', 'export', 'approve', 'void', 'manage'];
+
+        $roles = Role::query()
+            ->withCount('users')
+            ->with('permissions:name')
+            ->orderBy('name')
+            ->get(['id', 'name', 'label'])
+            ->map(fn (Role $role): array => [
+                'id' => $role->id,
+                'name' => $role->name,
+                'label' => $role->label,
+                'description' => $role->label,
+                'is_system_role' => in_array($role->name, ['admin', 'owner'], true),
+                'users_count' => $role->users_count,
+                'permissions_count' => $role->permissions->count(),
+            ])
+            ->values();
+
+        $permissions = Permission::query()
+            ->whereNotIn('name', self::DEPRECATED_MATRIX_PERMISSIONS)
+            // 技術註解：矩陣 UI 僅顯示正式命名群組，避免使用者誤勾 deprecated 權限導致權限來源混亂。
+            ->where('group', '!=', 'Deprecated')
+            ->orderBy('name')
+            ->get(['name', 'label', 'group']);
+        $permissionNames = $permissions->pluck('name')->flip();
+
+        $moduleLabels = [];
+        $permissionMatrix = [];
+        foreach ($permissions as $permission) {
+            if (!str_starts_with($permission->name, 'module.')) {
+                continue;
+            }
+
+            $segments = explode('.', $permission->name);
+            if (count($segments) !== 3) {
+                continue;
+            }
+
+            [, $moduleKey, $action] = $segments;
+            if ($moduleKey === 'vehicle') {
+                // 技術註解：單數 module.vehicle.* 為過渡期權限，不可進入矩陣以防與正式 module.vehicles.* 並存造成錯誤授權判讀。
+                continue;
+            }
+            if (!in_array($action, $actions, true)) {
+                continue;
+            }
+
+            $moduleLabels[$moduleKey] = $moduleLabels[$moduleKey] ?? ucfirst(str_replace('-', ' ', $moduleKey));
+            $permissionMatrix[$moduleKey] ??= [
+                'label' => $moduleLabels[$moduleKey],
+                'actions' => [],
+            ];
+            $permissionMatrix[$moduleKey]['actions'][$action] = [
+                'permission' => $permission->name,
+                'exists' => true,
+            ];
+        }
+
+        foreach (array_keys($permissionMatrix) as $moduleKey) {
+            $permissionMatrix[$moduleKey]['actions'] = collect($permissionMatrix[$moduleKey]['actions'])
+                ->sortBy(fn (array $item, string $action): int => array_search($action, $actions, true))
+                ->all();
+        }
+
+        $rolePermissionMap = Role::query()
+            ->with('permissions:name')
+            ->get(['id'])
+            ->mapWithKeys(fn (Role $role) => [
+                (string) $role->id => $role->permissions->pluck('name')->values()->all(),
+            ]);
 
         return Inertia::render('StaffPermissions/Index', [
-            // 技術註解：權限管理頁僅輸出識別與 RBAC 狀態，不承載 HR 基本資料 CRUD。
-            'users' => User::query()
-                ->with(['roles:id,name', 'permissions:id,name'])
-                ->orderBy('name')
-                ->get(['id', 'name', 'email', 'is_active', 'last_login_at'])
-                ->map(fn (User $user): array => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'is_active' => $user->is_active,
-                    'last_login_at' => $user->last_login_at?->toISOString(),
-                    'phone' => $user->phone ?? null,
-                    'roles' => $user->roles->pluck('name')->values(),
-                    'direct_permissions' => $user->permissions->pluck('name')->values(),
-                ]),
-            'roles' => Role::query()
-                ->orderBy('name')
-                ->get(['name', 'label']),
-            'permissions' => Permission::query()
-                ->orderBy('group')
-                ->orderBy('name')
-                ->get([
-                    'name',
-                    'label',
-                    'group',
-                ]),
-            'can' => [
-                'updateRole' => $currentUser->can('staff-permission.update-role'),
-                'updatePermission' => $currentUser->can('staff-permission.update-permission'),
+            'roles' => $roles,
+            'modules' => Module::query()->orderBy('sort_order')->get(['key', 'label'])->values(),
+            'permissions' => $permissions,
+            'permissionMatrix' => $permissionMatrix,
+            'actionLabels' => [
+                'view' => '檢視',
+                'create' => '新增',
+                'update' => '更新',
+                'delete' => '刪除',
+                'export' => '匯出',
+                'approve' => '核准',
+                'void' => '作廢',
+                'manage' => '管理',
             ],
+            'moduleLabels' => $moduleLabels,
+            'capabilities' => [
+                'canUpdatePermissions' => $currentUser->can('staff-permission.update-permission'),
+            ],
+            'rolePermissionMap' => $rolePermissionMap,
         ]);
+    }
+
+    public function updateRolePermissions(Request $request, Role $role): RedirectResponse
+    {
+        abort_unless($request->user()->can('staff-permission.update-permission'), 403);
+
+        $validated = $request->validate([
+            'permissions' => ['array'],
+            'permissions.*' => ['string', Rule::exists('permissions', 'name')],
+        ]);
+
+        $newPermissions = collect($validated['permissions'] ?? [])->values();
+
+        if ($role->name === 'admin') {
+            // 技術註解：保留最後管理角色關鍵權限，避免系統無人可修復授權設定。
+            $required = collect(['module.permissions.view', 'staff-permission.update-permission']);
+            abort_unless($required->every(fn (string $name) => $newPermissions->contains($name)), 422, '不得移除 admin 關鍵權限');
+        }
+
+        if ($request->user()->hasRole($role->name)) {
+            // 技術註解：防止目前操作者把自己角色必要管理權限全移除而自鎖。
+            $requiredForSelf = collect(['module.permissions.view', 'staff-permission.update-permission']);
+            abort_unless($requiredForSelf->every(fn (string $name) => $newPermissions->contains($name)), 422, '不可移除自身必要管理權限');
+        }
+
+        $role->syncPermissions($newPermissions->all());
+
+        return back()->with('success', '角色權限已更新');
+    }
+
+    public function createRole(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->can('staff-permission.update-role'), 403);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:80', 'regex:/^[a-z0-9\-]+$/', Rule::unique('roles', 'name')],
+            'label' => ['nullable', 'string', 'max:80'],
+        ]);
+
+        $this->permissionService->createRole($validated['name'], $validated['label'] ?? null);
+
+        return back()->with('success', '角色已新增');
+    }
+
+    public function deleteRole(Request $request, Role $role): RedirectResponse
+    {
+        abort_unless($request->user()->can('staff-permission.update-role'), 403);
+
+        if (in_array($role->name, ['admin', 'owner'], true)) {
+            abort(422, '系統角色不可刪除');
+        }
+
+        $this->permissionService->deleteRole($role);
+
+        return back()->with('success', '角色已刪除');
+    }
+
+    public function updateRoleMeta(Request $request, Role $role): RedirectResponse
+    {
+        abort_unless($request->user()->can('staff-permission.update-role'), 403);
+
+        if (in_array($role->name, ['admin', 'owner'], true)) {
+            // 技術註解：系統保留角色名稱同時作為授權識別鍵，禁止改名可避免既有安全策略失效。
+            abort(422, '系統角色不可修改代碼');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:80', 'regex:/^[a-z0-9\-]+$/', Rule::unique('roles', 'name')->ignore($role->id)],
+            'label' => ['nullable', 'string', 'max:80'],
+        ]);
+
+        $this->permissionService->updateRoleMeta(
+            $role,
+            $validated['name'],
+            $validated['label'] ?? null,
+        );
+
+        return back()->with('success', '角色資料已更新');
     }
 
     public function updateRoles(Request $request, User $user): RedirectResponse

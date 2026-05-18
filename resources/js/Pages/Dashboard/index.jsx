@@ -1,8 +1,8 @@
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { usePage } from '@inertiajs/react';
 
-const panelClass = 'rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl md:p-6';
-const mutedLabelClass = 'text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500';
+const panelClass = 'rounded-2xl border border-default bg-surface/80 p-4 backdrop-blur-xl md:p-6';
+const mutedLabelClass = 'text-[11px] font-semibold uppercase tracking-[0.24em] text-muted';
 
 const metricCards = [
     { label: '在庫總量', value: '128', unit: '輛', change: '+6.2%', tone: 'text-emerald-300', accent: 'bg-cyan-300/12 text-cyan-100' },
@@ -42,19 +42,19 @@ const quickActions = ['新增收車', '建立銷售單', '查看應收款'];
 
 function MetricCard({ item }) {
     return (
-        <article className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 transition-colors duration-150 hover:border-cyan-300/30 hover:bg-white/[0.04] md:p-5">
+        <article className="rounded-2xl border border-default bg-surface p-4 transition-colors duration-150 hover:border-active hover:bg-hover md:p-5">
             <div className="flex items-start justify-between gap-3">
                 <div className={`grid h-11 w-11 place-items-center rounded-xl ${item.accent}`}>
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                         <path d="M4 19V5M4 19h16M8 15v-4M12 15V8M16 15v-6" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                 </div>
-                <span className={`rounded-full bg-white/[0.04] px-2.5 py-1 text-xs font-semibold ${item.tone}`}>{item.change}</span>
+                <span className={`rounded-full bg-subtle px-2.5 py-1 text-xs font-semibold ${item.tone}`}>{item.change}</span>
             </div>
-            <p className="mt-5 text-sm text-zinc-400">{item.label}</p>
+            <p className="mt-5 text-sm text-secondary">{item.label}</p>
             <div className="mt-2 flex items-end gap-2">
-                <p className="text-3xl font-semibold tracking-tight text-zinc-50">{item.value}</p>
-                <span className="pb-1 text-sm text-zinc-500">{item.unit}</span>
+                <p className="text-3xl font-semibold tracking-tight text-primary">{item.value}</p>
+                <span className="pb-1 text-sm text-muted">{item.unit}</span>
             </div>
         </article>
     );
@@ -65,7 +65,7 @@ function PanelHeader({ eyebrow, title, action }) {
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
                 <p className={mutedLabelClass}>{eyebrow}</p>
-                <h2 className="mt-2 text-lg font-semibold tracking-tight text-zinc-50">{title}</h2>
+                <h2 className="mt-2 text-lg font-semibold tracking-tight text-primary">{title}</h2>
             </div>
             {action}
         </div>
@@ -98,10 +98,10 @@ export default function DashboardIndex() {
                             {pipelineRows.map((row) => (
                                 <div key={row.stage}>
                                     <div className="mb-2 flex items-center justify-between text-sm">
-                                        <span className="font-medium text-zinc-200">{row.stage}</span>
-                                        <span className="text-zinc-500">{row.count} 輛</span>
+                                        <span className="font-medium text-primary">{row.stage}</span>
+                                        <span className="text-muted">{row.count} 輛</span>
                                     </div>
-                                    <div className="h-2 rounded-full bg-white/[0.06]">
+                                    <div className="h-2 rounded-full bg-subtle">
                                         <div className={`h-2 rounded-full ${row.tone}`} style={{ width: row.ratio }} />
                                     </div>
                                 </div>
@@ -117,7 +117,7 @@ export default function DashboardIndex() {
                                 title="帳務摘要 Widget"
                                 action={
                                     canExportSummary ? (
-                                        <button className="min-h-10 rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-4 text-sm font-medium text-cyan-100 transition-colors hover:bg-cyan-300/15" type="button">
+                                        <button className="min-h-10 rounded-xl border border-active bg-accent-subtle px-4 text-sm font-medium text-accent transition-colors hover:bg-active" type="button">
                                             匯出摘要
                                         </button>
                                     ) : null
@@ -125,25 +125,25 @@ export default function DashboardIndex() {
                             />
                             {canViewFinanceSummary ? (
                                 <>
-                                    <div className="rounded-2xl border border-white/10 bg-[#050816]/35 p-5">
-                                        <p className="text-sm text-zinc-400">本月預估毛利（Placeholder）</p>
-                                        <p className="mt-3 text-4xl font-semibold tracking-tight text-zinc-50">NT$ 4.82M</p>
+                                    <div className="rounded-2xl border border-default bg-subtle p-5">
+                                        <p className="text-sm text-secondary">本月預估毛利（Placeholder）</p>
+                                        <p className="mt-3 text-4xl font-semibold tracking-tight text-primary">NT$ 4.82M</p>
                                         <p className="mt-2 text-sm font-medium text-emerald-300">較上月 +8.4%</p>
                                     </div>
-                                    <div className="mt-4 divide-y divide-white/10">
+                                    <div className="mt-4 divide-y divide-default">
                                         {financeRows.map((row) => (
                                             <div key={row.label} className="flex items-center justify-between py-3">
-                                                <span className="text-sm text-zinc-400">{row.label}</span>
+                                                <span className="text-sm text-secondary">{row.label}</span>
                                                 <div className="text-right">
-                                                    <p className="text-sm font-semibold text-zinc-100">{row.value}</p>
-                                                    <p className="text-xs text-zinc-500">{row.delta}</p>
+                                                    <p className="text-sm font-semibold text-primary">{row.value}</p>
+                                                    <p className="text-xs text-muted">{row.delta}</p>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 </>
                             ) : (
-                                <div className="rounded-2xl border border-white/10 bg-[#050816]/35 p-5 text-sm text-zinc-400">無帳務摘要檢視權限</div>
+                                <div className="rounded-2xl border border-default bg-subtle p-5 text-sm text-secondary">無帳務摘要檢視權限</div>
                             )}
                     </section>
 
@@ -154,7 +154,7 @@ export default function DashboardIndex() {
                                 <button
                                     key={label}
                                     type="button"
-                                    className="min-h-12 rounded-xl border border-white/10 bg-white/[0.02] px-4 text-left text-sm font-medium text-zinc-200 transition-colors duration-150 hover:border-cyan-300/30 hover:bg-white/[0.05]"
+                                    className="min-h-12 rounded-xl border border-default bg-surface px-4 text-left text-sm font-medium text-primary transition-colors duration-150 hover:border-active hover:bg-hover"
                                 >
                                     {label}
                                 </button>
@@ -170,22 +170,22 @@ export default function DashboardIndex() {
                     <div className="overflow-x-auto">
                         <table className="min-w-full">
                             <thead>
-                                <tr className="border-y border-white/10 text-left">
-                                    <th className="py-3 pr-4 text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">VIN</th>
+                                <tr className="border-y border-default text-left">
+                                    <th className="py-3 pr-4 text-xs font-semibold uppercase tracking-[0.22em] text-muted">VIN</th>
                                     <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">車型</th>
                                     <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">狀態</th>
                                     <th className="py-3 pl-4 text-right text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">毛利</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/10">
+                            <tbody className="divide-y divide-default">
                                 {recentVehicles.map((vehicle) => (
-                                    <tr key={vehicle.vin} className="transition-colors hover:bg-white/[0.02]">
-                                        <td className="py-4 pr-4 text-sm font-semibold text-zinc-100">{vehicle.vin}</td>
-                                        <td className="px-4 py-4 text-sm text-zinc-300">{vehicle.model}</td>
+                                    <tr key={vehicle.vin} className="transition-colors hover:bg-hover">
+                                        <td className="py-4 pr-4 text-sm font-semibold text-primary">{vehicle.vin}</td>
+                                        <td className="px-4 py-4 text-sm text-secondary">{vehicle.model}</td>
                                         <td className="px-4 py-4">
                                             <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${vehicle.tone}`}>{vehicle.status}</span>
                                         </td>
-                                        <td className="py-4 pl-4 text-right text-sm font-semibold text-zinc-100">{vehicle.margin}</td>
+                                        <td className="py-4 pl-4 text-right text-sm font-semibold text-primary">{vehicle.margin}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -198,14 +198,14 @@ export default function DashboardIndex() {
                     {canViewRiskPanel ? (
                         <div className="space-y-3">
                             {activities.map((item) => (
-                                <div key={`${item.time}-${item.text}`} className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                                <div key={`${item.time}-${item.text}`} className="flex gap-3 rounded-xl border border-default bg-surface p-3">
                                     <span className="shrink-0 text-xs font-semibold text-cyan-300">{item.time}</span>
-                                    <p className="text-sm leading-6 text-zinc-300">{item.text}</p>
+                                    <p className="text-sm leading-6 text-secondary">{item.text}</p>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-sm text-zinc-400">無風險面板檢視權限</div>
+                        <div className="rounded-xl border border-default bg-surface p-3 text-sm text-secondary">無風險面板檢視權限</div>
                     )}
                 </section>
             </section>

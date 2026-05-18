@@ -2,7 +2,7 @@ import Header from '@/Components/Dashboard/Header';
 import MobileSidebar from '@/Components/Dashboard/MobileSidebar';
 import Sidebar from '@/Components/Dashboard/Sidebar';
 import { Head } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function DashboardLayout({ title = 'Dashboard', children }) {
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -14,15 +14,25 @@ export default function DashboardLayout({ title = 'Dashboard', children }) {
      * 使用者手動展開後視為固定狀態；未固定時才允許滑鼠靠近自動展開、離開自動收合。
      */
     const [sidebarPinned, setSidebarPinned] = useState(false);
+    const [theme, setTheme] = useState('light');
+
+    useEffect(() => {
+        const savedTheme = window.localStorage.getItem('erp-theme');
+        const nextTheme = savedTheme === 'dark' ? 'dark' : 'light';
+        // 技術註解：以 data-theme 作為唯一主題切換入口，避免樣式判斷散落造成維護風險。
+        document.documentElement.dataset.theme = nextTheme;
+        setTheme(nextTheme);
+    }, []);
+
+    const toggleTheme = () => {
+        const nextTheme = theme === 'dark' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = nextTheme;
+        window.localStorage.setItem('erp-theme', nextTheme);
+        setTheme(nextTheme);
+    };
 
     return (
-        <div
-            className="min-h-screen w-full overflow-x-hidden text-zinc-100 antialiased"
-            style={{
-                background:
-                    'radial-gradient(circle at top left, rgba(34,211,238,0.06), transparent 28%), radial-gradient(circle at bottom right, rgba(168,85,247,0.06), transparent 35%), linear-gradient(135deg, #050816 0%, #0B1120 45%, #111827 100%)',
-            }}
-        >
+        <div className="min-h-screen w-full overflow-x-hidden bg-app text-primary antialiased">
             <Head title={title} />
 
             <div className="flex h-screen overflow-hidden">
@@ -49,6 +59,8 @@ export default function DashboardLayout({ title = 'Dashboard', children }) {
                             setSidebarCollapsed(!nextPinned);
                         }}
                         onOpenMobileSidebar={() => setMobileOpen(true)}
+                        theme={theme}
+                        onToggleTheme={toggleTheme}
                     />
 
                     <main className="flex-1">

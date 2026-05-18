@@ -14,7 +14,7 @@ class RolePermissionSeeder extends Seeder
     /**
      * 權限 action 白名單（僅允許統一命名的固定動作）。
      */
-    private const ACTION_WHITELIST = ['view', 'create', 'update', 'delete', 'export'];
+    private const ACTION_WHITELIST = ['view', 'create', 'update', 'delete', 'export', 'approve', 'void', 'manage'];
 
     /**
      * Seed the application's RBAC foundation.
@@ -99,6 +99,7 @@ class RolePermissionSeeder extends Seeder
             'module.dashboard.view' => ['label' => '查看總覽', 'group' => '系統'],
             'module.staff.view' => ['label' => '查看員工資料', 'group' => '人事'],
             'module.permissions.view' => ['label' => '查看權限管理', 'group' => '權限管理'],
+            'module.permissions.update' => ['label' => '更新權限管理', 'group' => '權限管理'],
             'module.vehicles.view' => ['label' => '查看車輛', 'group' => '車輛'],
             'module.vehicles.create' => ['label' => '建立車輛', 'group' => '車輛'],
             'module.vehicles.update' => ['label' => '更新車輛', 'group' => '車輛'],
@@ -114,6 +115,10 @@ class RolePermissionSeeder extends Seeder
             'staff-permission.update-permission' => ['label' => '[Deprecated] 變更員工直接權限', 'group' => 'Deprecated'],
             'vehicle.view' => ['label' => '[Deprecated] 查看車輛', 'group' => 'Deprecated'],
             'module.vehicle.view' => ['label' => '[Deprecated] 查看車輛（單數 module）', 'group' => 'Deprecated'],
+            'module.vehicle.create' => ['label' => '[Deprecated] 建立車輛（單數 module）', 'group' => 'Deprecated'],
+            'module.vehicle.update' => ['label' => '[Deprecated] 更新車輛（單數 module）', 'group' => 'Deprecated'],
+            'module.vehicle.delete' => ['label' => '[Deprecated] 刪除車輛（單數 module）', 'group' => 'Deprecated'],
+            'module.vehicle.export' => ['label' => '[Deprecated] 匯出車輛（單數 module）', 'group' => 'Deprecated'],
         ];
 
         $permissionDefinitions = $permissionDefinitions + $deprecatedPermissionDefinitions;
@@ -161,13 +166,27 @@ class RolePermissionSeeder extends Seeder
         );
 
         $roleTemplates = [
-            'admin' => $modulePermissions
-                ->pluck('name')
-                // 技術註解：保留 legacy 權限以維持既有 module.access:staff-permission/舊流程相容，避免過渡期授權中斷。
-                ->push('staff-permission.view')
-                ->unique()
-                ->values()
-                ->all(),
+            'admin' => [
+                // 技術註解：admin 以正式權限清單為主來源，避免依賴 deprecated 權限造成能力缺漏與命名漂移。
+                'module.dashboard.view',
+                'module.staff.view',
+                'module.staff.create',
+                'module.staff.update',
+                'module.staff.delete',
+                'module.staff.export',
+                'module.permissions.view',
+                'module.permissions.update',
+                'module.permissions.manage',
+                'module.vehicles.view',
+                'module.vehicles.create',
+                'module.vehicles.update',
+                'module.vehicles.delete',
+                'module.vehicles.export',
+                // 技術註解：以下 deprecated 權限僅為相容層保留，不作為主要授權來源。
+                'staff-permission.view',
+                'staff-permission.update-role',
+                'staff-permission.update-permission',
+            ],
             'owner' => [
                 'module.dashboard.view',
                 'module.staff.view',

@@ -2,7 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
 import { SIDEBAR_DEFAULT_ICON_KEY } from '@/config/sidebar.ts';
 
-const shellClass = 'hidden shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[#0B1120]/95 backdrop-blur-xl lg:flex';
+const shellClass = 'hidden shrink-0 flex-col overflow-hidden border-r border-default bg-surface/95 backdrop-blur-xl lg:flex';
 const itemBaseClass = 'group relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium tracking-wide transition-all duration-150';
 
 const iconMap = {
@@ -64,12 +64,12 @@ const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
                     href={resolveHref(item)}
                     className={`${itemBaseClass} ${collapsed ? 'justify-center px-0' : paddingLeftClass} ${
                         active
-                            ? 'bg-cyan-300/10 text-cyan-100 shadow-[inset_3px_0_0_rgba(103,232,249,0.85)]'
-                            : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100'
-                    }`}
+                            ? 'bg-active text-accent border-l-2 border-active'
+                            : 'text-muted hover:bg-hover hover:text-primary'
+                     }`}
                     title={collapsed ? item.label : undefined}
                 >
-                    <span className={active ? 'text-cyan-200' : 'text-zinc-500 group-hover:text-cyan-300'}>{icon}</span>
+                    <span className={active ? 'text-accent' : 'text-muted group-hover:text-accent'}>{icon}</span>
                     {!collapsed && <span className="truncate">{item.label}</span>}
                 </Link>
 
@@ -88,11 +88,11 @@ const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
         <div className="space-y-2">
             <div
                 className={`${itemBaseClass} ${collapsed ? 'justify-center px-0' : paddingLeftClass} ${
-                    active ? 'bg-cyan-300/10 text-cyan-100 shadow-[inset_3px_0_0_rgba(103,232,249,0.85)]' : 'text-zinc-400'
+                    active ? 'bg-active text-accent border-l-2 border-active' : 'text-muted'
                 }`}
                 title={collapsed ? item.label : undefined}
             >
-                <span className={active ? 'text-cyan-200' : 'text-zinc-500'}>{icon}</span>
+                <span className={active ? 'text-accent' : 'text-muted'}>{icon}</span>
                 {!collapsed && <span className="truncate">{item.label}</span>}
             </div>
 
@@ -123,27 +123,27 @@ export default function Sidebar({ collapsed = false, pinned = false, onMouseEnte
         >
             <div className={`flex h-[88px] items-center px-5 ${collapsed ? 'justify-center' : 'justify-between'}`}>
                 <div className="flex items-center gap-3">
-                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-300/30 bg-cyan-300/10 text-sm font-semibold text-cyan-100">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-active bg-accent-subtle text-sm font-semibold text-accent">
                         ERP
                     </div>
                     {!collapsed && (
                         <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-cyan-300/70">Used Car</p>
-                            <p className="mt-1 text-sm font-semibold tracking-wide text-zinc-100">ERP Dashboard</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-accent/80">Used Car</p>
+                            <p className="mt-1 text-sm font-semibold tracking-wide text-primary">ERP Dashboard</p>
                         </div>
                     )}
                 </div>
             </div>
 
             <nav className="flex-1 overflow-y-auto px-4 py-6">
-                <div className="mb-4 px-3 text-[10px] font-semibold uppercase leading-5 tracking-[0.28em] text-zinc-500">
+                <div className="mb-4 px-3 text-[10px] font-semibold uppercase leading-5 tracking-[0.28em] text-muted">
                     {collapsed ? '•••' : 'Menu'}
                 </div>
                 <div className="flex flex-col gap-4">
                     {visibleSections.map((section) => (
                         <section key={section.section}>
                             {!collapsed && (
-                                <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-600">{section.section}</div>
+                                <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.24em] text-muted">{section.section}</div>
                             )}
                             <div className="flex flex-col gap-2">
                                 {(section.items ?? []).map((item) => (

@@ -43,6 +43,22 @@ Route::patch('/employee-system/staff-permissions/{user}/permissions', [StaffPerm
     ->middleware(['auth', 'permission:staff-permission.update-permission'])
     ->name('employee-system.staff-permissions.permissions.update');
 
+Route::patch('/employee-system/staff-permissions/roles/{role}/permissions', [StaffPermissionController::class, 'updateRolePermissions'])
+    ->middleware(['auth', 'permission:staff-permission.update-permission'])
+    ->name('employee-system.staff-permissions.roles.permissions.update');
+
+Route::patch('/employee-system/staff-permissions/roles/{role}/meta', [StaffPermissionController::class, 'updateRoleMeta'])
+    ->middleware(['auth', 'permission:staff-permission.update-role'])
+    ->name('employee-system.staff-permissions.roles.update.meta');
+
+Route::post('/employee-system/staff-permissions/roles', [StaffPermissionController::class, 'createRole'])
+    ->middleware(['auth', 'permission:staff-permission.update-role'])
+    ->name('employee-system.staff-permissions.roles.store');
+
+Route::delete('/employee-system/staff-permissions/roles/{role}', [StaffPermissionController::class, 'deleteRole'])
+    ->middleware(['auth', 'permission:staff-permission.update-role'])
+    ->name('employee-system.staff-permissions.roles.destroy');
+
 Route::get('/employee-system/vehicles', [VehicleController::class, 'index'])
     // 技術註解：車輛模組門禁統一採用複數 vehicles key，對齊現行 RBAC/Seeder 命名，降低單數舊名造成授權漂移風險。
     ->middleware(['auth', 'module.access:vehicles'])

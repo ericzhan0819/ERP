@@ -7,14 +7,16 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 export default function VehiclesShow({ auth, vehicle }) {
     return (
         <DashboardLayout user={auth.user}>
-            <div className="p-6 space-y-2">
-                <h1 className="text-xl font-semibold">Vehicle Detail</h1>
-                <p>ID: {vehicle.id}</p>
-                <p>Stock: {vehicle.stock_number}</p>
-                <p>VIN: {vehicle.vin}</p>
-                <p>Brand/Model: {vehicle.brand} {vehicle.model}</p>
-                <p>Year: {vehicle.model_year}</p>
-                <p>Status: {vehicle.lifecycle_status}</p>
+            <div className="space-y-3 p-6">
+                <h1 className="text-xl font-semibold text-primary">Vehicle Detail</h1>
+                <div className="rounded-2xl border border-default bg-surface p-4 text-secondary">
+                    <p><span className="text-muted">ID:</span> {vehicle.id}</p>
+                    <p><span className="text-muted">Stock:</span> {vehicle.stock_number}</p>
+                    <p><span className="text-muted">VIN:</span> {vehicle.vin}</p>
+                    <p><span className="text-muted">Brand/Model:</span> {vehicle.brand} {vehicle.model}</p>
+                    <p><span className="text-muted">Year:</span> {vehicle.model_year}</p>
+                    <p><span className="text-muted">Status:</span> {vehicle.lifecycle_status}</p>
+                </div>
             </div>
         </DashboardLayout>
     );
