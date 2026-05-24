@@ -5,9 +5,8 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 /**
  * 技術註解：建立頁保持最小 CRUD 表單，避免過度抽象影響維護可讀性與交付速度。
  */
-export default function VehiclesCreate({ auth }) {
+export default function VehiclesCreate({ auth, lifecycleStatuses = {} }) {
     const { data, setData, post, processing, errors } = useForm({
-        stock_number: '',
         vin: '',
         license_plate: '',
         brand: '',
@@ -32,79 +31,82 @@ export default function VehiclesCreate({ auth }) {
     return (
         <DashboardLayout user={auth.user}>
             <div className="space-y-4 p-6">
-                <h1 className="text-xl font-semibold text-primary">Create Vehicle</h1>
+                <h1 className="text-xl font-semibold text-primary">建立車輛</h1>
 
                 <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-default bg-surface p-4">
+                    <p className="rounded-lg border border-default bg-surface-muted px-3 py-2 text-sm text-secondary">
+                        庫存編號將在建立後自動產生
+                    </p>
+
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
-                            <label className="mb-1 block text-sm text-secondary">Stock Number</label>
-                            <input className={inputClass} value={data.stock_number} onChange={(e) => setData('stock_number', e.target.value)} />
-                            {errors.stock_number && <p className="mt-1 text-sm text-accent">{errors.stock_number}</p>}
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-sm text-secondary">VIN</label>
+                            <label className="mb-1 block text-sm text-secondary">車身號碼（VIN）</label>
                             <input className={inputClass} value={data.vin} onChange={(e) => setData('vin', e.target.value)} />
                             {errors.vin && <p className="mt-1 text-sm text-accent">{errors.vin}</p>}
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm text-secondary">License Plate</label>
+                            <label className="mb-1 block text-sm text-secondary">車牌號碼</label>
                             <input className={inputClass} value={data.license_plate} onChange={(e) => setData('license_plate', e.target.value)} />
                             {errors.license_plate && <p className="mt-1 text-sm text-accent">{errors.license_plate}</p>}
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm text-secondary">Brand</label>
+                            <label className="mb-1 block text-sm text-secondary">品牌</label>
                             <input className={inputClass} value={data.brand} onChange={(e) => setData('brand', e.target.value)} />
                             {errors.brand && <p className="mt-1 text-sm text-accent">{errors.brand}</p>}
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm text-secondary">Model</label>
+                            <label className="mb-1 block text-sm text-secondary">車型</label>
                             <input className={inputClass} value={data.model} onChange={(e) => setData('model', e.target.value)} />
                             {errors.model && <p className="mt-1 text-sm text-accent">{errors.model}</p>}
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm text-secondary">Variant</label>
+                            <label className="mb-1 block text-sm text-secondary">車款版本</label>
                             <input className={inputClass} value={data.variant} onChange={(e) => setData('variant', e.target.value)} />
                             {errors.variant && <p className="mt-1 text-sm text-accent">{errors.variant}</p>}
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm text-secondary">Model Year</label>
+                            <label className="mb-1 block text-sm text-secondary">年份</label>
                             <input type="number" className={inputClass} value={data.model_year} onChange={(e) => setData('model_year', e.target.value)} />
                             {errors.model_year && <p className="mt-1 text-sm text-accent">{errors.model_year}</p>}
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm text-secondary">Lifecycle Status</label>
-                            <input className={inputClass} value={data.lifecycle_status} onChange={(e) => setData('lifecycle_status', e.target.value)} />
+                            <label className="mb-1 block text-sm text-secondary">生命週期狀態</label>
+                            <select className={inputClass} value={data.lifecycle_status} onChange={(e) => setData('lifecycle_status', e.target.value)}>
+                                {Object.entries(lifecycleStatuses).map(([value, label]) => (
+                                    <option key={value} value={value}>{label}</option>
+                                ))}
+                            </select>
                             {errors.lifecycle_status && <p className="mt-1 text-sm text-accent">{errors.lifecycle_status}</p>}
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm text-secondary">Exterior Color</label>
+                            <label className="mb-1 block text-sm text-secondary">外觀顏色</label>
                             <input className={inputClass} value={data.exterior_color} onChange={(e) => setData('exterior_color', e.target.value)} />
                             {errors.exterior_color && <p className="mt-1 text-sm text-accent">{errors.exterior_color}</p>}
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm text-secondary">Interior Color</label>
+                            <label className="mb-1 block text-sm text-secondary">內裝顏色</label>
                             <input className={inputClass} value={data.interior_color} onChange={(e) => setData('interior_color', e.target.value)} />
                             {errors.interior_color && <p className="mt-1 text-sm text-accent">{errors.interior_color}</p>}
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm text-secondary">Odometer (km)</label>
+                            <label className="mb-1 block text-sm text-secondary">里程（公里）</label>
                             <input type="number" className={inputClass} value={data.odometer_km} onChange={(e) => setData('odometer_km', e.target.value)} />
                             {errors.odometer_km && <p className="mt-1 text-sm text-accent">{errors.odometer_km}</p>}
                         </div>
                     </div>
 
                     <div>
-                        <label className="mb-1 block text-sm text-secondary">Internal Notes</label>
+                        <label className="mb-1 block text-sm text-secondary">內部備註</label>
                         <textarea className={inputClass} rows={4} value={data.internal_notes} onChange={(e) => setData('internal_notes', e.target.value)} />
                         {errors.internal_notes && <p className="mt-1 text-sm text-accent">{errors.internal_notes}</p>}
                     </div>
 
                     <div className="flex items-center gap-3">
                         <button type="submit" disabled={processing} className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-                            Save
+                            儲存
                         </button>
                         <Link href={route('employee-system.vehicles.index')} className="text-sm text-secondary underline decoration-1 underline-offset-2">
-                            Back to list
+                            返回列表
                         </Link>
                     </div>
                 </form>
@@ -112,4 +114,3 @@ export default function VehiclesCreate({ auth }) {
         </DashboardLayout>
     );
 }
-

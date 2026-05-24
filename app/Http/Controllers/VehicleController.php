@@ -5,20 +5,28 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreVehicleRequest;
 use App\Http\Requests\UpdateVehicleRequest;
 use App\Models\Vehicle;
+use App\Services\VehicleStockNumberService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class VehicleController extends Controller
 {
+    public function __construct(private readonly VehicleStockNumberService $vehicleStockNumberService)
+    {
+    }
+
     /**
      * 技術註解：列表先授權 viewAny，再套用 tenant 範圍查詢，避免跨公司或跨分店資料外洩。
      */
     public function index(Request $request): Response
     {
         $this->authorize('viewAny', Vehicle::class);
+
+        $lifecycleStatuses = config('vehicles.lifecycle_statuses');
 
         $vehicles = $this->scopedVehicleQuery($request->user())
             ->orderByDesc('id')
@@ -36,6 +44,7 @@ class VehicleController extends Controller
 
         return Inertia::render('Vehicles/Index', [
             'vehicles' => $vehicles,
+            'lifecycleStatuses' => $lifecycleStatuses,
             'can' => [
                 // 技術註解：前端按鈕顯示僅作 UX 引導，實際安全仍以後端授權為準。
                 'create_vehicle' => $request->user()?->can('create', Vehicle::class) ?? false,
@@ -53,6 +62,7 @@ class VehicleController extends Controller
         $this->authorize('create', Vehicle::class);
 
         return Inertia::render('Vehicles/Create', [
+            'lifecycleStatuses' => config('vehicles.lifecycle_statuses'),
             'can' => [
                 'create_vehicle' => $request->user()?->can('create', Vehicle::class) ?? false,
                 'update_vehicle' => $request->user()?->can('module.vehicles.update') ?? false,
@@ -68,10 +78,19 @@ class VehicleController extends Controller
         /** @var \App\Models\User $user */
         $user = $request->user();
 
+        // 技術註解：建立車輛前先強制檢查 tenant 邊界，避免以 company_id=0 或 branch_id=null 呼叫序號服務導致跨租戶污染。
+        if ((int) $user->company_id <= 0 || $user->branch_id === null) {
+            throw new HttpResponseException(response()->json([
+                'message' => '使用者尚未設定公司或分店，無法建立車輛。',
+            ], 422));
+        }
+
+        $stockNumber = $this->vehicleStockNumberService->generate((int) $user->company_id);
+
         $vehicle = Vehicle::create([
             'company_id' => (int) $user->company_id,
             'branch_id' => (int) $user->branch_id,
-            'stock_number' => $request->validated('stock_number'),
+            'stock_number' => $stockNumber,
             'vin' => $request->validated('vin'),
             'license_plate' => $request->validated('license_plate'),
             'brand' => $request->validated('brand'),
@@ -95,6 +114,8 @@ class VehicleController extends Controller
      */
     public function show(Request $request, int $vehicle): Response
     {
+        $lifecycleStatuses = config('vehicles.lifecycle_statuses');
+
         $foundVehicle = $this->scopedVehicleQuery($request->user())
             ->whereKey($vehicle)
             ->firstOrFail();
@@ -120,6 +141,7 @@ class VehicleController extends Controller
                 'lifecycle_status' => $foundVehicle->lifecycle_status,
                 'internal_notes' => $foundVehicle->internal_notes,
             ],
+            'lifecycleStatuses' => $lifecycleStatuses,
             'can' => [
                 'create_vehicle' => $request->user()?->can('create', Vehicle::class) ?? false,
                 'update_vehicle' => $request->user()?->can('update', $foundVehicle) ?? false,
@@ -132,6 +154,8 @@ class VehicleController extends Controller
      */
     public function edit(Request $request, int $vehicle): Response
     {
+        $lifecycleStatuses = config('vehicles.lifecycle_statuses');
+
         $foundVehicle = $this->scopedVehicleQuery($request->user())
             ->whereKey($vehicle)
             ->firstOrFail();
@@ -154,6 +178,7 @@ class VehicleController extends Controller
                 'lifecycle_status' => $foundVehicle->lifecycle_status,
                 'internal_notes' => $foundVehicle->internal_notes,
             ],
+            'lifecycleStatuses' => $lifecycleStatuses,
             'can' => [
                 'create_vehicle' => $request->user()?->can('create', Vehicle::class) ?? false,
                 'update_vehicle' => $request->user()?->can('update', $foundVehicle) ?? false,
@@ -176,7 +201,6 @@ class VehicleController extends Controller
         $this->authorize('update', $foundVehicle);
 
         $foundVehicle->update([
-            'stock_number' => $request->validated('stock_number'),
             'vin' => $request->validated('vin'),
             'license_plate' => $request->validated('license_plate'),
             'brand' => $request->validated('brand'),

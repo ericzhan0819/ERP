@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Branch;
+use App\Models\Company;
 use App\Models\Module;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -23,6 +25,21 @@ class RolePermissionSeeder extends Seeder
     {
         // 技術註解：重建最小 RBAC 快取，確保 fresh seed 後權限判斷立即一致。
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        // 技術註解：先建立預設租戶邊界，避免管理員或員工帳號落在 company_id=0 / branch_id=null 造成後續資料污染。
+        $defaultCompany = Company::updateOrCreate(
+            ['code' => 'OO'],
+            ['name' => 'OO INTERNATIONAL']
+        );
+
+        // 技術註解：分店以 company + code 作為穩定鍵，可重複執行 seed 且不會建立重複資料。
+        $defaultBranch = Branch::updateOrCreate(
+            [
+                'company_id' => $defaultCompany->id,
+                'code' => 'MAIN',
+            ],
+            ['name' => 'Default Branch']
+        );
 
         $modules = [
             'dashboard' => [
@@ -235,6 +252,9 @@ class RolePermissionSeeder extends Seeder
                 // 技術註解：User model 的 hashed cast 會統一處理測試密碼雜湊。
                 'password' => 'password',
                 'account_status' => 'active',
+                // 技術註解：管理員必須綁定有效 tenant，避免建立車輛時傳入錯誤 company_id 造成跨租戶序號污染。
+                'company_id' => $defaultCompany->id,
+                'branch_id' => $defaultBranch->id,
             ],
         );
 
@@ -245,6 +265,9 @@ class RolePermissionSeeder extends Seeder
                 // 技術註解：保持與 admin 相同測試密碼，降低驗證 RBAC 的操作成本。
                 'password' => 'password',
                 'account_status' => 'active',
+                // 技術註解：員工帳號同樣需綁定 tenant，避免測試/示範資料觸發 tenant 邊界異常。
+                'company_id' => $defaultCompany->id,
+                'branch_id' => $defaultBranch->id,
             ],
         );
 

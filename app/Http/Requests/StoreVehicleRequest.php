@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Vehicle;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreVehicleRequest extends FormRequest
 {
@@ -21,7 +22,6 @@ class StoreVehicleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'stock_number' => ['required', 'string', 'max:50'],
             'vin' => ['nullable', 'string', 'max:30'],
             'license_plate' => ['nullable', 'string', 'max:30'],
             'brand' => ['required', 'string', 'max:80'],
@@ -31,9 +31,8 @@ class StoreVehicleRequest extends FormRequest
             'exterior_color' => ['nullable', 'string', 'max:50'],
             'interior_color' => ['nullable', 'string', 'max:50'],
             'odometer_km' => ['nullable', 'integer', 'min:0'],
-            'lifecycle_status' => ['required', 'string', 'max:50'],
+            'lifecycle_status' => ['required', 'string', Rule::in(array_keys(config('vehicles.lifecycle_statuses')))],
             'internal_notes' => ['nullable', 'string', 'max:2000'],
         ];
     }
 }
-
