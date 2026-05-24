@@ -24,6 +24,17 @@ class AuditLogController extends Controller
                 $query->where('company_id', $user->company_id)
                     ->orWhereNull('company_id');
             })
+            ->where(function (Builder $query): void {
+                // 排除新資料中的登入事件，避免登入類事件混入操作稽核頁。
+                $query->whereNull('event')
+                    ->orWhere('event', 'not like', 'auth.%');
+            })
+            ->where(function (Builder $query): void {
+                // 排除舊資料相容情境：event 為 null 但 action 為 auth.* 的登入事件。
+                $query->whereNotNull('event')
+                    ->orWhereNull('action')
+                    ->orWhere('action', 'not like', 'auth.%');
+            })
             ->when($search !== '', function (Builder $query) use ($search): void {
                 $query->where(function (Builder $subQuery) use ($search): void {
                     $subQuery->where('action', 'like', "%{$search}%")
@@ -82,4 +93,3 @@ class AuditLogController extends Controller
         ]);
     }
 }
-

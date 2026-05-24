@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { formatDateTime } from '@/utils/formatDateTime';
+import { formatAuditEvent } from '@/utils/auditEventLabels';
 
 export default function ActivityLogs({ auth, logs = { data: [], links: [] }, filters = {} }) {
     const [search, setSearch] = React.useState(filters.search ?? '');
@@ -19,12 +21,27 @@ export default function ActivityLogs({ auth, logs = { data: [], links: [] }, fil
     return (
         <DashboardLayout user={auth.user}>
             <div className="space-y-4 p-6">
-                <h1 className="text-xl font-semibold text-primary">Activity Logs</h1>
+                <h1 className="text-xl font-semibold text-primary">操作稽核紀錄</h1>
+
+                <div className="flex items-center gap-2">
+                    <Link
+                        href={route('employee-system.audit.activity-logs')}
+                        className="rounded-lg border border-accent bg-accent px-3 py-1.5 text-sm font-medium text-white"
+                    >
+                        操作稽核紀錄
+                    </Link>
+                    <Link
+                        href={route('employee-system.audit.login-logs')}
+                        className="rounded-lg border border-default px-3 py-1.5 text-sm font-medium text-secondary"
+                    >
+                        登入紀錄
+                    </Link>
+                </div>
 
                 <form onSubmit={submit} className="rounded-2xl border border-default bg-surface p-4">
                     <div className="grid gap-3 md:grid-cols-4">
                         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜尋 action / event / description" className="rounded-lg border border-default bg-surface px-3 py-2 text-sm" />
-                        <input value={event} onChange={(e) => setEvent(e.target.value)} placeholder="event" className="rounded-lg border border-default bg-surface px-3 py-2 text-sm" />
+                        <input value={event} onChange={(e) => setEvent(e.target.value)} placeholder="事件" className="rounded-lg border border-default bg-surface px-3 py-2 text-sm" />
                         <input value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="user_id" className="rounded-lg border border-default bg-surface px-3 py-2 text-sm" />
                         <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white">查詢</button>
                     </div>
@@ -35,19 +52,19 @@ export default function ActivityLogs({ auth, logs = { data: [], links: [] }, fil
                         <thead>
                             <tr className="border-b border-default text-left text-secondary">
                                 <th className="px-4 py-3">時間</th>
-                                <th className="px-4 py-3">Event</th>
-                                <th className="px-4 py-3">Action</th>
-                                <th className="px-4 py-3">User</th>
+                                <th className="px-4 py-3">事件</th>
+                                <th className="px-4 py-3">使用者</th>
+                                <th className="px-4 py-3">詳細資料</th>
                                 <th className="px-4 py-3">IP</th>
                             </tr>
                         </thead>
                         <tbody>
                             {logs.data.map((row) => (
                                 <tr key={row.id} className="border-b border-default/70 last:border-b-0">
-                                    <td className="px-4 py-3">{row.created_at ?? '-'}</td>
-                                    <td className="px-4 py-3">{row.event ?? '-'}</td>
-                                    <td className="px-4 py-3">{row.action ?? '-'}</td>
+                                    <td className="px-4 py-3">{formatDateTime(row.created_at)}</td>
+                                    <td className="px-4 py-3">{formatAuditEvent(row.event ?? row.action ?? '-')}</td>
                                     <td className="px-4 py-3">{row.user?.email ?? '-'}</td>
+                                    <td className="px-4 py-3">{row.description ?? '-'}</td>
                                     <td className="px-4 py-3">{row.ip_address ?? '-'}</td>
                                 </tr>
                             ))}
@@ -66,4 +83,3 @@ export default function ActivityLogs({ auth, logs = { data: [], links: [] }, fil
         </DashboardLayout>
     );
 }
-

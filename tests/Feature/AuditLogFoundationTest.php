@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -92,6 +93,7 @@ it('success login 記錄 login_logs success', function (): void {
     ])->assertRedirect(route('employee-system.overview', absolute: false));
 
     expect(LoginLog::query()->where('event', 'auth.login.success')->where('user_id', $user->id)->exists())->toBeTrue();
+    expect(ActivityLog::query()->where('event', 'auth.login.success')->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
 it('failed login 記錄 failed 且不含 password', function (): void {
@@ -243,3 +245,83 @@ it('pagination 正常', function (): void {
         );
 });
 
+it('activity logs 頁面可相容 event 為 null 且 action 有值的舊資料', function (): void {
+    $user = makeAuditUser('audit-legacy-action-fallback@example.com', 1, 10);
+    $user->givePermissionTo('module.audit.view');
+
+    ActivityLog::create([
+        'company_id' => 1,
+        'event' => null,
+        'action' => 'legacy.action.only',
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.audit.activity-logs'))
+        ->assertOk()
+        ->assertSee('legacy.action.only');
+});
+
+it('activity logs 會過濾登入事件且保留車輛事件，login logs 保留登入事件', function (): void {
+    $user = makeAuditUser('audit-filtering-focus@example.com', 1, 10);
+    $user->givePermissionTo('module.audit.view');
+
+    ActivityLog::create([
+        'company_id' => 1,
+        'event' => null,
+        'action' => 'auth.login.success',
+        'description' => 'legacy auth action row',
+    ]);
+
+    ActivityLog::create([
+        'company_id' => 1,
+        'event' => 'auth.login.success',
+        'action' => 'auth.login.success',
+        'description' => 'new auth event row',
+    ]);
+
+    ActivityLog::create([
+        'company_id' => 1,
+        'event' => 'vehicle.created',
+        'action' => 'vehicle.created',
+        'description' => 'vehicle created row',
+    ]);
+
+    ActivityLog::create([
+        'company_id' => 1,
+        'event' => 'vehicle.updated',
+        'action' => 'vehicle.updated',
+        'description' => 'vehicle updated row',
+    ]);
+
+    LoginLog::create([
+        'company_id' => 1,
+        'user_id' => $user->id,
+        'event' => 'auth.login.success',
+        'login_identifier' => $user->email,
+        'ip_address' => '127.0.0.1',
+        'user_agent' => 'Pest',
+        'metadata' => ['source' => 'test'],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.audit.activity-logs'))
+        ->assertOk()
+        ->assertInertia(function (Assert $page): void {
+            $rows = collect($page->toArray()['props']['logs']['data'] ?? []);
+            $eventOrActionValues = $rows->map(fn (array $row): string => (string) ($row['event'] ?? $row['action'] ?? '-'))->all();
+
+            expect($eventOrActionValues)->not->toContain('auth.login.success')
+                ->and($eventOrActionValues)->toContain('vehicle.created')
+                ->and($eventOrActionValues)->toContain('vehicle.updated');
+        });
+
+    $this->actingAs($user)
+        ->get(route('employee-system.audit.login-logs'))
+        ->assertOk()
+        ->assertInertia(function (Assert $page): void {
+            $rows = collect($page->toArray()['props']['logs']['data'] ?? []);
+            $events = $rows->map(fn (array $row): string => (string) ($row['event'] ?? '-'))->all();
+
+            expect($events)->toContain('auth.login.success');
+        });
+});

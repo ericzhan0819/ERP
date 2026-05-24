@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Services\AuditLogService;
 use App\Services\LoginLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,7 +16,6 @@ use Inertia\Response;
 class AuthenticatedSessionController extends Controller
 {
     public function __construct(
-        private readonly AuditLogService $auditLogService,
         private readonly LoginLogService $loginLogService,
     )
     {
@@ -95,9 +93,6 @@ class AuthenticatedSessionController extends Controller
         $loginAt = now();
         $user->forceFill(['last_login_at' => $loginAt])->save();
         $this->loginLogService->recordSuccess($request, $user, $loginInput);
-        $this->auditLogService->log($user, 'auth.login.success', 'User logged in', $user, [
-            'login_at' => $loginAt->toISOString(),
-        ]);
 
         return redirect()->intended(route('employee-system.overview', absolute: false));
     }
