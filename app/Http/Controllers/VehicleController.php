@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreVehicleRequest;
+use App\Http\Requests\UpdateVehicleRequest;
 use App\Models\Vehicle;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
@@ -34,7 +36,58 @@ class VehicleController extends Controller
 
         return Inertia::render('Vehicles/Index', [
             'vehicles' => $vehicles,
+            'can' => [
+                // 技術註解：前端按鈕顯示僅作 UX 引導，實際安全仍以後端授權為準。
+                'create_vehicle' => $request->user()?->can('create', Vehicle::class) ?? false,
+                // 技術註解：Policy update 需要 Vehicle 實例，列表頁改以對應 permission 判斷避免參數不足錯誤。
+                'update_vehicle' => $request->user()?->can('module.vehicles.update') ?? false,
+            ],
         ]);
+    }
+
+    /**
+     * 技術註解：建立頁僅提供表單所需最小資料，避免額外暴露不必要資訊。
+     */
+    public function create(Request $request): Response
+    {
+        $this->authorize('create', Vehicle::class);
+
+        return Inertia::render('Vehicles/Create', [
+            'can' => [
+                'create_vehicle' => $request->user()?->can('create', Vehicle::class) ?? false,
+                'update_vehicle' => $request->user()?->can('module.vehicles.update') ?? false,
+            ],
+        ]);
+    }
+
+    /**
+     * 技術註解：建立時強制使用登入者 company/branch，避免前端竄改租戶邊界造成資料污染。
+     */
+    public function store(StoreVehicleRequest $request)
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        $vehicle = Vehicle::create([
+            'company_id' => (int) $user->company_id,
+            'branch_id' => (int) $user->branch_id,
+            'stock_number' => $request->validated('stock_number'),
+            'vin' => $request->validated('vin'),
+            'license_plate' => $request->validated('license_plate'),
+            'brand' => $request->validated('brand'),
+            'model' => $request->validated('model'),
+            'variant' => $request->validated('variant'),
+            'model_year' => $request->validated('model_year'),
+            'exterior_color' => $request->validated('exterior_color'),
+            'interior_color' => $request->validated('interior_color'),
+            'odometer_km' => $request->validated('odometer_km'),
+            'lifecycle_status' => $request->validated('lifecycle_status'),
+            'internal_notes' => $request->validated('internal_notes'),
+            'created_by' => (int) $user->id,
+            'updated_by' => (int) $user->id,
+        ]);
+
+        return redirect()->route('employee-system.vehicles.show', $vehicle->id);
     }
 
     /**
@@ -58,10 +111,87 @@ class VehicleController extends Controller
                 'vin' => $foundVehicle->vin,
                 'brand' => $foundVehicle->brand,
                 'model' => $foundVehicle->model,
+                'variant' => $foundVehicle->variant,
                 'model_year' => $foundVehicle->model_year,
+                'license_plate' => $foundVehicle->license_plate,
+                'exterior_color' => $foundVehicle->exterior_color,
+                'interior_color' => $foundVehicle->interior_color,
+                'odometer_km' => $foundVehicle->odometer_km,
                 'lifecycle_status' => $foundVehicle->lifecycle_status,
+                'internal_notes' => $foundVehicle->internal_notes,
+            ],
+            'can' => [
+                'create_vehicle' => $request->user()?->can('create', Vehicle::class) ?? false,
+                'update_vehicle' => $request->user()?->can('update', $foundVehicle) ?? false,
             ],
         ]);
+    }
+
+    /**
+     * 技術註解：編輯頁必須先 scoped 查詢再 authorize，避免使用未隔離資料進行權限判斷。
+     */
+    public function edit(Request $request, int $vehicle): Response
+    {
+        $foundVehicle = $this->scopedVehicleQuery($request->user())
+            ->whereKey($vehicle)
+            ->firstOrFail();
+
+        $this->authorize('update', $foundVehicle);
+
+        return Inertia::render('Vehicles/Edit', [
+            'vehicle' => [
+                'id' => $foundVehicle->id,
+                'stock_number' => $foundVehicle->stock_number,
+                'vin' => $foundVehicle->vin,
+                'license_plate' => $foundVehicle->license_plate,
+                'brand' => $foundVehicle->brand,
+                'model' => $foundVehicle->model,
+                'variant' => $foundVehicle->variant,
+                'model_year' => $foundVehicle->model_year,
+                'exterior_color' => $foundVehicle->exterior_color,
+                'interior_color' => $foundVehicle->interior_color,
+                'odometer_km' => $foundVehicle->odometer_km,
+                'lifecycle_status' => $foundVehicle->lifecycle_status,
+                'internal_notes' => $foundVehicle->internal_notes,
+            ],
+            'can' => [
+                'create_vehicle' => $request->user()?->can('create', Vehicle::class) ?? false,
+                'update_vehicle' => $request->user()?->can('update', $foundVehicle) ?? false,
+            ],
+        ]);
+    }
+
+    /**
+     * 技術註解：更新流程維持 scoped 讀取 + policy 授權 + validated allowlist，避免 IDOR 與 mass assignment 風險。
+     */
+    public function update(UpdateVehicleRequest $request, int $vehicle)
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        $foundVehicle = $this->scopedVehicleQuery($user)
+            ->whereKey($vehicle)
+            ->firstOrFail();
+
+        $this->authorize('update', $foundVehicle);
+
+        $foundVehicle->update([
+            'stock_number' => $request->validated('stock_number'),
+            'vin' => $request->validated('vin'),
+            'license_plate' => $request->validated('license_plate'),
+            'brand' => $request->validated('brand'),
+            'model' => $request->validated('model'),
+            'variant' => $request->validated('variant'),
+            'model_year' => $request->validated('model_year'),
+            'exterior_color' => $request->validated('exterior_color'),
+            'interior_color' => $request->validated('interior_color'),
+            'odometer_km' => $request->validated('odometer_km'),
+            'lifecycle_status' => $request->validated('lifecycle_status'),
+            'internal_notes' => $request->validated('internal_notes'),
+            'updated_by' => (int) $user->id,
+        ]);
+
+        return redirect()->route('employee-system.vehicles.show', $foundVehicle->id);
     }
 
     /**

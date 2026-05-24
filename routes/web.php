@@ -64,11 +64,33 @@ Route::get('/employee-system/vehicles', [VehicleController::class, 'index'])
     ->middleware(['auth', 'module.access:vehicles'])
     ->name('employee-system.vehicles.index');
 
+Route::get('/employee-system/vehicles/create', [VehicleController::class, 'create'])
+    // 技術註解：建立頁同樣受 vehicles 模組門禁保護，避免繞過側邊欄直接 URL 進入。
+    ->middleware(['auth', 'module.access:vehicles'])
+    ->name('employee-system.vehicles.create');
+
+Route::post('/employee-system/vehicles', [VehicleController::class, 'store'])
+    // 技術註解：寫入操作維持在 auth + module.access 下，細部授權由 controller/policy 負責。
+    ->middleware(['auth', 'module.access:vehicles'])
+    ->name('employee-system.vehicles.store');
+
 Route::get('/employee-system/vehicles/{vehicle}', [VehicleController::class, 'show'])
     // 技術註解：明細頁與列表頁使用同一模組門禁，避免直接 URL 存取繞過前端可見性控制。
     ->middleware(['auth', 'module.access:vehicles'])
     ->whereNumber('vehicle')
     ->name('employee-system.vehicles.show');
+
+Route::get('/employee-system/vehicles/{vehicle}/edit', [VehicleController::class, 'edit'])
+    // 技術註解：編輯頁需與 show 一致套用模組門禁，並搭配數字限制降低惡意參數噪音。
+    ->middleware(['auth', 'module.access:vehicles'])
+    ->whereNumber('vehicle')
+    ->name('employee-system.vehicles.edit');
+
+Route::patch('/employee-system/vehicles/{vehicle}', [VehicleController::class, 'update'])
+    // 技術註解：更新路由不使用 implicit model binding，避免未 scoped 查詢造成跨租戶 IDOR。
+    ->middleware(['auth', 'module.access:vehicles'])
+    ->whereNumber('vehicle')
+    ->name('employee-system.vehicles.update');
 
 Route::get('/employee-system/profile', [ProfileController::class, 'edit'])
     ->middleware('auth')
