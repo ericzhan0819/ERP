@@ -27,23 +27,49 @@ class VehicleController extends Controller
         $this->authorize('viewAny', Vehicle::class);
 
         $lifecycleStatuses = config('vehicles.lifecycle_statuses');
+        $allowedLifecycleStatusKeys = array_keys($lifecycleStatuses);
+        $search = trim((string) $request->query('search', ''));
+        $lifecycleStatus = (string) $request->query('lifecycle_status', '');
+
+        if (! in_array($lifecycleStatus, $allowedLifecycleStatusKeys, true)) {
+            // 技術註解：非法狀態值採忽略策略，避免回傳錯誤造成列表頁不穩定，同時不放寬既有 tenant 邊界。
+            $lifecycleStatus = '';
+        }
 
         $vehicles = $this->scopedVehicleQuery($request->user())
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $query->where(function (Builder $subQuery) use ($search): void {
+                    $subQuery->where('stock_number', 'like', "%{$search}%")
+                        ->orWhere('vin', 'like', "%{$search}%")
+                        ->orWhere('license_plate', 'like', "%{$search}%")
+                        ->orWhere('brand', 'like', "%{$search}%")
+                        ->orWhere('model', 'like', "%{$search}%");
+                });
+            })
+            ->when($lifecycleStatus !== '', function (Builder $query) use ($lifecycleStatus): void {
+                $query->where('lifecycle_status', $lifecycleStatus);
+            })
             ->orderByDesc('id')
-            ->get([
+            ->paginate(10, [
                 'id',
                 'company_id',
                 'branch_id',
                 'stock_number',
                 'vin',
+                'license_plate',
                 'brand',
                 'model',
                 'model_year',
                 'lifecycle_status',
-            ]);
+            ])
+            ->withQueryString();
 
         return Inertia::render('Vehicles/Index', [
             'vehicles' => $vehicles,
+            'filters' => [
+                'search' => $search,
+                'lifecycle_status' => $lifecycleStatus,
+            ],
             'lifecycleStatuses' => $lifecycleStatuses,
             'can' => [
                 // 技術註解：前端按鈕顯示僅作 UX 引導，實際安全仍以後端授權為準。

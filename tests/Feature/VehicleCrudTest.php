@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -132,6 +133,204 @@ it('有 module.vehicles.view 權限可進入 vehicles index', function (): void 
     $this->actingAs($user)
         ->get(route('employee-system.vehicles.index'))
         ->assertOk();
+});
+
+it('index 可用 stock_number 搜尋', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-index-search-stock@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+
+    makeVehicleCrudRecord(1, 10, 'STK-SRC-AAA-001', 'vin-src-stock-001');
+    makeVehicleCrudRecord(1, 10, 'STK-SRC-BBB-002', 'vin-src-stock-002');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.index', ['search' => 'AAA-001']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicles.data.0.stock_number', 'STK-SRC-AAA-001')
+            ->where('vehicles.data', fn ($rows): bool => count($rows) === 1)
+        );
+});
+
+it('index 可用 vin 搜尋', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-index-search-vin@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+
+    makeVehicleCrudRecord(1, 10, 'STK-SRC-VIN-001', 'vin-src-target-001');
+    makeVehicleCrudRecord(1, 10, 'STK-SRC-VIN-002', 'vin-src-other-002');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.index', ['search' => 'target-001']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicles.data.0.vin', 'VIN-SRC-TARGET-001')
+            ->where('vehicles.data', fn ($rows): bool => count($rows) === 1)
+        );
+});
+
+it('index 可用 license_plate 搜尋', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-index-search-license@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+
+    $target = makeVehicleCrudRecord(1, 10, 'STK-SRC-LICENSE-001', 'vin-src-license-001');
+    $target->update(['license_plate' => 'ABC-9988']);
+    $other = makeVehicleCrudRecord(1, 10, 'STK-SRC-LICENSE-002', 'vin-src-license-002');
+    $other->update(['license_plate' => 'ZZZ-1111']);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.index', ['search' => '9988']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicles.data.0.license_plate', 'ABC-9988')
+            ->where('vehicles.data', fn ($rows): bool => count($rows) === 1)
+        );
+});
+
+it('index 可用 brand model 搜尋', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-index-search-brand-model@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+
+    $brandMatched = makeVehicleCrudRecord(1, 10, 'STK-SRC-BRAND-001', 'vin-src-brand-001');
+    $brandMatched->update(['brand' => 'Mazda', 'model' => 'CX5']);
+
+    $modelMatched = makeVehicleCrudRecord(1, 10, 'STK-SRC-MODEL-001', 'vin-src-model-001');
+    $modelMatched->update(['brand' => 'Toyota', 'model' => 'Harrier']);
+
+    makeVehicleCrudRecord(1, 10, 'STK-SRC-BRAND-MODEL-OTHER-001', 'vin-src-brand-model-other-001');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.index', ['search' => 'Mazda']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicles.data.0.brand', 'Mazda')
+            ->where('vehicles.data', fn ($rows): bool => count($rows) === 1)
+        );
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.index', ['search' => 'Harrier']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicles.data.0.model', 'Harrier')
+            ->where('vehicles.data', fn ($rows): bool => count($rows) === 1)
+        );
+});
+
+it('index 可用 lifecycle_status 篩選', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-index-filter-lifecycle@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+
+    $reserved = makeVehicleCrudRecord(1, 10, 'STK-SRC-LIFECYCLE-001', 'vin-src-lifecycle-001');
+    $reserved->update(['lifecycle_status' => 'reserved']);
+
+    $sold = makeVehicleCrudRecord(1, 10, 'STK-SRC-LIFECYCLE-002', 'vin-src-lifecycle-002');
+    $sold->update(['lifecycle_status' => 'sold']);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.index', ['lifecycle_status' => 'reserved']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicles.data.0.lifecycle_status', 'reserved')
+            ->where('vehicles.data', fn ($rows): bool => count($rows) === 1)
+        );
+});
+
+it('搜尋加篩選不可跨 company', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-index-scope-company@example.com', 1, 10);
+    $user->givePermissionTo('module.vehicles.view');
+
+    $inScope = makeVehicleCrudRecord(1, 10, 'STK-SCOPE-COMP-001', 'vin-scope-company-001');
+    $inScope->update(['brand' => 'FocusBrand', 'lifecycle_status' => 'reserved']);
+
+    $crossCompany = makeVehicleCrudRecord(2, 10, 'STK-SCOPE-COMP-002', 'vin-scope-company-002');
+    $crossCompany->update(['brand' => 'FocusBrand', 'lifecycle_status' => 'reserved']);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.index', [
+            'search' => 'FocusBrand',
+            'lifecycle_status' => 'reserved',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicles.data', fn ($rows): bool => count($rows) === 1 && $rows[0]['company_id'] === 1)
+        );
+});
+
+it('搜尋加篩選不可跨 branch', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-index-scope-branch@example.com', 1, 10);
+    $user->givePermissionTo('module.vehicles.view');
+
+    $inScope = makeVehicleCrudRecord(1, 10, 'STK-SCOPE-BRANCH-001', 'vin-scope-branch-001');
+    $inScope->update(['model' => 'FocusModel', 'lifecycle_status' => 'reserved']);
+
+    $crossBranch = makeVehicleCrudRecord(1, 99, 'STK-SCOPE-BRANCH-002', 'vin-scope-branch-002');
+    $crossBranch->update(['model' => 'FocusModel', 'lifecycle_status' => 'reserved']);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.index', [
+            'search' => 'FocusModel',
+            'lifecycle_status' => 'reserved',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicles.data', fn ($rows): bool => count($rows) === 1 && $rows[0]['branch_id'] === 10)
+        );
+});
+
+it('index pagination 正常回應', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-index-pagination@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+
+    for ($i = 1; $i <= 11; $i++) {
+        makeVehicleCrudRecord(1, 10, sprintf('STK-PAGE-%03d', $i), sprintf('vin-page-%03d', $i));
+    }
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicles.per_page', 10)
+            ->where('vehicles.data', fn ($rows): bool => count($rows) === 10)
+            ->where('vehicles.total', 11)
+        );
+});
+
+it('index filters 會回傳到 inertia props', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-index-filters-props@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    makeVehicleCrudRecord(1, 10, 'STK-FILTER-PROP-001', 'vin-filter-prop-001');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.index', [
+            'search' => 'FILTER-PROP',
+            'lifecycle_status' => 'in_stock',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('filters.search', 'FILTER-PROP')
+            ->where('filters.lifecycle_status', 'in_stock')
+        );
+});
+
+it('index 非法 lifecycle_status 不報錯且不套用非法篩選', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-index-invalid-lifecycle-filter@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+
+    $first = makeVehicleCrudRecord(1, 10, 'STK-INVALID-LC-001', 'vin-invalid-lc-001');
+    $first->update(['brand' => 'NoCrashBrand', 'lifecycle_status' => 'reserved']);
+
+    $second = makeVehicleCrudRecord(1, 10, 'STK-INVALID-LC-002', 'vin-invalid-lc-002');
+    $second->update(['brand' => 'NoCrashBrand', 'lifecycle_status' => 'sold']);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.index', [
+            'search' => 'NoCrashBrand',
+            'lifecycle_status' => 'hacked_status',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('filters.search', 'NoCrashBrand')
+            ->where('filters.lifecycle_status', '')
+            ->where('vehicles.data', fn ($rows): bool => count($rows) === 2)
+        );
 });
 
 it('有 module.vehicles.view 權限可查看同 company/branch vehicle show', function (): void {
