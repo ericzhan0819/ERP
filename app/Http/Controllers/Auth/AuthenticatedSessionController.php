@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Services\AuditLogService;
+use App\Services\LoginLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +16,10 @@ use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
-    public function __construct(private readonly AuditLogService $auditLogService)
+    public function __construct(
+        private readonly AuditLogService $auditLogService,
+        private readonly LoginLogService $loginLogService,
+    )
     {
     }
 
@@ -61,6 +65,7 @@ class AuthenticatedSessionController extends Controller
 
         if (! Auth::attempt($attemptCredentials, $request->boolean('remember'))) {
             RateLimiter::hit($throttleKey);
+            $this->loginLogService->recordFailed($request, $loginInput, 'invalid_credentials');
 
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
@@ -74,6 +79,7 @@ class AuthenticatedSessionController extends Controller
 
         // 技術註解：inactive 阻擋保留在認證流程內，成功驗證密碼後立即撤銷 session，不交由 middleware 補救。
         if ($user->is_active === false || $user->account_status !== 'active') {
+            $this->loginLogService->recordInactive($request, $user, $loginInput);
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -88,6 +94,7 @@ class AuthenticatedSessionController extends Controller
         // 技術註解：最後登入時間只在登入成功後寫入，避免每次 request 汙染真實登入事件。
         $loginAt = now();
         $user->forceFill(['last_login_at' => $loginAt])->save();
+        $this->loginLogService->recordSuccess($request, $user, $loginInput);
         $this->auditLogService->log($user, 'auth.login.success', 'User logged in', $user, [
             'login_at' => $loginAt->toISOString(),
         ]);
@@ -100,6 +107,10 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        /** @var \App\Models\User|null $user */
+        $user = $request->user();
+        $this->loginLogService->recordLogout($request, $user);
+
         Auth::logout();
 
         $request->session()->invalidate();

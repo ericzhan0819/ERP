@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreVehicleRequest;
 use App\Http\Requests\UpdateVehicleRequest;
 use App\Models\Vehicle;
+use App\Services\AuditLogService;
 use App\Services\VehicleStockNumberService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,9 +16,10 @@ use Inertia\Response;
 
 class VehicleController extends Controller
 {
-    public function __construct(private readonly VehicleStockNumberService $vehicleStockNumberService)
-    {
-    }
+    public function __construct(
+        private readonly VehicleStockNumberService $vehicleStockNumberService,
+        private readonly AuditLogService $auditLogService,
+    ) {}
 
     /**
      * 技術註解：列表先授權 viewAny，再套用 tenant 範圍查詢，避免跨公司或跨分店資料外洩。
@@ -132,6 +134,28 @@ class VehicleController extends Controller
             'updated_by' => (int) $user->id,
         ]);
 
+        $this->auditLogService->log(
+            actor: $user,
+            action: 'vehicle.created',
+            description: 'Vehicle created',
+            targetUser: null,
+            metadata: [],
+            subject: $vehicle,
+            oldValues: null,
+            newValues: [
+                // 技術註解：僅保留主要業務欄位，避免將內部備註等潛在敏感內容寫入審計快照。
+                'stock_number' => $vehicle->stock_number,
+                'vin' => $vehicle->vin,
+                'license_plate' => $vehicle->license_plate,
+                'brand' => $vehicle->brand,
+                'model' => $vehicle->model,
+                'model_year' => $vehicle->model_year,
+                'lifecycle_status' => $vehicle->lifecycle_status,
+            ],
+            request: $request,
+            event: 'vehicle.created',
+        );
+
         return redirect()->route('employee-system.vehicles.show', $vehicle->id);
     }
 
@@ -226,6 +250,20 @@ class VehicleController extends Controller
 
         $this->authorize('update', $foundVehicle);
 
+        $originalValues = $foundVehicle->only([
+            'vin',
+            'license_plate',
+            'brand',
+            'model',
+            'variant',
+            'model_year',
+            'exterior_color',
+            'interior_color',
+            'odometer_km',
+            'lifecycle_status',
+            'internal_notes',
+        ]);
+
         $foundVehicle->update([
             'vin' => $request->validated('vin'),
             'license_plate' => $request->validated('license_plate'),
@@ -240,6 +278,32 @@ class VehicleController extends Controller
             'internal_notes' => $request->validated('internal_notes'),
             'updated_by' => (int) $user->id,
         ]);
+
+        $newValues = $foundVehicle->only(array_keys($originalValues));
+        $changedOldValues = [];
+        $changedNewValues = [];
+
+        foreach ($originalValues as $field => $oldValue) {
+            if ($oldValue !== $newValues[$field]) {
+                $changedOldValues[$field] = $oldValue;
+                $changedNewValues[$field] = $newValues[$field];
+            }
+        }
+
+        if ($changedNewValues !== []) {
+            $this->auditLogService->log(
+                actor: $user,
+                action: 'vehicle.updated',
+                description: 'Vehicle updated',
+                targetUser: null,
+                metadata: [],
+                subject: $foundVehicle,
+                oldValues: $changedOldValues,
+                newValues: $changedNewValues,
+                request: $request,
+                event: 'vehicle.updated',
+            );
+        }
 
         return redirect()->route('employee-system.vehicles.show', $foundVehicle->id);
     }

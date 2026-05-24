@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StaffPermissionController;
 use App\Http\Controllers\VehicleController;
@@ -91,6 +92,14 @@ Route::patch('/employee-system/vehicles/{vehicle}', [VehicleController::class, '
     ->middleware(['auth', 'module.access:vehicles'])
     ->whereNumber('vehicle')
     ->name('employee-system.vehicles.update');
+
+Route::get('/employee-system/audit/activity-logs', [AuditLogController::class, 'activityLogs'])
+    ->middleware(['auth', 'module.access:audit'])
+    ->name('employee-system.audit.activity-logs');
+
+Route::get('/employee-system/audit/login-logs', [AuditLogController::class, 'loginLogs'])
+    ->middleware(['auth', 'module.access:audit'])
+    ->name('employee-system.audit.login-logs');
 
 Route::get('/employee-system/profile', [ProfileController::class, 'edit'])
     ->middleware('auth')

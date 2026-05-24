@@ -104,6 +104,21 @@ class RolePermissionSeeder extends Seeder
                 'is_active' => true,
                 'active_patterns' => ['vehicles.*'],
             ],
+            'audit' => [
+                'label' => '稽核紀錄',
+                'section' => 'administration',
+                'parent_id' => null,
+                'parent_key' => null,
+                'route_name' => 'employee-system.audit.activity-logs',
+                'permission_prefix' => 'module.audit',
+                'base_permission' => 'module.audit.view',
+                'icon_key' => 'ShieldCheck',
+                'icon' => 'ShieldCheck',
+                'sort_order' => 40,
+                'is_enabled' => true,
+                'is_active' => true,
+                'active_patterns' => ['employee-system.audit.*'],
+            ],
         ];
 
         foreach ($modules as $key => $module) {
@@ -122,6 +137,7 @@ class RolePermissionSeeder extends Seeder
             'module.vehicles.update' => ['label' => '更新車輛', 'group' => '車輛'],
             'module.vehicles.delete' => ['label' => '刪除車輛', 'group' => '車輛'],
             'module.vehicles.export' => ['label' => '匯出車輛', 'group' => '車輛'],
+            'module.audit.view' => ['label' => '查看稽核紀錄', 'group' => '系統稽核'],
             'module.test-module.view' => ['label' => '查看測試模塊', 'group' => '測試'],
         ];
 
@@ -199,6 +215,7 @@ class RolePermissionSeeder extends Seeder
                 'module.vehicles.update',
                 'module.vehicles.delete',
                 'module.vehicles.export',
+                'module.audit.view',
                 // 技術註解：以下 deprecated 權限僅為相容層保留，不作為主要授權來源。
                 'staff-permission.view',
                 'staff-permission.update-role',
