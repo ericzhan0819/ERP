@@ -76,9 +76,24 @@ class Vehicle extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    /**
+     * 技術註解：明確定義公司關聯，供詳情頁安全輸出公司代碼/名稱，避免直接顯示 FK ID 影響可讀性。
+     */
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * 技術註解：明確定義分店關聯，供詳情頁安全輸出分店代碼/名稱，避免直接顯示 FK ID 影響可讀性。
+     */
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
     public function statusLogs(): HasMany
     {
         return $this->hasMany(VehicleStatusLog::class);
     }
 }
-

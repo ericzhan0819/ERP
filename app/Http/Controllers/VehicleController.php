@@ -167,6 +167,12 @@ class VehicleController extends Controller
         $lifecycleStatuses = config('vehicles.lifecycle_statuses');
 
         $foundVehicle = $this->scopedVehicleQuery($request->user())
+            ->with([
+                'company:id,name,code',
+                'branch:id,name,code',
+                'creator:id,name',
+                'updater:id,name',
+            ])
             ->whereKey($vehicle)
             ->firstOrFail();
 
@@ -190,6 +196,27 @@ class VehicleController extends Controller
                 'odometer_km' => $foundVehicle->odometer_km,
                 'lifecycle_status' => $foundVehicle->lifecycle_status,
                 'internal_notes' => $foundVehicle->internal_notes,
+                // 技術註解：補齊系統資訊欄位，避免前端詳情頁因 payload 缺值而無法顯示建立/更新資訊。
+                'created_at' => $foundVehicle->created_at,
+                'updated_at' => $foundVehicle->updated_at,
+                'company' => $foundVehicle->company ? [
+                    'id' => $foundVehicle->company->id,
+                    'name' => $foundVehicle->company->name,
+                    'code' => $foundVehicle->company->code,
+                ] : null,
+                'branch' => $foundVehicle->branch ? [
+                    'id' => $foundVehicle->branch->id,
+                    'name' => $foundVehicle->branch->name,
+                    'code' => $foundVehicle->branch->code,
+                ] : null,
+                'creator' => $foundVehicle->creator ? [
+                    'id' => $foundVehicle->creator->id,
+                    'name' => $foundVehicle->creator->name,
+                ] : null,
+                'updater' => $foundVehicle->updater ? [
+                    'id' => $foundVehicle->updater->id,
+                    'name' => $foundVehicle->updater->name,
+                ] : null,
             ],
             'lifecycleStatuses' => $lifecycleStatuses,
             'can' => [
