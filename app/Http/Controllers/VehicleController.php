@@ -280,8 +280,9 @@ class VehicleController extends Controller
                 'count' => $costRows->count(),
             ];
 
-            $vehicleCostTypes = $costTypes;
-            $vehicleCostPaymentStatuses = $paymentStatuses;
+            // 技術註解：Show 頁已改為只讀，不再回傳建立/編輯成本所需字典，降低不必要敏感流程暴露。
+            $vehicleCostTypes = null;
+            $vehicleCostPaymentStatuses = null;
         }
 
         return Inertia::render('Vehicles/Show', [
@@ -347,12 +348,71 @@ class VehicleController extends Controller
         $lifecycleStatuses = config('vehicles.lifecycle_statuses');
         $canViewVehiclePricing = $request->user()?->can('module.vehicles.pricing.view') ?? false;
         $canUpdateVehiclePricing = $request->user()?->can('module.vehicles.pricing.update') ?? false;
+        $canViewVehicleCosts = $request->user()?->can('module.vehicles.costs.view') ?? false;
+        $canCreateVehicleCosts = $request->user()?->can('module.vehicles.costs.create') ?? false;
+        $canUpdateVehicleCosts = $request->user()?->can('module.vehicles.costs.update') ?? false;
 
         $foundVehicle = $this->scopedVehicleQuery($request->user())
             ->whereKey($vehicle)
             ->firstOrFail();
 
         $this->authorize('update', $foundVehicle);
+
+        $vehicleCosts = null;
+        $vehicleCostSummary = null;
+        $vehicleCostTypes = null;
+        $vehicleCostPaymentStatuses = null;
+
+        // 技術註解：編輯頁成本 payload 嚴格比照 show，僅在具備 costs.view 時回傳，避免未授權者取得財務敏感資訊。
+        if ($canViewVehicleCosts) {
+            $costTypes = config('vehicles.vehicle_cost_types', []);
+            $paymentStatuses = config('vehicles.vehicle_cost_payment_statuses', []);
+
+            $costRows = $foundVehicle->costs()
+                ->with(['creator:id,name', 'updater:id,name'])
+                ->orderByDesc('cost_date')
+                ->orderByDesc('id')
+                ->get([
+                    'id',
+                    'cost_type',
+                    'description',
+                    'amount',
+                    'cost_date',
+                    'vendor_name',
+                    'payment_status',
+                    'paid_at',
+                    'created_by',
+                    'updated_by',
+                ]);
+
+            $vehicleCosts = $costRows->map(function (VehicleCost $cost) use ($costTypes, $paymentStatuses): array {
+                return [
+                    'id' => $cost->id,
+                    'cost_type' => $cost->cost_type,
+                    'cost_type_label' => $costTypes[$cost->cost_type] ?? $cost->cost_type,
+                    'description' => $cost->description,
+                    'amount' => $cost->amount,
+                    'cost_date' => $cost->cost_date,
+                    'vendor_name' => $cost->vendor_name,
+                    'payment_status' => $cost->payment_status,
+                    'payment_status_label' => $paymentStatuses[$cost->payment_status] ?? $cost->payment_status,
+                    'paid_at' => $cost->paid_at,
+                    'creator' => $cost->creator ? ['name' => $cost->creator->name] : null,
+                    'updater' => $cost->updater ? ['name' => $cost->updater->name] : null,
+                ];
+            })->values();
+
+            $vehicleCostSummary = [
+                'total_amount' => (string) $costRows->sum(fn (VehicleCost $cost): float => (float) $cost->amount),
+                'unpaid_amount' => (string) $costRows->where('payment_status', 'unpaid')->sum(fn (VehicleCost $cost): float => (float) $cost->amount),
+                'paid_amount' => (string) $costRows->where('payment_status', 'paid')->sum(fn (VehicleCost $cost): float => (float) $cost->amount),
+                'partially_paid_amount' => (string) $costRows->where('payment_status', 'partially_paid')->sum(fn (VehicleCost $cost): float => (float) $cost->amount),
+                'count' => $costRows->count(),
+            ];
+
+            $vehicleCostTypes = $costTypes;
+            $vehicleCostPaymentStatuses = $paymentStatuses;
+        }
 
         return Inertia::render('Vehicles/Edit', [
             'vehicle' => [
@@ -376,11 +436,18 @@ class VehicleController extends Controller
                 ] : []),
             ],
             'lifecycleStatuses' => $lifecycleStatuses,
+            'vehicleCosts' => $vehicleCosts,
+            'vehicleCostSummary' => $vehicleCostSummary,
+            'vehicleCostTypes' => $vehicleCostTypes,
+            'vehicleCostPaymentStatuses' => $vehicleCostPaymentStatuses,
             'can' => [
                 'create_vehicle' => $request->user()?->can('create', Vehicle::class) ?? false,
                 'update_vehicle' => $request->user()?->can('update', $foundVehicle) ?? false,
                 'view_vehicle_pricing' => $canViewVehiclePricing,
                 'update_vehicle_pricing' => $canUpdateVehiclePricing,
+                'view_vehicle_costs' => $canViewVehicleCosts,
+                'create_vehicle_costs' => $canCreateVehicleCosts,
+                'update_vehicle_costs' => $canUpdateVehicleCosts,
             ],
         ]);
     }

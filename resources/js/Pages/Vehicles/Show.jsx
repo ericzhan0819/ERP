@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useForm } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { formatDateTime } from '@/utils/formatDateTime';
 
@@ -43,8 +43,6 @@ export default function VehiclesShow({
      */
     const canViewVehiclePricing = can.view_vehicle_pricing === true;
     const canViewVehicleCosts = can.view_vehicle_costs === true;
-    const canCreateVehicleCosts = can.create_vehicle_costs === true;
-    const canUpdateVehicleCosts = can.update_vehicle_costs === true;
 
     const formatNumber = (value) => {
         if (value === null || value === undefined || value === '') {
@@ -58,27 +56,6 @@ export default function VehiclesShow({
         }
 
         return parsed.toLocaleString('zh-TW');
-    };
-
-    const costForm = useForm({
-        cost_type: '',
-        description: '',
-        amount: '',
-        cost_date: '',
-        vendor_name: '',
-        payment_status: '',
-        paid_at: '',
-        internal_notes: '',
-    });
-
-    const submitCostForm = (event) => {
-        event.preventDefault();
-        costForm.post(route('employee-system.vehicles.costs.store', vehicle.id), {
-            preserveScroll: true,
-            onSuccess: () => {
-                costForm.reset('description', 'amount', 'cost_date', 'vendor_name', 'paid_at', 'internal_notes');
-            },
-        });
     };
 
     /**
@@ -194,115 +171,6 @@ export default function VehiclesShow({
                             </div>
                         </div>
 
-                        {canCreateVehicleCosts && (
-                            <form onSubmit={submitCostForm} className="space-y-3 rounded-xl border border-default p-4">
-                                <h3 className="text-sm font-semibold text-primary">新增成本</h3>
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                    <label className="text-sm">
-                                        <span className="mb-1 block text-muted">成本類型</span>
-                                        <select
-                                            value={costForm.data.cost_type}
-                                            onChange={(event) => costForm.setData('cost_type', event.target.value)}
-                                            className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
-                                        >
-                                            <option value="">請選擇</option>
-                                            {Object.entries(vehicleCostTypes || {}).map(([value, label]) => (
-                                                <option key={value} value={value}>{label}</option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                    <label className="text-sm">
-                                        <span className="mb-1 block text-muted">金額</span>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={costForm.data.amount}
-                                            onChange={(event) => costForm.setData('amount', event.target.value)}
-                                            className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
-                                        />
-                                    </label>
-                                    <label className="text-sm">
-                                        <span className="mb-1 block text-muted">日期</span>
-                                        <input
-                                            type="date"
-                                            value={costForm.data.cost_date}
-                                            onChange={(event) => costForm.setData('cost_date', event.target.value)}
-                                            className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
-                                        />
-                                    </label>
-                                    <label className="text-sm">
-                                        <span className="mb-1 block text-muted">廠商</span>
-                                        <input
-                                            type="text"
-                                            value={costForm.data.vendor_name}
-                                            onChange={(event) => costForm.setData('vendor_name', event.target.value)}
-                                            className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
-                                        />
-                                    </label>
-                                    <label className="text-sm">
-                                        <span className="mb-1 block text-muted">付款狀態</span>
-                                        <select
-                                            value={costForm.data.payment_status}
-                                            onChange={(event) => costForm.setData('payment_status', event.target.value)}
-                                            className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
-                                        >
-                                            <option value="">請選擇</option>
-                                            {Object.entries(vehicleCostPaymentStatuses || {}).map(([value, label]) => (
-                                                <option key={value} value={value}>{label}</option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                    <label className="text-sm">
-                                        <span className="mb-1 block text-muted">付款日期</span>
-                                        <input
-                                            type="date"
-                                            value={costForm.data.paid_at}
-                                            onChange={(event) => costForm.setData('paid_at', event.target.value)}
-                                            className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
-                                        />
-                                    </label>
-                                </div>
-
-                                <label className="block text-sm">
-                                    <span className="mb-1 block text-muted">說明</span>
-                                    <input
-                                        type="text"
-                                        value={costForm.data.description}
-                                        onChange={(event) => costForm.setData('description', event.target.value)}
-                                        className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
-                                    />
-                                </label>
-
-                                <label className="block text-sm">
-                                    <span className="mb-1 block text-muted">內部備註</span>
-                                    <textarea
-                                        value={costForm.data.internal_notes}
-                                        onChange={(event) => costForm.setData('internal_notes', event.target.value)}
-                                        className="min-h-20 w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
-                                    />
-                                </label>
-
-                                {Object.keys(costForm.errors).length > 0 && (
-                                    <ul className="space-y-1 text-xs text-red-600">
-                                        {Object.values(costForm.errors).map((error) => (
-                                            <li key={error}>{error}</li>
-                                        ))}
-                                    </ul>
-                                )}
-
-                                <div>
-                                    <button
-                                        type="submit"
-                                        disabled={costForm.processing}
-                                        className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
-                                    >
-                                        新增成本
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-
                         <div className="overflow-x-auto rounded-xl border border-default">
                             {vehicleCosts.length === 0 ? (
                                 <div className="p-6 text-center text-sm text-muted">目前沒有成本資料。</div>
@@ -338,7 +206,6 @@ export default function VehiclesShow({
                             )}
                         </div>
 
-                        <input type="hidden" value={canUpdateVehicleCosts ? '1' : '0'} readOnly />
                     </section>
                 )}
 

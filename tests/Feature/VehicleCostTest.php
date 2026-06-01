@@ -34,6 +34,7 @@ beforeEach(function (): void {
     );
 
     Permission::findOrCreate('module.vehicles.view', 'web');
+    Permission::findOrCreate('module.vehicles.update', 'web');
     Permission::findOrCreate('module.vehicles.costs.view', 'web');
     Permission::findOrCreate('module.vehicles.costs.create', 'web');
     Permission::findOrCreate('module.vehicles.costs.update', 'web');
@@ -229,6 +230,101 @@ it('無 module.vehicles.costs.view 時 Vehicle Show payload 不可見 vehicleCos
             ->missing('vehicleCosts.0.company_id')
             ->missing('vehicleCosts.0.branch_id')
             ->missing('vehicleCosts.0.vehicle_id')
+        );
+});
+
+it('Vehicle Show 不再回傳成本建立所需選項 props（避免詳情頁承載 mutation UI）', function (): void {
+    $user = makeVehicleCostUser('vehicle-cost-show-no-create-props@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.costs.view');
+    $user->givePermissionTo('module.vehicles.costs.create');
+    $vehicle = makeVehicleCostVehicle(1, 10, 'STK-COST-SHOW-003', 'vin-cost-show-003');
+    makeVehicleCostRecord($vehicle, $user);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.show', $vehicle->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('can.create_vehicle_costs', true)
+            // 技術註解：Show 僅保留只讀成本資訊，不再提供建立表單所需字典資料，防止 UI 誤導為可直接變更。
+            ->where('vehicleCostTypes', null)
+            ->where('vehicleCostPaymentStatuses', null)
+        );
+});
+
+it('有 module.vehicles.costs.view 時 Vehicle Edit payload 可見 vehicleCosts 與 vehicleCostSummary', function (): void {
+    $user = makeVehicleCostUser('vehicle-cost-edit-view-allow@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.update');
+    $user->givePermissionTo('module.vehicles.costs.view');
+    $vehicle = makeVehicleCostVehicle(1, 10, 'STK-COST-EDIT-001', 'vin-cost-edit-001');
+    makeVehicleCostRecord($vehicle, $user, ['amount' => 42000, 'payment_status' => 'paid']);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.edit', $vehicle->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicleCosts.0.cost_type', 'repair')
+            ->where('vehicleCostSummary.count', 1)
+            ->where('vehicleCostSummary.paid_amount', '42000')
+            ->where('can.view_vehicle_costs', true)
+        );
+});
+
+it('無 module.vehicles.costs.view 時 Vehicle Edit payload 不可見成本敏感資料', function (): void {
+    $user = makeVehicleCostUser('vehicle-cost-edit-view-deny@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.update');
+    $vehicle = makeVehicleCostVehicle(1, 10, 'STK-COST-EDIT-002', 'vin-cost-edit-002');
+    makeVehicleCostRecord($vehicle, $user, ['internal_notes' => 'secret-edit']);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.edit', $vehicle->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicleCosts', null)
+            ->where('vehicleCostSummary', null)
+            ->where('vehicleCostTypes', null)
+            ->where('vehicleCostPaymentStatuses', null)
+            ->where('can.view_vehicle_costs', false)
+            ->missing('vehicleCosts.0.internal_notes')
+            ->missing('vehicleCosts.0.company_id')
+            ->missing('vehicleCosts.0.branch_id')
+            ->missing('vehicleCosts.0.vehicle_id')
+        );
+});
+
+it('有 module.vehicles.costs.create 時 Vehicle Edit payload 提供新增成本能力', function (): void {
+    $user = makeVehicleCostUser('vehicle-cost-edit-create-allow@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.update');
+    $user->givePermissionTo('module.vehicles.costs.view');
+    $user->givePermissionTo('module.vehicles.costs.create');
+    $vehicle = makeVehicleCostVehicle(1, 10, 'STK-COST-EDIT-003', 'vin-cost-edit-003');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.edit', $vehicle->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('can.create_vehicle_costs', true)
+            ->where('vehicleCostTypes.repair', '維修')
+            ->where('vehicleCostPaymentStatuses.unpaid', '未付款')
+        );
+});
+
+it('無 module.vehicles.costs.create 時 Vehicle Edit payload 不提供新增成本能力', function (): void {
+    $user = makeVehicleCostUser('vehicle-cost-edit-create-deny@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.update');
+    $user->givePermissionTo('module.vehicles.costs.view');
+    $vehicle = makeVehicleCostVehicle(1, 10, 'STK-COST-EDIT-004', 'vin-cost-edit-004');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.edit', $vehicle->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('can.create_vehicle_costs', false)
+            ->where('can.view_vehicle_costs', true)
         );
 });
 
