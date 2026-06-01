@@ -2,16 +2,16 @@
 
 企業內部營運與管理系統（ERP SaaS Platform）。
 
-本專案以 Laravel、Inertia.js、React 與 TailwindCSS 建構，提供模組化、可擴充的企業營運平台，整合企業網站與 ERP 後台管理系統。
+本專案以 Laravel、Inertia.js、React、TailwindCSS、MySQL 與 Laravel Sail 建構，目標是建立一套可模組化擴充的中古車業 ERP / SaaS 後台系統。
 
-系統架構以：
+系統核心設計重點：
 
-- Module Registry
-- RBAC（Role-Based Access Control）
-- Dynamic Module Access
-- Responsive Dashboard UI
-
-為核心，支援企業後台模組化擴充與權限管理。
+- Module Registry：以資料庫集中管理模組 metadata
+- RBAC：以 Spatie Permission 建立角色與權限系統
+- Tenant Scope：以 company / branch 作為多租戶資料邊界
+- Policy / Middleware：後端作為授權與資料存取唯一來源
+- Audit Logs：記錄登入、操作與重要業務事件
+- Inertia + React：提供單頁式後台體驗與現代化介面
 
 ---
 
@@ -19,102 +19,214 @@
 
 目前開發中（Early Development）。
 
-核心後台框架、模組系統與權限地基已完成，後續將逐步擴充業務模組。
+目前已完成後台基礎架構、模組系統、權限地基、車輛管理基礎模組、系統稽核紀錄與登入紀錄。
+
+目前穩定節點：
+
+```txt
+main / origin main
+Vehicle Foundation + Audit Foundation stable
+```
+
+最近一次驗證結果：
+
+```bash
+./vendor/bin/sail artisan test
+# 103 passed, 461 assertions
+
+npm run build
+# Vite build success
+```
 
 ---
 
-# Features
+# Completed Scope
 
-## Frontend
+## Frontend Foundation
 
 - Welcome Landing Page
-- Responsive Design (RWD)
-- Modern Enterprise UI
 - Hidden Login Entry
-
----
-
-## ERP Dashboard
-
-### Dashboard UI
-
-- Dashboard Layout
+- Responsive Dashboard Layout
 - Sidebar Navigation
 - Mobile Sidebar
 - Hamburger Menu
-- KPI Widgets
-- Recent Activities
-- System Status
-- Quick Actions
-
-### Access Control System
-
-- Spatie RBAC Integration
-- Role-Based Access Control
-- Direct Permission Override
-- DB-based Module Registry
-- Dynamic Module Visibility
-- Module Access Middleware
-- Dynamic Sidebar Rendering
-- Staff Permission Management
-- Dynamic Module Enable / Disable
-
----
-
-# Architecture
+- Dashboard KPI / Status / Quick Action UI
+- Swiss / International style UI foundation
+- Light / Dark mode compatible styling foundation
 
 ## Module Registry
 
-系統模組由資料庫 `modules` table 管理。
+系統模組由資料庫 `modules` table 管理，避免前後端重複定義模組資訊。
 
-每個模組包含：
+目前模組資料包含：
 
 - key
 - label
+- section
+- parent_id
 - route_name
 - base_permission
-- icon
+- permission_prefix
+- icon_key
 - sort_order
+- active_patterns
+- is_enabled
 - is_active
 
-支援：
+支援能力：
 
-- 動態模組開關
-- Sidebar 自動更新
-- Route Access Control
+- DB-based module registry
+- Dynamic sidebar rendering
+- Dynamic module visibility
+- Module enable / disable
+- Route access control
+- Active route pattern matching
+
+## RBAC / Permission Foundation
+
+系統採用 Spatie Laravel Permission。
+
+權限設計原則：
+
+- Role = 主要身份或職務層級
+- Permission = 可執行的具體能力
+- Direct Permission = 特例覆蓋
+- Backend = 權限與資料存取唯一來源
+- Frontend visibility = 僅作 UX，不作安全依據
+
+主要權限命名規則：
+
+```txt
+module.{module-key}.{action}
+```
+
+範例：
+
+```txt
+module.dashboard.view
+module.vehicles.view
+module.vehicles.create
+module.vehicles.update
+module.audit.view
+```
+
+## Staff Permission Management
+
+已完成員工權限管理基礎：
+
+- Role / Permission 矩陣頁面
+- 角色權限更新
+- 使用者角色更新
+- 使用者直接權限更新
+- 角色 metadata 更新
+- 角色建立 / 刪除基礎流程
+- Staff Permission feature tests
+
+## Vehicle Foundation
+
+已完成車輛管理基礎模組：
+
+- Vehicle Index
+- Vehicle Show
+- Vehicle Create
+- Vehicle Edit
+- Vehicle Store / Update
+- Search / Filter / Pagination
+- Tenant-scoped query
+- Policy authorization
+- IDOR protection
+- FormRequest validation
+- Stock number auto-generation
+- Lifecycle status whitelist
+- Creator / Updater tracking
+- Company / Branch relationship display
+- Minimal vehicle detail payload
+- Vehicle CRUD / access tests
+
+車輛庫存編號格式：
+
+```txt
+VH-YYYYMM-0001
+```
+
+目前 lifecycle status：
+
+```txt
+draft      草稿
+in_stock   在庫
+reserved   已保留
+sold       已售出
+archived   已封存
+```
+
+## Audit Foundation
+
+已完成系統稽核基礎：
+
+- Login logs
+- Activity logs
+- Successful login logging
+- Failed login logging
+- Inactive account login logging
+- Logout logging
+- Vehicle created logging
+- Vehicle updated logging with old/new values
+- Auth events separated from activity audit page
+- Audit pages protected by module.audit.view
+- Company scoped audit query
+- Audit foundation tests
 
 ---
 
-## RBAC Model
+# Architecture Principles
 
-系統採用：
+## Tenant Boundary
 
-- Roles
-- Permissions
-- Direct Permissions
+目前以 `company_id` / `branch_id` 作為資料邊界。
 
-### Permission Design
+業務資料查詢必須先套用 tenant scope，再進行授權與回傳。
 
-- Role = 主要身份
-- Direct Permission = 特例覆蓋
+核心原則：
 
-### Module Access
+- 不信任 URL id
+- 不信任前端 state
+- 不信任 hidden input
+- 不允許前端覆寫 tenant key
+- 跨 company / branch 資料應回傳 404 或 403
+- 前端不需要的 raw FK 不應暴露
 
-模組入口權限由：
+## Authorization Flow
 
-```txt
-modules.base_permission
-```
-
-控制。
-
-頁面內操作權限則由：
+一般流程：
 
 ```txt
-permission actions
+Route Middleware
+→ Controller / Policy
+→ Tenant-scoped Query
+→ Inertia Payload
 ```
 
-控制。
+原則：
+
+- 模組入口由 `module.access:{module-key}` 控制
+- Model-level 操作由 Policy 控制
+- Controller 只回傳前端必要資料
+- Sidebar 僅消費後端提供的 visible modules
+- React component 不自行判斷安全權限
+
+## Data Exposure
+
+Inertia payload 必須保持最小化。
+
+應避免暴露：
+
+- 不必要的 raw FK
+- 不必要的 internal IDs
+- permission internals
+- debug data
+- stack traces
+- secrets
+- 前端未使用的敏感欄位
 
 ---
 
@@ -124,7 +236,10 @@ permission actions
 
 - Laravel
 - Laravel Sail
+- MySQL
 - Spatie Laravel Permission
+- Inertia.js server adapter
+- Pest / PHPUnit tests
 
 ## Frontend
 
@@ -133,18 +248,26 @@ permission actions
 - TailwindCSS
 - Vite
 
-## Database
+## Development Environment
 
-- MySQL
+- Docker / Laravel Sail
+- Adminer
+- Node / npm
 
 ---
 
-# Development
+# Development Commands
 
 ## Start Sail
 
 ```bash
 ./vendor/bin/sail up -d
+```
+
+## Stop Sail
+
+```bash
+./vendor/bin/sail down
 ```
 
 ## Start Vite
@@ -153,9 +276,17 @@ permission actions
 npm run dev
 ```
 
----
+## Build Frontend
 
-# Database
+```bash
+npm run build
+```
+
+## Run Tests
+
+```bash
+./vendor/bin/sail artisan test
+```
 
 ## Fresh Migration + Seed
 
@@ -195,13 +326,69 @@ password
 
 ---
 
-# Permission Principles
+# Git Workflow
 
-- Sidebar 不自行判斷角色與權限
-- 所有模組可見性由後端統一計算
-- 前端僅消費 `auth.visibleModules`
-- 模組入口由 middleware 控制
-- 權限判斷集中於 PermissionService
+目前以小步提交為主。
+
+建議流程：
+
+```bash
+git status
+git add <changed-files>
+git commit -m "type: concise message"
+git push
+```
+
+常用 commit 類型：
+
+```txt
+feat: 新功能
+fix: 修 bug
+polish: 小型 UI / 資料輸出 / 體驗收尾
+test: 測試補強
+refactor: 不改行為的重構
+```
+
+---
+
+# Current Development Direction
+
+短期優先事項：
+
+1. 完成 Vehicle Foundation 收尾
+2. 維持 RBAC / tenant scope / audit foundation 穩定
+3. 補齊 README 與專案交接資訊
+4. 再開始下一個業務模組
+
+暫緩事項：
+
+- Sales module
+- Vehicle cost module
+- Image upload
+- Reports / exports
+- Global audit middleware
+- Full security hardening review
+- Production deployment hardening
+
+以上事項待專案架構與核心功能更完整後再進行。
+
+---
+
+# Security Notes
+
+目前已完成基礎防護：
+
+- RBAC
+- Module access middleware
+- Policy authorization
+- Tenant-scoped vehicle query
+- IDOR protection
+- FormRequest validation
+- Login log separation
+- Activity audit foundation
+- Minimal vehicle detail payload
+
+完整資安審查與 production hardening 尚未執行，會在功能與架構更完整後集中處理。
 
 ---
 
