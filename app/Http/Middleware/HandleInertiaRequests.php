@@ -2,13 +2,17 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\CompanyBrandService;
 use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
-    public function __construct(private readonly PermissionService $permissionService) {}
+    public function __construct(
+        private readonly PermissionService $permissionService,
+        private readonly CompanyBrandService $companyBrandService,
+    ) {}
 
     /**
      * The root template that is loaded on the first page visit.
@@ -44,6 +48,8 @@ class HandleInertiaRequests extends Middleware
                 // 技術註解：Dashboard 能力採最小白名單，不外洩完整 permission 陣列。
                 'capabilities' => $user ? $this->permissionService->getDashboardCapabilities($user) : [],
             ],
+            // 技術註解：集中共享登入後品牌資料，避免前端 Layout/Header/Sidebar 各自硬編碼品牌字串。
+            'brand' => $this->companyBrandService->resolveForUser($user),
             // 技術註解：帳號狀態獨立於權限系統，僅提供前端呈現帳號可用狀態。
             'accountStatus' => $user?->account_status,
         ];

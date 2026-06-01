@@ -14,14 +14,19 @@ const processSteps = [
     '單車獲利追蹤與風險預警',
 ];
 
-export default function Welcome() {
+export default function Welcome({ brand = {} }) {
     // 技術註解：純 UI Demo 固定導向登入展示頁，不判斷後端認證狀態。
     const employeeEntryHref = typeof route === 'function' ? route('login') : '/login';
+    const brandName = brand?.brand_name;
+    const brandNameEn = brand?.brand_name_en;
+    const brandSubtitle = brand?.brand_subtitle;
+    const brandSlogan = brand?.brand_slogan;
+    const brandEyebrow = brand?.brand_eyebrow;
 
     return (
         <>
             <Head>
-                <title>OO國際車業</title>
+                <title>{brandName}</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
             </Head>
 
@@ -35,23 +40,22 @@ export default function Welcome() {
                         <div className="relative lg:col-span-8">
                             {/* 小標 */}
                             <p className="mb-4 whitespace-nowrap ps-1 text-[11px] font-medium uppercase tracking-[0.4em] text-muted">
-                                EST. 2026 / OO INTERNATIONAL
+                                {brandEyebrow} / {brandNameEn}
                             </p>
 
                             {/* 品牌名稱 */}
                             <h1 className="text-4xl whitespace-nowrap font-extralight uppercase tracking-[0.2em] text-primary sm:text-6xl lg:text-7xl">
-                                OO國際車業
+                                {brandName}
                             </h1>
 
                             {/* 副標 */}
                             <p className="mt-6 ps-0.5 max-w-2xl whitespace-normal text-sm font-normal leading-8 tracking-wider text-secondary lg:whitespace-nowrap">
-                                以「絕對透明、系統秩序、專業可靠」為核心，<br className="sm:hidden" />
-                                建立擇車如擇友的中古車管理中樞。
+                                {brandSubtitle}
                             </p>
     
                             {/* slogan */}
                             <p className="mt-3 whitespace-nowrap ps-0.5 text-xs font-medium tracking-[0.5em] text-accent">
-                                擇車如擇友，敘白如敘舊
+                                {brandSlogan}
                             </p>
                         </div>
                     </header>

@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { formatDateTime } from '@/utils/formatDateTime';
-import { formatAuditEvent } from '@/utils/auditEventLabels';
+import { formatAuditDescription, formatAuditEvent, formatAuditModule } from '@/utils/auditEventLabels';
 
 export default function ActivityLogs({ auth, logs = { data: [], links: [] }, filters = {} }) {
     const [search, setSearch] = React.useState(filters.search ?? '');
@@ -53,6 +53,7 @@ export default function ActivityLogs({ auth, logs = { data: [], links: [] }, fil
                             <tr className="border-b border-default text-left text-secondary">
                                 <th className="px-4 py-3">時間</th>
                                 <th className="px-4 py-3">事件</th>
+                                <th className="px-4 py-3">模組</th>
                                 <th className="px-4 py-3">使用者</th>
                                 <th className="px-4 py-3">詳細資料</th>
                                 <th className="px-4 py-3">IP</th>
@@ -63,8 +64,9 @@ export default function ActivityLogs({ auth, logs = { data: [], links: [] }, fil
                                 <tr key={row.id} className="border-b border-default/70 last:border-b-0">
                                     <td className="px-4 py-3">{formatDateTime(row.created_at)}</td>
                                     <td className="px-4 py-3">{formatAuditEvent(row.event ?? row.action ?? '-')}</td>
+                                    <td className="px-4 py-3">{formatAuditModule(row.metadata?.module ?? '-')}</td>
                                     <td className="px-4 py-3">{row.user?.email ?? '-'}</td>
-                                    <td className="px-4 py-3">{row.description ?? '-'}</td>
+                                    <td className="px-4 py-3">{formatAuditDescription(row.description ?? '-')}</td>
                                     <td className="px-4 py-3">{row.ip_address ?? '-'}</td>
                                 </tr>
                             ))}

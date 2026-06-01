@@ -109,10 +109,15 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
 };
 
 export default function MobileSidebar({ open = false, onClose }) {
-    const { auth } = usePage().props;
+    const { auth, brand } = usePage().props;
     const visibleSections = useMemo(() => {
         return resolveSectionedModules(auth?.visibleModules ?? []);
     }, [auth?.visibleModules]);
+    const companyCode = brand?.code ?? 'OO';
+    const brandName = brand?.brand_name;
+    const brandNameEn = brand?.brand_name_en;
+    const brandSubtitle = brand?.brand_subtitle;
+    const brandSecondary = brandNameEn || brandSubtitle;
 
     return (
         <div
@@ -135,11 +140,11 @@ export default function MobileSidebar({ open = false, onClose }) {
                 <div className="flex h-[88px] shrink-0 items-center justify-between border-b border-default px-5">
                     <div className="flex items-center gap-3">
                         <div className="grid h-10 w-10 place-items-center rounded-xl border border-active bg-accent-subtle text-sm font-semibold text-accent">
-                            ERP
+                            {companyCode}
                         </div>
                         <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-accent/80">Used Car</p>
-                            <p className="mt-1 text-sm font-semibold tracking-wide text-primary">ERP Dashboard</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-accent/80">{brandName}</p>
+                            <p className="mt-1 text-sm font-semibold tracking-wide text-primary">{brandSecondary}</p>
                         </div>
                     </div>
                     <button

@@ -2,16 +2,20 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\CompanySettingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StaffPermissionController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCostController;
+use App\Services\CompanyBrandService;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    // 技術註解：純 UI Demo 首頁不讀取認證狀態，維持透明且可預期的展示入口。
-    return Inertia::render('Welcome');
+    // 技術註解：未登入首頁需使用公開品牌資料來源，避免依賴 auth shared props。
+    return Inertia::render('Welcome', [
+        'brand' => app(CompanyBrandService::class)->resolveForPublic(),
+    ]);
 });
 
 Route::middleware('guest')->group(function () {
@@ -126,6 +130,14 @@ Route::patch('/employee-system/profile', [ProfileController::class, 'update'])
 Route::put('/employee-system/profile/password', [ProfileController::class, 'updatePassword'])
     ->middleware('auth')
     ->name('employee-system.profile.password.update');
+
+Route::get('/employee-system/company-settings', [CompanySettingController::class, 'edit'])
+    ->middleware(['auth', 'module.access:company-settings'])
+    ->name('employee-system.company-settings.edit');
+
+Route::put('/employee-system/company-settings', [CompanySettingController::class, 'update'])
+    ->middleware(['auth', 'permission:module.company-settings.update'])
+    ->name('employee-system.company-settings.update');
 
 Route::get('/dashboard', function () {
     // 技術註解：保留舊入口相容性，導向新的純展示主控台路徑。

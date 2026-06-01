@@ -17,6 +17,16 @@ class Company extends Model
     protected $fillable = [
         'name',
         'code',
+        'tax_id',
+        'phone',
+        'email',
+        'address',
+        'logo_url',
+        'currency',
+        'brand_name',
+        'brand_name_en',
+        'brand_subtitle',
+        'brand_slogan',
+        'brand_eyebrow',
     ];
 }
-

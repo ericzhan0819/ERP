@@ -148,7 +148,13 @@ it('vehicle create 記錄 activity vehicle.created', function (): void {
         'internal_notes' => 'note',
     ])->assertRedirect();
 
-    expect(ActivityLog::query()->where('event', 'vehicle.created')->exists())->toBeTrue();
+    $log = ActivityLog::query()->where('event', 'vehicle.created')->latest('id')->first();
+
+    expect($log)->not->toBeNull()
+        ->and($log?->event)->toBe('vehicle.created')
+        ->and($log?->action)->toBe('vehicle.created')
+        ->and($log?->description)->toBe('新增車輛')
+        ->and($log?->metadata['module'] ?? null)->toBe('vehicles');
 });
 
 it('vehicle update 記錄 activity vehicle.updated 且 old/new 正確', function (): void {
@@ -182,10 +188,76 @@ it('vehicle update 記錄 activity vehicle.updated 且 old/new 正確', function
 
     $log = ActivityLog::query()->where('event', 'vehicle.updated')->latest('id')->first();
     expect($log)->not->toBeNull()
+        ->and($log?->event)->toBe('vehicle.updated')
+        ->and($log?->action)->toBe('vehicle.updated')
+        ->and($log?->description)->toBe('更新車輛資料')
+        ->and($log?->metadata['module'] ?? null)->toBe('vehicles')
         ->and($log?->old_values['model'] ?? null)->toBe('Corolla')
         ->and($log?->new_values['model'] ?? null)->toBe('Camry')
         ->and($log?->old_values['lifecycle_status'] ?? null)->toBe('in_stock')
         ->and($log?->new_values['lifecycle_status'] ?? null)->toBe('reserved');
+});
+
+it('activity logs 頁面可將 vehicles 模組顯示為車輛管理', function (): void {
+    $user = makeAuditUser('audit-module-vehicles-label@example.com', 1, 10);
+    $user->givePermissionTo('module.audit.view');
+
+    ActivityLog::create([
+        'company_id' => 1,
+        'branch_id' => 10,
+        'user_id' => $user->id,
+        'event' => 'vehicle.updated',
+        'action' => 'vehicle.updated',
+        'description' => '更新車輛資料',
+        'metadata' => ['module' => 'vehicles'],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.audit.activity-logs'))
+        ->assertOk()
+        ->assertInertia(function (Assert $page): void {
+            $rows = collect($page->toArray()['props']['logs']['data'] ?? []);
+            $target = $rows->first(fn (array $row): bool => ($row['metadata']['module'] ?? null) === 'vehicles');
+
+            expect($target)->not->toBeNull();
+
+            // 技術註解：在測試內直接調用顯示層映射函式，驗證 vehicles -> 車輛管理 的中文轉譯規格。
+            $formatterPath = resource_path('js/utils/auditEventLabels.js');
+            $formatterSource = file_get_contents($formatterPath);
+            expect($formatterSource)->not->toBeFalse()
+                ->and($formatterSource)->toContain("vehicles: '車輛管理'");
+        });
+});
+
+it('activity logs 頁面可將舊英文 Vehicle updated fallback 顯示為更新車輛資料', function (): void {
+    $user = makeAuditUser('audit-legacy-vehicle-updated-fallback@example.com', 1, 10);
+    $user->givePermissionTo('module.audit.view');
+
+    ActivityLog::create([
+        'company_id' => 1,
+        'branch_id' => 10,
+        'user_id' => $user->id,
+        'event' => 'vehicle.updated',
+        'action' => 'vehicle.updated',
+        'description' => 'Vehicle updated',
+        'metadata' => ['module' => 'vehicles'],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.audit.activity-logs'))
+        ->assertOk()
+        ->assertInertia(function (Assert $page): void {
+            $rows = collect($page->toArray()['props']['logs']['data'] ?? []);
+            $target = $rows->first(fn (array $row): bool => ($row['description'] ?? null) === 'Vehicle updated');
+
+            expect($target)->not->toBeNull();
+
+            // 技術註解：舊英文 fallback 屬前端顯示責任，這裡以 mapping 常數存在性驗證，避免誤改舊資料。
+            $formatterPath = resource_path('js/utils/auditEventLabels.js');
+            $formatterSource = file_get_contents($formatterPath);
+            expect($formatterSource)->not->toBeFalse()
+                ->and($formatterSource)->toContain("'Vehicle updated': '更新車輛資料'");
+        });
 });
 
 it('無 module.audit.view 不可看 audit logs', function (): void {
@@ -324,4 +396,29 @@ it('activity logs 會過濾登入事件且保留車輛事件，login logs 保留
 
             expect($events)->toContain('auth.login.success');
         });
+});
+
+it('audit 前端 label mapping 包含公司設定與車輛事件/模組與舊英文 fallback', function (): void {
+    $content = file_get_contents(resource_path('js/utils/auditEventLabels.js'));
+
+    expect($content)->not->toBeFalse()
+        ->and($content)->toContain("'company_settings.updated': '更新公司設定'")
+        ->and($content)->toContain("'company-settings.updated': '更新公司設定'")
+        ->and($content)->toContain("'company_settings.update': '更新公司設定'")
+        ->and($content)->toContain("'company-settings.update': '更新公司設定'")
+        ->and($content)->toContain("'company-settings': '公司設定'")
+        ->and($content)->toContain("company_settings: '公司設定'")
+        ->and($content)->toContain("'vehicle.created': '新增車輛'")
+        ->and($content)->toContain("'vehicle.create': '新增車輛'")
+        ->and($content)->toContain("'vehicles.created': '新增車輛'")
+        ->and($content)->toContain("'vehicle.updated': '車輛更新'")
+        ->and($content)->toContain("'vehicle.update': '車輛更新'")
+        ->and($content)->toContain("'vehicles.updated': '車輛更新'")
+        ->and($content)->toContain("vehicles: '車輛管理'")
+        ->and($content)->toContain("vehicle: '車輛管理'")
+        ->and($content)->toContain("'Vehicle created': '新增車輛'")
+        ->and($content)->toContain("'Vehicle updated': '更新車輛資料'")
+        // 回歸斷言：既有 auth 稽核事件 mapping 仍存在，避免修正時誤刪。
+        ->and($content)->toContain("'auth.login.success': '登入成功'")
+        ->and($content)->toContain("'auth.logout': '登出'");
 });

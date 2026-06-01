@@ -181,9 +181,12 @@ class VehicleController extends Controller
         $this->auditLogService->log(
             actor: $user,
             action: 'vehicle.created',
-            description: 'Vehicle created',
+            description: '新增車輛',
             targetUser: null,
-            metadata: [],
+            metadata: [
+                // 技術註解：顯式記錄模組鍵供稽核頁映射中文，避免舊資料因缺 module 造成顯示不完整。
+                'module' => 'vehicles',
+            ],
             subject: $vehicle,
             oldValues: null,
             newValues: [
@@ -523,9 +526,12 @@ class VehicleController extends Controller
             $this->auditLogService->log(
                 actor: $user,
                 action: 'vehicle.updated',
-                description: 'Vehicle updated',
+                description: '更新車輛資料',
                 targetUser: null,
-                metadata: [],
+                metadata: [
+                    // 技術註解：固定使用 vehicles 模組鍵，確保稽核模組欄位可正確本地化顯示。
+                    'module' => 'vehicles',
+                ],
                 subject: $foundVehicle,
                 oldValues: $changedOldValues,
                 newValues: $changedNewValues,

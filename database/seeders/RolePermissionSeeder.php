@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Module;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -26,10 +27,33 @@ class RolePermissionSeeder extends Seeder
         // 技術註解：重建最小 RBAC 快取，確保 fresh seed 後權限判斷立即一致。
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
+        $brandCopyColumns = ['brand_name', 'brand_name_en', 'brand_slogan', 'brand_eyebrow'];
+        $hasAllBrandCopyColumns = collect($brandCopyColumns)
+            ->every(static fn (string $column): bool => Schema::hasColumn('companies', $column));
+
+        $companyDefaults = [
+            'name' => 'OO INTERNATIONAL',
+        ];
+
+        if ($hasAllBrandCopyColumns) {
+            // 技術註解：僅在欄位完整存在時才回填品牌文案，避免 schema 未同步時 seed 直接失敗。
+            $companyDefaults = array_merge($companyDefaults, [
+                'brand_name' => 'OO國際車業',
+                'brand_name_en' => 'OO INTERNATIONAL',
+                'brand_slogan' => '擇車如擇友，敘白如敘舊',
+                'brand_eyebrow' => 'EST. 2026',
+            ]);
+        }
+
+        if (Schema::hasColumn('companies', 'brand_subtitle')) {
+            // 技術註解：brand_subtitle 屬既有欄位，僅在存在時寫入以維持 seed 向下相容。
+            $companyDefaults['brand_subtitle'] = '以「絕對透明、系統秩序、專業可靠」為核心，建立擇車如擇友的中古車管理中樞。';
+        }
+
         // 技術註解：先建立預設租戶邊界，避免管理員或員工帳號落在 company_id=0 / branch_id=null 造成後續資料污染。
         $defaultCompany = Company::updateOrCreate(
             ['code' => 'OO'],
-            ['name' => 'OO INTERNATIONAL']
+            $companyDefaults
         );
 
         // 技術註解：分店以 company + code 作為穩定鍵，可重複執行 seed 且不會建立重複資料。
@@ -119,6 +143,21 @@ class RolePermissionSeeder extends Seeder
                 'is_active' => true,
                 'active_patterns' => ['employee-system.audit.*'],
             ],
+            'company-settings' => [
+                'label' => '公司設定',
+                'section' => 'administration',
+                'parent_id' => null,
+                'parent_key' => null,
+                'route_name' => 'employee-system.company-settings.edit',
+                'permission_prefix' => 'module.company-settings',
+                'base_permission' => 'module.company-settings.view',
+                'icon_key' => 'ShieldCheck',
+                'icon' => 'ShieldCheck',
+                'sort_order' => 50,
+                'is_enabled' => true,
+                'is_active' => true,
+                'active_patterns' => ['employee-system.company-settings.*'],
+            ],
         ];
 
         foreach ($modules as $key => $module) {
@@ -143,6 +182,8 @@ class RolePermissionSeeder extends Seeder
             'module.vehicles.costs.create' => ['label' => '建立車輛成本', 'group' => '車輛成本'],
             'module.vehicles.costs.update' => ['label' => '更新車輛成本', 'group' => '車輛成本'],
             'module.audit.view' => ['label' => '查看稽核紀錄', 'group' => '系統稽核'],
+            'module.company-settings.view' => ['label' => '查看公司設定', 'group' => '系統設定'],
+            'module.company-settings.update' => ['label' => '更新公司設定', 'group' => '系統設定'],
             'module.test-module.view' => ['label' => '查看測試模塊', 'group' => '測試'],
         ];
 
@@ -227,6 +268,8 @@ class RolePermissionSeeder extends Seeder
                 'module.vehicles.costs.create',
                 'module.vehicles.costs.update',
                 'module.audit.view',
+                'module.company-settings.view',
+                'module.company-settings.update',
                 // 技術註解：以下 deprecated 權限僅為相容層保留，不作為主要授權來源。
                 'staff-permission.view',
                 'staff-permission.update-role',
