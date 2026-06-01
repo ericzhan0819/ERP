@@ -28,6 +28,14 @@ class StaffPermissionController extends Controller
         'module.vehicle.export',
     ];
 
+    /**
+     * @var array<string, string>
+     */
+    private const SUB_SCOPE_LABELS = [
+        'vehicles.pricing' => '車輛價格',
+        'vehicles.costs' => '車輛成本',
+    ];
+
     public function __construct(
         private readonly PermissionService $permissionService,
         private readonly AuditLogService $auditLogService,
@@ -78,11 +86,12 @@ class StaffPermissionController extends Controller
             }
 
             $segments = explode('.', $permission->name);
-            if (count($segments) !== 3) {
+            if (count($segments) !== 3 && count($segments) !== 4) {
                 continue;
             }
 
-            [, $moduleKey, $action] = $segments;
+            [, $moduleKey] = $segments;
+            $action = $segments[count($segments) - 1];
             if ($moduleKey === 'vehicle') {
                 // 技術註解：單數 module.vehicle.* 為過渡期權限，不可進入矩陣以防與正式 module.vehicles.* 並存造成錯誤授權判讀。
                 continue;
@@ -91,19 +100,27 @@ class StaffPermissionController extends Controller
                 continue;
             }
 
+            $matrixKey = count($segments) === 4
+                ? $moduleKey.'.'.$segments[2]
+                : $moduleKey;
+
             $moduleLabels[$moduleKey] = $moduleLabels[$moduleKey] ?? ucfirst(str_replace('-', ' ', $moduleKey));
-            $permissionMatrix[$moduleKey] ??= [
-                'label' => $moduleLabels[$moduleKey],
+            $matrixLabel = count($segments) === 4
+                ? (self::SUB_SCOPE_LABELS[$matrixKey] ?? ucfirst(str_replace(['-', '.'], ' ', $matrixKey)))
+                : $moduleLabels[$moduleKey];
+
+            $permissionMatrix[$matrixKey] ??= [
+                'label' => $matrixLabel,
                 'actions' => [],
             ];
-            $permissionMatrix[$moduleKey]['actions'][$action] = [
+            $permissionMatrix[$matrixKey]['actions'][$action] = [
                 'permission' => $permission->name,
                 'exists' => true,
             ];
         }
 
-        foreach (array_keys($permissionMatrix) as $moduleKey) {
-            $permissionMatrix[$moduleKey]['actions'] = collect($permissionMatrix[$moduleKey]['actions'])
+        foreach (array_keys($permissionMatrix) as $matrixKey) {
+            $permissionMatrix[$matrixKey]['actions'] = collect($permissionMatrix[$matrixKey]['actions'])
                 ->sortBy(fn (array $item, string $action): int => array_search($action, $actions, true))
                 ->all();
         }

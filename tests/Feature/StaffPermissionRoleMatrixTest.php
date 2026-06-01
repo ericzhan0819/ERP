@@ -122,6 +122,33 @@ it('permissionMatrix 不含 deprecated module.vehicle 群組且包含正式 vehi
         );
 });
 
+it('permissionMatrix 支援 vehicles 子範圍四段式權限並保留 action 白名單', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+
+    $this->actingAs($admin)
+        ->get(route('employee-system.staff-permissions.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            // 技術註解：矩陣鍵含 dot 時不可用 Inertia dot-path 直接取值，改以陣列檢查避免誤判為巢狀層級。
+            ->where('permissionMatrix', function ($matrix): bool {
+                $matrix = is_array($matrix) ? $matrix : $matrix->all();
+
+                return isset($matrix['vehicles.pricing'])
+                    && ($matrix['vehicles.pricing']['label'] ?? null) === '車輛價格'
+                    && ($matrix['vehicles.pricing']['actions']['view']['permission'] ?? null) === 'module.vehicles.pricing.view'
+                    && ($matrix['vehicles.pricing']['actions']['update']['permission'] ?? null) === 'module.vehicles.pricing.update'
+                    && isset($matrix['vehicles.costs'])
+                    && ($matrix['vehicles.costs']['label'] ?? null) === '車輛成本'
+                    && ($matrix['vehicles.costs']['actions']['view']['permission'] ?? null) === 'module.vehicles.costs.view'
+                    && ($matrix['vehicles.costs']['actions']['create']['permission'] ?? null) === 'module.vehicles.costs.create'
+                    && ($matrix['vehicles.costs']['actions']['update']['permission'] ?? null) === 'module.vehicles.costs.update';
+            })
+            ->missing('permissionMatrix.vehicle')
+        );
+});
+
 it('可新增角色且可刪除未綁定使用者的非系統角色', function (): void {
     $admin = User::create([
         'name' => 'Admin Role CRUD',
@@ -197,4 +224,19 @@ it('更新角色權限不依賴 module.vehicle deprecated 權限', function (): 
         ->and($freshRole->hasPermissionTo('module.vehicles.delete'))->toBeTrue()
         ->and($freshRole->hasPermissionTo('module.vehicles.export'))->toBeTrue()
         ->and($freshRole->hasPermissionTo('module.vehicle.view'))->toBeFalse();
+});
+
+it('updateRolePermissions 可同步 module.vehicles.costs.view 到指定角色', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+    $role = Role::findByName('viewer', 'web');
+
+    $this->actingAs($admin)
+        ->patch(route('employee-system.staff-permissions.roles.permissions.update', $role), [
+            'permissions' => ['module.vehicles.costs.view'],
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($role->fresh()->hasPermissionTo('module.vehicles.costs.view'))->toBeTrue();
 });
