@@ -37,6 +37,8 @@ beforeEach(function (): void {
     Permission::findOrCreate('module.vehicles.view', 'web');
     Permission::findOrCreate('module.vehicles.create', 'web');
     Permission::findOrCreate('module.vehicles.update', 'web');
+    Permission::findOrCreate('module.vehicles.pricing.view', 'web');
+    Permission::findOrCreate('module.vehicles.pricing.update', 'web');
 });
 
 /**
@@ -310,6 +312,26 @@ it('index filters 會回傳到 inertia props', function (): void {
         );
 });
 
+it('缺少 module.vehicles.pricing.view 權限時 index payload 不暴露 asking_price 與 floor_price', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-index-pricing-view-deny@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+
+    $vehicle = makeVehicleCrudRecord(1, 10, 'STK-IDX-PRICE-001', 'vin-idx-price-001');
+    $vehicle->update([
+        'asking_price' => 620000,
+        'floor_price' => 600000,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.index', ['search' => 'IDX-PRICE-001']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicles.data', fn ($rows): bool => collect($rows)->count() === 1)
+            ->missing('vehicles.data.0.asking_price')
+            ->missing('vehicles.data.0.floor_price')
+        );
+});
+
 it('index 非法 lifecycle_status 不報錯且不套用非法篩選', function (): void {
     $user = makeVehicleCrudUser('vehicle-crud-index-invalid-lifecycle-filter@example.com');
     $user->givePermissionTo('module.vehicles.view');
@@ -358,6 +380,43 @@ it('有 module.vehicles.view 權限可查看同 company/branch vehicle show', fu
         );
 });
 
+it('有 module.vehicles.pricing.view 權限時 show payload 可見 asking_price 與 floor_price', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-show-pricing-view-allow@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.pricing.view');
+    $vehicle = makeVehicleCrudRecord(1, 10, 'STK-SHOW-PRICE-001', 'vin-show-price-001');
+    $vehicle->update([
+        'asking_price' => 568000,
+        'floor_price' => 550000,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.show', $vehicle->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicle.asking_price', '568000.00')
+            ->where('vehicle.floor_price', '550000.00')
+        );
+});
+
+it('缺少 module.vehicles.pricing.view 權限時 show payload 不可見 asking_price 與 floor_price', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-show-pricing-view-deny@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $vehicle = makeVehicleCrudRecord(1, 10, 'STK-SHOW-PRICE-002', 'vin-show-price-002');
+    $vehicle->update([
+        'asking_price' => 668000,
+        'floor_price' => 640000,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.show', $vehicle->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->missing('vehicle.asking_price')
+            ->missing('vehicle.floor_price')
+        );
+});
+
 it('有 module.vehicles.create 權限可 store vehicle', function (): void {
     $user = makeVehicleCrudUser('vehicle-crud-store-allow@example.com');
     $user->givePermissionTo('module.vehicles.view');
@@ -370,6 +429,25 @@ it('有 module.vehicles.create 權限可 store vehicle', function (): void {
     $vehicle = Vehicle::query()->where('company_id', 1)->where('branch_id', 10)->latest('id')->first();
     expect($vehicle)->not->toBeNull()
         ->and($vehicle?->stock_number)->toMatch('/^VH-\d{6}-\d{4}$/');
+});
+
+it('有 module.vehicles.pricing.update 權限時 store 可建立 asking_price 與 floor_price', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-store-pricing-update-allow@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.create');
+    $user->givePermissionTo('module.vehicles.pricing.update');
+
+    $this->actingAs($user)
+        ->post(route('employee-system.vehicles.store'), validVehiclePayload([
+            'vin' => 'vin-store-price-001',
+            'asking_price' => 730000,
+            'floor_price' => 700000,
+        ]))
+        ->assertRedirect();
+
+    $vehicle = Vehicle::query()->where('vin', 'VIN-STORE-PRICE-001')->firstOrFail();
+    expect((int) $vehicle->asking_price)->toBe(730000)
+        ->and((int) $vehicle->floor_price)->toBe(700000);
 });
 
 it('store 時 request 傳入 company_id 仍強制使用登入者 company_id', function (): void {
@@ -436,6 +514,66 @@ it('有 module.vehicles.update 權限可 update 同 company/branch vehicle', fun
     $vehicle->refresh();
     expect($vehicle->model)->toBe('Camry')
         ->and($vehicle->vin)->toBe('VIN-UPDATED-001');
+});
+
+it('有 module.vehicles.pricing.update 權限時 update 可修改 asking_price 與 floor_price', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-update-pricing-update-allow@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.update');
+    $user->givePermissionTo('module.vehicles.pricing.update');
+    $vehicle = makeVehicleCrudRecord(1, 10, 'STK-UPD-PRICE-001', 'vin-upd-price-001');
+
+    $this->actingAs($user)
+        ->patch(route('employee-system.vehicles.update', $vehicle->id), validVehiclePayload([
+            'vin' => 'vin-upd-price-001',
+            'asking_price' => 888000,
+            'floor_price' => 850000,
+        ]))
+        ->assertRedirect(route('employee-system.vehicles.show', $vehicle->id));
+
+    $vehicle->refresh();
+    expect((int) $vehicle->asking_price)->toBe(888000)
+        ->and((int) $vehicle->floor_price)->toBe(850000);
+});
+
+it('缺少 module.vehicles.pricing.update 權限時 update 價格欄位會回 403', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-update-pricing-update-deny@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.update');
+    $vehicle = makeVehicleCrudRecord(1, 10, 'STK-UPD-PRICE-002', 'vin-upd-price-002');
+    $vehicle->update([
+        'asking_price' => 500000,
+        'floor_price' => 480000,
+    ]);
+
+    $this->actingAs($user)
+        ->patch(route('employee-system.vehicles.update', $vehicle->id), validVehiclePayload([
+            'vin' => 'vin-upd-price-002',
+            'asking_price' => 999000,
+            'floor_price' => 950000,
+        ]))
+        ->assertForbidden();
+
+    $vehicle->refresh();
+    expect((int) $vehicle->asking_price)->toBe(500000)
+        ->and((int) $vehicle->floor_price)->toBe(480000);
+});
+
+it('缺少 module.vehicles.pricing.update 但有 module.vehicles.update 仍可更新一般欄位', function (): void {
+    $user = makeVehicleCrudUser('vehicle-crud-update-non-pricing-allow@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.update');
+    $vehicle = makeVehicleCrudRecord(1, 10, 'STK-UPD-NON-PRICE-001', 'vin-upd-non-price-001');
+
+    $this->actingAs($user)
+        ->patch(route('employee-system.vehicles.update', $vehicle->id), validVehiclePayload([
+            'vin' => 'vin-upd-non-price-001',
+            'model' => 'Altis Hybrid',
+        ]))
+        ->assertRedirect(route('employee-system.vehicles.show', $vehicle->id));
+
+    $vehicle->refresh();
+    expect($vehicle->model)->toBe('Altis Hybrid');
 });
 
 it('update 時不能修改 company_id / branch_id', function (): void {

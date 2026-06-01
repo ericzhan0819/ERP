@@ -5,7 +5,9 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 /**
  * 技術註解：建立頁保持最小 CRUD 表單，避免過度抽象影響維護可讀性與交付速度。
  */
-export default function VehiclesCreate({ auth, lifecycleStatuses = {} }) {
+export default function VehiclesCreate({ auth, lifecycleStatuses = {}, can = {} }) {
+    const canUpdateVehiclePricing = can.update_vehicle_pricing === true;
+
     const { data, setData, post, processing, errors } = useForm({
         vin: '',
         license_plate: '',
@@ -16,14 +18,36 @@ export default function VehiclesCreate({ auth, lifecycleStatuses = {} }) {
         exterior_color: '',
         interior_color: '',
         odometer_km: '',
+        asking_price: '',
+        floor_price: '',
         lifecycle_status: 'draft',
         internal_notes: '',
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // 技術註解：由後端驗證與授權作最終防線，前端僅送出必要欄位與呈現錯誤。
-        post(route('employee-system.vehicles.store'));
+        // 技術註解：即使使用者可竄改 DOM，仍以前端送出白名單排除未授權價格欄位，降低越權請求面。
+        const payload = {
+            vin: data.vin,
+            license_plate: data.license_plate,
+            brand: data.brand,
+            model: data.model,
+            variant: data.variant,
+            model_year: data.model_year,
+            exterior_color: data.exterior_color,
+            interior_color: data.interior_color,
+            odometer_km: data.odometer_km,
+            lifecycle_status: data.lifecycle_status,
+            internal_notes: data.internal_notes,
+            ...(canUpdateVehiclePricing
+                ? {
+                    asking_price: data.asking_price,
+                    floor_price: data.floor_price,
+                }
+                : {}),
+        };
+
+        post(route('employee-system.vehicles.store'), { data: payload });
     };
 
     const inputClass = 'w-full rounded-lg border border-default bg-surface px-3 py-2 text-primary focus:outline-none focus:ring-2 focus:ring-accent';
@@ -93,6 +117,20 @@ export default function VehiclesCreate({ auth, lifecycleStatuses = {} }) {
                             <input type="number" className={inputClass} value={data.odometer_km} onChange={(e) => setData('odometer_km', e.target.value)} />
                             {errors.odometer_km && <p className="mt-1 text-sm text-accent">{errors.odometer_km}</p>}
                         </div>
+                        {canUpdateVehiclePricing && (
+                            <>
+                                <div>
+                                    <label className="mb-1 block text-sm text-secondary">開價</label>
+                                    <input type="number" className={inputClass} value={data.asking_price} onChange={(e) => setData('asking_price', e.target.value)} />
+                                    {errors.asking_price && <p className="mt-1 text-sm text-accent">{errors.asking_price}</p>}
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-sm text-secondary">底價</label>
+                                    <input type="number" className={inputClass} value={data.floor_price} onChange={(e) => setData('floor_price', e.target.value)} />
+                                    {errors.floor_price && <p className="mt-1 text-sm text-accent">{errors.floor_price}</p>}
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <div>

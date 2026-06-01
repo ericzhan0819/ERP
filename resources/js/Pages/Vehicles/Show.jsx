@@ -1,12 +1,21 @@
 import React from 'react';
-import { Link } from '@inertiajs/react';
+import { Link, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { formatDateTime } from '@/utils/formatDateTime';
 
 /**
  * 技術註解：詳情頁僅輸出只讀核心欄位，避免誤導為可編輯流程並降低敏感資料暴露面。
  */
-export default function VehiclesShow({ auth, vehicle, lifecycleStatuses = {}, can = {} }) {
+export default function VehiclesShow({
+    auth,
+    vehicle,
+    lifecycleStatuses = {},
+    can = {},
+    vehicleCosts = [],
+    vehicleCostSummary = null,
+    vehicleCostTypes = {},
+    vehicleCostPaymentStatuses = {},
+}) {
     /**
      * 技術註解：統一空值佔位，避免不同欄位出現不一致的缺值符號造成判讀成本上升。
      */
@@ -28,6 +37,49 @@ export default function VehiclesShow({ auth, vehicle, lifecycleStatuses = {}, ca
 
     const lifecycleLabel = lifecycleStatuses[vehicle.lifecycle_status] ?? displayValue(vehicle.lifecycle_status);
     const lifecycleBadgeClass = lifecycleBadgeMap[vehicle.lifecycle_status] ?? lifecycleBadgeMap.draft;
+
+    /**
+     * 技術註解：價格資訊顯示權限僅由後端 can 旗標決定，避免前端角色推斷造成敏感資訊誤曝。
+     */
+    const canViewVehiclePricing = can.view_vehicle_pricing === true;
+    const canViewVehicleCosts = can.view_vehicle_costs === true;
+    const canCreateVehicleCosts = can.create_vehicle_costs === true;
+    const canUpdateVehicleCosts = can.update_vehicle_costs === true;
+
+    const formatNumber = (value) => {
+        if (value === null || value === undefined || value === '') {
+            return '—';
+        }
+
+        const parsed = Number(value);
+
+        if (Number.isNaN(parsed)) {
+            return displayValue(value);
+        }
+
+        return parsed.toLocaleString('zh-TW');
+    };
+
+    const costForm = useForm({
+        cost_type: '',
+        description: '',
+        amount: '',
+        cost_date: '',
+        vendor_name: '',
+        payment_status: '',
+        paid_at: '',
+        internal_notes: '',
+    });
+
+    const submitCostForm = (event) => {
+        event.preventDefault();
+        costForm.post(route('employee-system.vehicles.costs.store', vehicle.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                costForm.reset('description', 'amount', 'cost_date', 'vendor_name', 'paid_at', 'internal_notes');
+            },
+        });
+    };
 
     /**
      * 技術註解：集中格式化公司/分店顯示，避免顯示 FK ID 且在缺資料時維持統一佔位符。
@@ -108,6 +160,187 @@ export default function VehiclesShow({ auth, vehicle, lifecycleStatuses = {}, ca
                         <p><span className="text-muted">分店：</span>{formatOrg(vehicle.branch)}</p>
                     </div>
                 </section>
+
+                {canViewVehiclePricing && (
+                    <section className="rounded-2xl border border-default bg-surface p-4 text-secondary">
+                        <h2 className="mb-3 text-sm font-semibold text-primary">銷售價格資訊</h2>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <p><span className="text-muted">開價：</span>{displayValue(vehicle.asking_price)}</p>
+                            <p><span className="text-muted">底價：</span>{displayValue(vehicle.floor_price)}</p>
+                        </div>
+                    </section>
+                )}
+
+                {canViewVehicleCosts && (
+                    <section className="space-y-4 rounded-2xl border border-default bg-surface p-4 text-secondary">
+                        <h2 className="text-sm font-semibold text-primary">成本管理</h2>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">總成本</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleCostSummary?.total_amount)}</p>
+                            </div>
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">已付款</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleCostSummary?.paid_amount)}</p>
+                            </div>
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">未付款</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleCostSummary?.unpaid_amount)}</p>
+                            </div>
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">成本筆數</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleCostSummary?.count)}</p>
+                            </div>
+                        </div>
+
+                        {canCreateVehicleCosts && (
+                            <form onSubmit={submitCostForm} className="space-y-3 rounded-xl border border-default p-4">
+                                <h3 className="text-sm font-semibold text-primary">新增成本</h3>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                    <label className="text-sm">
+                                        <span className="mb-1 block text-muted">成本類型</span>
+                                        <select
+                                            value={costForm.data.cost_type}
+                                            onChange={(event) => costForm.setData('cost_type', event.target.value)}
+                                            className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
+                                        >
+                                            <option value="">請選擇</option>
+                                            {Object.entries(vehicleCostTypes || {}).map(([value, label]) => (
+                                                <option key={value} value={value}>{label}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <label className="text-sm">
+                                        <span className="mb-1 block text-muted">金額</span>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={costForm.data.amount}
+                                            onChange={(event) => costForm.setData('amount', event.target.value)}
+                                            className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
+                                        />
+                                    </label>
+                                    <label className="text-sm">
+                                        <span className="mb-1 block text-muted">日期</span>
+                                        <input
+                                            type="date"
+                                            value={costForm.data.cost_date}
+                                            onChange={(event) => costForm.setData('cost_date', event.target.value)}
+                                            className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
+                                        />
+                                    </label>
+                                    <label className="text-sm">
+                                        <span className="mb-1 block text-muted">廠商</span>
+                                        <input
+                                            type="text"
+                                            value={costForm.data.vendor_name}
+                                            onChange={(event) => costForm.setData('vendor_name', event.target.value)}
+                                            className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
+                                        />
+                                    </label>
+                                    <label className="text-sm">
+                                        <span className="mb-1 block text-muted">付款狀態</span>
+                                        <select
+                                            value={costForm.data.payment_status}
+                                            onChange={(event) => costForm.setData('payment_status', event.target.value)}
+                                            className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
+                                        >
+                                            <option value="">請選擇</option>
+                                            {Object.entries(vehicleCostPaymentStatuses || {}).map(([value, label]) => (
+                                                <option key={value} value={value}>{label}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <label className="text-sm">
+                                        <span className="mb-1 block text-muted">付款日期</span>
+                                        <input
+                                            type="date"
+                                            value={costForm.data.paid_at}
+                                            onChange={(event) => costForm.setData('paid_at', event.target.value)}
+                                            className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
+                                        />
+                                    </label>
+                                </div>
+
+                                <label className="block text-sm">
+                                    <span className="mb-1 block text-muted">說明</span>
+                                    <input
+                                        type="text"
+                                        value={costForm.data.description}
+                                        onChange={(event) => costForm.setData('description', event.target.value)}
+                                        className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
+                                    />
+                                </label>
+
+                                <label className="block text-sm">
+                                    <span className="mb-1 block text-muted">內部備註</span>
+                                    <textarea
+                                        value={costForm.data.internal_notes}
+                                        onChange={(event) => costForm.setData('internal_notes', event.target.value)}
+                                        className="min-h-20 w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
+                                    />
+                                </label>
+
+                                {Object.keys(costForm.errors).length > 0 && (
+                                    <ul className="space-y-1 text-xs text-red-600">
+                                        {Object.values(costForm.errors).map((error) => (
+                                            <li key={error}>{error}</li>
+                                        ))}
+                                    </ul>
+                                )}
+
+                                <div>
+                                    <button
+                                        type="submit"
+                                        disabled={costForm.processing}
+                                        className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        新增成本
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        <div className="overflow-x-auto rounded-xl border border-default">
+                            {vehicleCosts.length === 0 ? (
+                                <div className="p-6 text-center text-sm text-muted">目前沒有成本資料。</div>
+                            ) : (
+                                <table className="min-w-full text-sm">
+                                    <thead className="bg-slate-50 text-left text-xs text-muted dark:bg-slate-900/40">
+                                        <tr>
+                                            <th className="px-3 py-2 font-medium">成本類型</th>
+                                            <th className="px-3 py-2 font-medium">說明</th>
+                                            <th className="px-3 py-2 font-medium">金額</th>
+                                            <th className="px-3 py-2 font-medium">日期</th>
+                                            <th className="px-3 py-2 font-medium">廠商</th>
+                                            <th className="px-3 py-2 font-medium">付款狀態</th>
+                                            <th className="px-3 py-2 font-medium">建立者</th>
+                                            <th className="px-3 py-2 font-medium">更新者</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {vehicleCosts.map((cost) => (
+                                            <tr key={cost.id} className="border-t border-default">
+                                                <td className="px-3 py-2">{displayValue(cost.cost_type_label)}</td>
+                                                <td className="px-3 py-2">{displayValue(cost.description)}</td>
+                                                <td className="px-3 py-2">{formatNumber(cost.amount)}</td>
+                                                <td className="px-3 py-2">{displayValue(cost.cost_date)}</td>
+                                                <td className="px-3 py-2">{displayValue(cost.vendor_name)}</td>
+                                                <td className="px-3 py-2">{displayValue(cost.payment_status_label)}</td>
+                                                <td className="px-3 py-2">{displayValue(cost.creator?.name)}</td>
+                                                <td className="px-3 py-2">{displayValue(cost.updater?.name)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        <input type="hidden" value={canUpdateVehicleCosts ? '1' : '0'} readOnly />
+                    </section>
+                )}
 
                 <section className="rounded-2xl border border-default bg-surface p-4 text-secondary">
                     <h2 className="mb-3 text-sm font-semibold text-primary">系統資訊</h2>

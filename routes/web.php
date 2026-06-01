@@ -5,6 +5,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StaffPermissionController;
 use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\VehicleCostController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -92,6 +93,19 @@ Route::patch('/employee-system/vehicles/{vehicle}', [VehicleController::class, '
     ->middleware(['auth', 'module.access:vehicles'])
     ->whereNumber('vehicle')
     ->name('employee-system.vehicles.update');
+
+Route::post('/employee-system/vehicles/{vehicle}/costs', [VehicleCostController::class, 'store'])
+    // 技術註解：成本建立路由維持在 vehicles 模組門禁下，細部授權由 policy 執行，避免前端判斷被誤當安全機制。
+    ->middleware(['auth', 'module.access:vehicles'])
+    ->whereNumber('vehicle')
+    ->name('employee-system.vehicles.costs.store');
+
+Route::patch('/employee-system/vehicles/{vehicle}/costs/{vehicleCost}', [VehicleCostController::class, 'update'])
+    // 技術註解：成本更新使用數字約束並保留後端 tenant scoped 查詢，降低 IDOR 嘗試面。
+    ->middleware(['auth', 'module.access:vehicles'])
+    ->whereNumber('vehicle')
+    ->whereNumber('vehicleCost')
+    ->name('employee-system.vehicles.costs.update');
 
 Route::get('/employee-system/audit/activity-logs', [AuditLogController::class, 'activityLogs'])
     ->middleware(['auth', 'module.access:audit'])

@@ -33,6 +33,8 @@ class Vehicle extends Model
         'odometer_km',
         'lifecycle_status',
         'internal_notes',
+        'asking_price',
+        'floor_price',
         'created_by',
         'updated_by',
     ];
@@ -47,6 +49,8 @@ class Vehicle extends Model
             'branch_id' => 'integer',
             'model_year' => 'integer',
             'odometer_km' => 'integer',
+            'asking_price' => 'decimal:2',
+            'floor_price' => 'decimal:2',
             'created_by' => 'integer',
             'updated_by' => 'integer',
         ];
@@ -95,5 +99,13 @@ class Vehicle extends Model
     public function statusLogs(): HasMany
     {
         return $this->hasMany(VehicleStatusLog::class);
+    }
+
+    /**
+     * 技術註解：車輛成本關聯集中於 Vehicle model，避免控制器分散拼接查詢造成 tenant 範圍不一致。
+     */
+    public function costs(): HasMany
+    {
+        return $this->hasMany(VehicleCost::class);
     }
 }

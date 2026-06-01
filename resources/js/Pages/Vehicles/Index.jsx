@@ -31,6 +31,11 @@ export default function VehiclesIndex({ auth, vehicles = { data: [], links: [] }
         });
     };
 
+    /**
+     * 技術註解：價格欄位僅依後端下發的 can 權限旗標控制，避免前端自行推導角色造成授權判斷漂移。
+     */
+    const canViewVehiclePricing = can.view_vehicle_pricing === true;
+
     return (
         <DashboardLayout user={auth.user}>
             <div className="space-y-4 p-6">
@@ -93,6 +98,8 @@ export default function VehiclesIndex({ auth, vehicles = { data: [], links: [] }
                                 <th className="px-4 py-3">品牌</th>
                                 <th className="px-4 py-3">車型</th>
                                 <th className="px-4 py-3">年份</th>
+                                {canViewVehiclePricing && <th className="px-4 py-3">開價</th>}
+                                {canViewVehiclePricing && <th className="px-4 py-3">底價</th>}
                                 <th className="px-4 py-3">狀態</th>
                                 <th className="px-4 py-3">操作</th>
                             </tr>
@@ -104,6 +111,8 @@ export default function VehiclesIndex({ auth, vehicles = { data: [], links: [] }
                                     <td className="px-4 py-3">{vehicle.brand}</td>
                                     <td className="px-4 py-3">{vehicle.model}</td>
                                     <td className="px-4 py-3 text-secondary">{vehicle.model_year ?? '-'}</td>
+                                    {canViewVehiclePricing && <td className="px-4 py-3 text-secondary">{vehicle.asking_price ?? '-'}</td>}
+                                    {canViewVehiclePricing && <td className="px-4 py-3 text-secondary">{vehicle.floor_price ?? '-'}</td>}
                                     <td className="px-4 py-3 text-secondary">{lifecycleStatuses[vehicle.lifecycle_status] ?? vehicle.lifecycle_status}</td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
@@ -117,7 +126,7 @@ export default function VehiclesIndex({ auth, vehicles = { data: [], links: [] }
                             ))}
                             {vehicles.data.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="px-4 py-8 text-center text-muted">
+                                    <td colSpan={canViewVehiclePricing ? 8 : 6} className="px-4 py-8 text-center text-muted">
                                         無符合條件的車輛資料
                                     </td>
                                 </tr>

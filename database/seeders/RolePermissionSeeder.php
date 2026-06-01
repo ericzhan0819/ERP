@@ -137,6 +137,11 @@ class RolePermissionSeeder extends Seeder
             'module.vehicles.update' => ['label' => '更新車輛', 'group' => '車輛'],
             'module.vehicles.delete' => ['label' => '刪除車輛', 'group' => '車輛'],
             'module.vehicles.export' => ['label' => '匯出車輛', 'group' => '車輛'],
+            'module.vehicles.pricing.view' => ['label' => '查看車輛價格', 'group' => '車輛價格'],
+            'module.vehicles.pricing.update' => ['label' => '更新車輛價格', 'group' => '車輛價格'],
+            'module.vehicles.costs.view' => ['label' => '查看車輛成本', 'group' => '車輛成本'],
+            'module.vehicles.costs.create' => ['label' => '建立車輛成本', 'group' => '車輛成本'],
+            'module.vehicles.costs.update' => ['label' => '更新車輛成本', 'group' => '車輛成本'],
             'module.audit.view' => ['label' => '查看稽核紀錄', 'group' => '系統稽核'],
             'module.test-module.view' => ['label' => '查看測試模塊', 'group' => '測試'],
         ];
@@ -158,15 +163,16 @@ class RolePermissionSeeder extends Seeder
 
         $permissions = collect($permissionDefinitions)
             ->filter(function (array $definition, string $name): bool {
-                // 技術註解：統一命名必須符合 module.{module_key}.{action}，且 action 僅可來自白名單。
+                // 技術註解：統一命名允許 module.{module_key}.{action} 與 module.{module_key}.{sub_scope}.{action}，並以最後一段作為 action 白名單檢查。
                 if (!str_starts_with($name, 'module.')) {
                     return true;
                 }
 
                 $segments = explode('.', $name);
-                $action = $segments[2] ?? null;
+                $action = $segments[count($segments) - 1] ?? null;
 
-                return count($segments) === 3 && in_array($action, self::ACTION_WHITELIST, true);
+                return in_array(count($segments), [3, 4], true)
+                    && in_array($action, self::ACTION_WHITELIST, true);
             })
             ->mapWithKeys(fn (array $definition, string $name) => [
                 $name => Permission::updateOrCreate(
@@ -215,6 +221,11 @@ class RolePermissionSeeder extends Seeder
                 'module.vehicles.update',
                 'module.vehicles.delete',
                 'module.vehicles.export',
+                'module.vehicles.pricing.view',
+                'module.vehicles.pricing.update',
+                'module.vehicles.costs.view',
+                'module.vehicles.costs.create',
+                'module.vehicles.costs.update',
                 'module.audit.view',
                 // 技術註解：以下 deprecated 權限僅為相容層保留，不作為主要授權來源。
                 'staff-permission.view',

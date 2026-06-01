@@ -5,7 +5,9 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 /**
  * 技術註解：編輯頁與建立頁保持相近結構，降低維護成本並避免過度抽象造成認知負擔。
  */
-export default function VehiclesEdit({ auth, vehicle, lifecycleStatuses = {} }) {
+export default function VehiclesEdit({ auth, vehicle, lifecycleStatuses = {}, can = {} }) {
+    const canUpdateVehiclePricing = can.update_vehicle_pricing === true;
+
     const { data, setData, patch, processing, errors } = useForm({
         vin: vehicle.vin ?? '',
         license_plate: vehicle.license_plate ?? '',
@@ -16,14 +18,36 @@ export default function VehiclesEdit({ auth, vehicle, lifecycleStatuses = {} }) 
         exterior_color: vehicle.exterior_color ?? '',
         interior_color: vehicle.interior_color ?? '',
         odometer_km: vehicle.odometer_km ?? '',
+        asking_price: vehicle.asking_price ?? '',
+        floor_price: vehicle.floor_price ?? '',
         lifecycle_status: vehicle.lifecycle_status ?? 'draft',
         internal_notes: vehicle.internal_notes ?? '',
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // 技術註解：更新寫入僅走後端 allowlist + policy，前端不承擔安全授權責任。
-        patch(route('employee-system.vehicles.update', vehicle.id));
+        // 技術註解：即使畫面隱藏欄位，仍以送出白名單排除未授權價格欄位，降低權限提升與參數注入風險。
+        const payload = {
+            vin: data.vin,
+            license_plate: data.license_plate,
+            brand: data.brand,
+            model: data.model,
+            variant: data.variant,
+            model_year: data.model_year,
+            exterior_color: data.exterior_color,
+            interior_color: data.interior_color,
+            odometer_km: data.odometer_km,
+            lifecycle_status: data.lifecycle_status,
+            internal_notes: data.internal_notes,
+            ...(canUpdateVehiclePricing
+                ? {
+                    asking_price: data.asking_price,
+                    floor_price: data.floor_price,
+                }
+                : {}),
+        };
+
+        patch(route('employee-system.vehicles.update', vehicle.id), { data: payload });
     };
 
     const inputClass = 'w-full rounded-lg border border-default bg-surface px-3 py-2 text-primary focus:outline-none focus:ring-2 focus:ring-accent';
@@ -50,6 +74,12 @@ export default function VehiclesEdit({ auth, vehicle, lifecycleStatuses = {} }) 
                         <div><label className="mb-1 block text-sm text-secondary">外觀顏色</label><input className={inputClass} value={data.exterior_color} onChange={(e) => setData('exterior_color', e.target.value)} />{errors.exterior_color && <p className="mt-1 text-sm text-accent">{errors.exterior_color}</p>}</div>
                         <div><label className="mb-1 block text-sm text-secondary">內裝顏色</label><input className={inputClass} value={data.interior_color} onChange={(e) => setData('interior_color', e.target.value)} />{errors.interior_color && <p className="mt-1 text-sm text-accent">{errors.interior_color}</p>}</div>
                         <div><label className="mb-1 block text-sm text-secondary">里程（公里）</label><input type="number" className={inputClass} value={data.odometer_km} onChange={(e) => setData('odometer_km', e.target.value)} />{errors.odometer_km && <p className="mt-1 text-sm text-accent">{errors.odometer_km}</p>}</div>
+                        {canUpdateVehiclePricing && (
+                            <>
+                                <div><label className="mb-1 block text-sm text-secondary">開價</label><input type="number" className={inputClass} value={data.asking_price} onChange={(e) => setData('asking_price', e.target.value)} />{errors.asking_price && <p className="mt-1 text-sm text-accent">{errors.asking_price}</p>}</div>
+                                <div><label className="mb-1 block text-sm text-secondary">底價</label><input type="number" className={inputClass} value={data.floor_price} onChange={(e) => setData('floor_price', e.target.value)} />{errors.floor_price && <p className="mt-1 text-sm text-accent">{errors.floor_price}</p>}</div>
+                            </>
+                        )}
                     </div>
 
                     <div>

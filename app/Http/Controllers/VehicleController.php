@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreVehicleRequest;
 use App\Http\Requests\UpdateVehicleRequest;
 use App\Models\Vehicle;
+use App\Models\VehicleCost;
 use App\Services\AuditLogService;
 use App\Services\VehicleStockNumberService;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -27,6 +28,8 @@ class VehicleController extends Controller
     public function index(Request $request): Response
     {
         $this->authorize('viewAny', Vehicle::class);
+        $canViewVehiclePricing = $request->user()?->can('module.vehicles.pricing.view') ?? false;
+        $canUpdateVehiclePricing = $request->user()?->can('module.vehicles.pricing.update') ?? false;
 
         $lifecycleStatuses = config('vehicles.lifecycle_statuses');
         $allowedLifecycleStatusKeys = array_keys($lifecycleStatuses);
@@ -63,7 +66,31 @@ class VehicleController extends Controller
                 'model',
                 'model_year',
                 'lifecycle_status',
+                'asking_price',
+                'floor_price',
             ])
+            ->through(function (Vehicle $vehicle) use ($canViewVehiclePricing): array {
+                $payload = [
+                    'id' => $vehicle->id,
+                    'company_id' => $vehicle->company_id,
+                    'branch_id' => $vehicle->branch_id,
+                    'stock_number' => $vehicle->stock_number,
+                    'vin' => $vehicle->vin,
+                    'license_plate' => $vehicle->license_plate,
+                    'brand' => $vehicle->brand,
+                    'model' => $vehicle->model,
+                    'model_year' => $vehicle->model_year,
+                    'lifecycle_status' => $vehicle->lifecycle_status,
+                ];
+
+                // 技術註解：價格欄位僅在具備 pricing.view 時輸出，避免未授權列表洩漏敏感金額。
+                if ($canViewVehiclePricing) {
+                    $payload['asking_price'] = $vehicle->asking_price;
+                    $payload['floor_price'] = $vehicle->floor_price;
+                }
+
+                return $payload;
+            })
             ->withQueryString();
 
         return Inertia::render('Vehicles/Index', [
@@ -78,6 +105,8 @@ class VehicleController extends Controller
                 'create_vehicle' => $request->user()?->can('create', Vehicle::class) ?? false,
                 // 技術註解：Policy update 需要 Vehicle 實例，列表頁改以對應 permission 判斷避免參數不足錯誤。
                 'update_vehicle' => $request->user()?->can('module.vehicles.update') ?? false,
+                'view_vehicle_pricing' => $canViewVehiclePricing,
+                'update_vehicle_pricing' => $canUpdateVehiclePricing,
             ],
         ]);
     }
@@ -88,12 +117,16 @@ class VehicleController extends Controller
     public function create(Request $request): Response
     {
         $this->authorize('create', Vehicle::class);
+        $canViewVehiclePricing = $request->user()?->can('module.vehicles.pricing.view') ?? false;
+        $canUpdateVehiclePricing = $request->user()?->can('module.vehicles.pricing.update') ?? false;
 
         return Inertia::render('Vehicles/Create', [
             'lifecycleStatuses' => config('vehicles.lifecycle_statuses'),
             'can' => [
                 'create_vehicle' => $request->user()?->can('create', Vehicle::class) ?? false,
                 'update_vehicle' => $request->user()?->can('module.vehicles.update') ?? false,
+                'view_vehicle_pricing' => $canViewVehiclePricing,
+                'update_vehicle_pricing' => $canUpdateVehiclePricing,
             ],
         ]);
     }
@@ -105,6 +138,7 @@ class VehicleController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = $request->user();
+        $canUpdateVehiclePricing = $user->can('module.vehicles.pricing.update');
 
         // 技術註解：建立車輛前先強制檢查 tenant 邊界，避免以 company_id=0 或 branch_id=null 呼叫序號服務導致跨租戶污染。
         if ((int) $user->company_id <= 0 || $user->branch_id === null) {
@@ -115,7 +149,7 @@ class VehicleController extends Controller
 
         $stockNumber = $this->vehicleStockNumberService->generate((int) $user->company_id);
 
-        $vehicle = Vehicle::create([
+        $createPayload = [
             'company_id' => (int) $user->company_id,
             'branch_id' => (int) $user->branch_id,
             'stock_number' => $stockNumber,
@@ -132,7 +166,17 @@ class VehicleController extends Controller
             'internal_notes' => $request->validated('internal_notes'),
             'created_by' => (int) $user->id,
             'updated_by' => (int) $user->id,
-        ]);
+        ];
+
+        if ($canUpdateVehiclePricing && $request->exists('asking_price')) {
+            $createPayload['asking_price'] = $request->validated('asking_price');
+        }
+
+        if ($canUpdateVehiclePricing && $request->exists('floor_price')) {
+            $createPayload['floor_price'] = $request->validated('floor_price');
+        }
+
+        $vehicle = Vehicle::create($createPayload);
 
         $this->auditLogService->log(
             actor: $user,
@@ -165,6 +209,11 @@ class VehicleController extends Controller
     public function show(Request $request, int $vehicle): Response
     {
         $lifecycleStatuses = config('vehicles.lifecycle_statuses');
+        $canViewVehiclePricing = $request->user()?->can('module.vehicles.pricing.view') ?? false;
+        $canUpdateVehiclePricing = $request->user()?->can('module.vehicles.pricing.update') ?? false;
+        $canViewVehicleCosts = $request->user()?->can('module.vehicles.costs.view') ?? false;
+        $canCreateVehicleCosts = $request->user()?->can('module.vehicles.costs.create') ?? false;
+        $canUpdateVehicleCosts = $request->user()?->can('module.vehicles.costs.update') ?? false;
 
         $foundVehicle = $this->scopedVehicleQuery($request->user())
             ->with([
@@ -178,6 +227,62 @@ class VehicleController extends Controller
 
         // 技術註解：查到資料後仍需再次經過 policy，防止權限提升或未預期授權繞過。
         $this->authorize('view', $foundVehicle);
+
+        $vehicleCosts = null;
+        $vehicleCostSummary = null;
+        $vehicleCostTypes = null;
+        $vehicleCostPaymentStatuses = null;
+
+        // 技術註解：僅在具備 costs.view 時查詢與輸出成本資料，避免未授權使用者取得任何財務資訊。
+        if ($canViewVehicleCosts) {
+            $costTypes = config('vehicles.vehicle_cost_types', []);
+            $paymentStatuses = config('vehicles.vehicle_cost_payment_statuses', []);
+
+            $costRows = $foundVehicle->costs()
+                ->with(['creator:id,name', 'updater:id,name'])
+                ->orderByDesc('cost_date')
+                ->orderByDesc('id')
+                ->get([
+                    'id',
+                    'cost_type',
+                    'description',
+                    'amount',
+                    'cost_date',
+                    'vendor_name',
+                    'payment_status',
+                    'paid_at',
+                    'created_by',
+                    'updated_by',
+                ]);
+
+            $vehicleCosts = $costRows->map(function (VehicleCost $cost) use ($costTypes, $paymentStatuses): array {
+                return [
+                    'id' => $cost->id,
+                    'cost_type' => $cost->cost_type,
+                    'cost_type_label' => $costTypes[$cost->cost_type] ?? $cost->cost_type,
+                    'description' => $cost->description,
+                    'amount' => $cost->amount,
+                    'cost_date' => $cost->cost_date,
+                    'vendor_name' => $cost->vendor_name,
+                    'payment_status' => $cost->payment_status,
+                    'payment_status_label' => $paymentStatuses[$cost->payment_status] ?? $cost->payment_status,
+                    'paid_at' => $cost->paid_at,
+                    'creator' => $cost->creator ? ['name' => $cost->creator->name] : null,
+                    'updater' => $cost->updater ? ['name' => $cost->updater->name] : null,
+                ];
+            })->values();
+
+            $vehicleCostSummary = [
+                'total_amount' => (string) $costRows->sum(fn (VehicleCost $cost): float => (float) $cost->amount),
+                'unpaid_amount' => (string) $costRows->where('payment_status', 'unpaid')->sum(fn (VehicleCost $cost): float => (float) $cost->amount),
+                'paid_amount' => (string) $costRows->where('payment_status', 'paid')->sum(fn (VehicleCost $cost): float => (float) $cost->amount),
+                'partially_paid_amount' => (string) $costRows->where('payment_status', 'partially_paid')->sum(fn (VehicleCost $cost): float => (float) $cost->amount),
+                'count' => $costRows->count(),
+            ];
+
+            $vehicleCostTypes = $costTypes;
+            $vehicleCostPaymentStatuses = $paymentStatuses;
+        }
 
         return Inertia::render('Vehicles/Show', [
             'vehicle' => [
@@ -211,11 +316,25 @@ class VehicleController extends Controller
                 'updater' => $foundVehicle->updater ? [
                     'name' => $foundVehicle->updater->name,
                 ] : null,
+                // 技術註解：價格欄位僅在具備 pricing.view 時輸出，避免未授權詳情頁洩漏敏感金額。
+                ...($canViewVehiclePricing ? [
+                    'asking_price' => $foundVehicle->asking_price,
+                    'floor_price' => $foundVehicle->floor_price,
+                ] : []),
             ],
             'lifecycleStatuses' => $lifecycleStatuses,
+            'vehicleCosts' => $vehicleCosts,
+            'vehicleCostSummary' => $vehicleCostSummary,
+            'vehicleCostTypes' => $vehicleCostTypes,
+            'vehicleCostPaymentStatuses' => $vehicleCostPaymentStatuses,
             'can' => [
                 'create_vehicle' => $request->user()?->can('create', Vehicle::class) ?? false,
                 'update_vehicle' => $request->user()?->can('update', $foundVehicle) ?? false,
+                'view_vehicle_pricing' => $canViewVehiclePricing,
+                'update_vehicle_pricing' => $canUpdateVehiclePricing,
+                'view_vehicle_costs' => $canViewVehicleCosts,
+                'create_vehicle_costs' => $canCreateVehicleCosts,
+                'update_vehicle_costs' => $canUpdateVehicleCosts,
             ],
         ]);
     }
@@ -226,6 +345,8 @@ class VehicleController extends Controller
     public function edit(Request $request, int $vehicle): Response
     {
         $lifecycleStatuses = config('vehicles.lifecycle_statuses');
+        $canViewVehiclePricing = $request->user()?->can('module.vehicles.pricing.view') ?? false;
+        $canUpdateVehiclePricing = $request->user()?->can('module.vehicles.pricing.update') ?? false;
 
         $foundVehicle = $this->scopedVehicleQuery($request->user())
             ->whereKey($vehicle)
@@ -248,11 +369,18 @@ class VehicleController extends Controller
                 'odometer_km' => $foundVehicle->odometer_km,
                 'lifecycle_status' => $foundVehicle->lifecycle_status,
                 'internal_notes' => $foundVehicle->internal_notes,
+                // 技術註解：編輯 payload 僅授權 pricing.update 者可取得價格欄位，避免前端形成可編輯敏感資料入口。
+                ...($canUpdateVehiclePricing ? [
+                    'asking_price' => $foundVehicle->asking_price,
+                    'floor_price' => $foundVehicle->floor_price,
+                ] : []),
             ],
             'lifecycleStatuses' => $lifecycleStatuses,
             'can' => [
                 'create_vehicle' => $request->user()?->can('create', Vehicle::class) ?? false,
                 'update_vehicle' => $request->user()?->can('update', $foundVehicle) ?? false,
+                'view_vehicle_pricing' => $canViewVehiclePricing,
+                'update_vehicle_pricing' => $canUpdateVehiclePricing,
             ],
         ]);
     }
@@ -264,6 +392,7 @@ class VehicleController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = $request->user();
+        $canUpdateVehiclePricing = $user->can('module.vehicles.pricing.update');
 
         $foundVehicle = $this->scopedVehicleQuery($user)
             ->whereKey($vehicle)
@@ -283,9 +412,11 @@ class VehicleController extends Controller
             'odometer_km',
             'lifecycle_status',
             'internal_notes',
+            'asking_price',
+            'floor_price',
         ]);
 
-        $foundVehicle->update([
+        $updatePayload = [
             'vin' => $request->validated('vin'),
             'license_plate' => $request->validated('license_plate'),
             'brand' => $request->validated('brand'),
@@ -298,7 +429,17 @@ class VehicleController extends Controller
             'lifecycle_status' => $request->validated('lifecycle_status'),
             'internal_notes' => $request->validated('internal_notes'),
             'updated_by' => (int) $user->id,
-        ]);
+        ];
+
+        if ($canUpdateVehiclePricing && $request->exists('asking_price')) {
+            $updatePayload['asking_price'] = $request->validated('asking_price');
+        }
+
+        if ($canUpdateVehiclePricing && $request->exists('floor_price')) {
+            $updatePayload['floor_price'] = $request->validated('floor_price');
+        }
+
+        $foundVehicle->update($updatePayload);
 
         $newValues = $foundVehicle->only(array_keys($originalValues));
         $changedOldValues = [];
