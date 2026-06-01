@@ -337,10 +337,25 @@ it('有 module.vehicles.view 權限可查看同 company/branch vehicle show', fu
     $user = makeVehicleCrudUser('vehicle-crud-show-same-scope@example.com');
     $user->givePermissionTo('module.vehicles.view');
     $vehicle = makeVehicleCrudRecord(1, 10, 'STK-SHOW-001', 'vin-show-001');
+    $vehicle->update([
+        'created_by' => $user->id,
+        'updated_by' => $user->id,
+    ]);
 
     $this->actingAs($user)
         ->get(route('employee-system.vehicles.show', $vehicle->id))
-        ->assertOk();
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicle.company.name', 'Company 1')
+            ->where('vehicle.company.code', 'C1')
+            ->where('vehicle.branch.name', 'Branch 10')
+            ->where('vehicle.branch.code', 'B1-10')
+            // 技術註解：show payload 僅保留必要關聯資訊，避免暴露 raw tenant FK 造成不必要資料外洩面。
+            ->missing('vehicle.company_id')
+            ->missing('vehicle.branch_id')
+            ->where('vehicle.creator.name', 'Vehicle CRUD User')
+            ->where('vehicle.updater.name', 'Vehicle CRUD User')
+        );
 });
 
 it('有 module.vehicles.create 權限可 store vehicle', function (): void {

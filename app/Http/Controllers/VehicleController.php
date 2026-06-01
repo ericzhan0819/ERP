@@ -182,8 +182,6 @@ class VehicleController extends Controller
         return Inertia::render('Vehicles/Show', [
             'vehicle' => [
                 'id' => $foundVehicle->id,
-                'company_id' => $foundVehicle->company_id,
-                'branch_id' => $foundVehicle->branch_id,
                 'stock_number' => $foundVehicle->stock_number,
                 'vin' => $foundVehicle->vin,
                 'brand' => $foundVehicle->brand,
@@ -200,21 +198,17 @@ class VehicleController extends Controller
                 'created_at' => $foundVehicle->created_at,
                 'updated_at' => $foundVehicle->updated_at,
                 'company' => $foundVehicle->company ? [
-                    'id' => $foundVehicle->company->id,
                     'name' => $foundVehicle->company->name,
                     'code' => $foundVehicle->company->code,
                 ] : null,
                 'branch' => $foundVehicle->branch ? [
-                    'id' => $foundVehicle->branch->id,
                     'name' => $foundVehicle->branch->name,
                     'code' => $foundVehicle->branch->code,
                 ] : null,
                 'creator' => $foundVehicle->creator ? [
-                    'id' => $foundVehicle->creator->id,
                     'name' => $foundVehicle->creator->name,
                 ] : null,
                 'updater' => $foundVehicle->updater ? [
-                    'id' => $foundVehicle->updater->id,
                     'name' => $foundVehicle->updater->name,
                 ] : null,
             ],
