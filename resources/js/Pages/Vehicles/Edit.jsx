@@ -27,6 +27,13 @@ export default function VehiclesEdit({
     const canUpdateVehicleSales = can.update_vehicle_sales === true;
     const [editingSaleId, setEditingSaleId] = useState(null);
 
+    const hasActiveSale = (vehicleSales || []).some((sale) => ['draft', 'reserved', 'sold'].includes(sale.sale_status));
+    const saleStatusHelpText = {
+        reserved: '保留狀態會同步車輛狀態為保留。',
+        sold: '成交狀態會同步車輛狀態為已售。',
+        cancelled: '取消後，非已售車輛會回到在庫狀態。',
+    };
+
     const lifecycleBadgeMap = {
         draft: 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800/80 dark:text-slate-200 dark:ring-slate-700',
         in_stock: 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-200 dark:ring-emerald-800',
@@ -268,6 +275,15 @@ export default function VehiclesEdit({
                     <section className="space-y-4 rounded-2xl border border-default bg-surface p-4 text-secondary">
                         <h2 className="text-sm font-semibold text-primary">銷售紀錄</h2>
 
+                        <div className="space-y-2 text-sm">
+                            {vehicle.lifecycle_status === 'sold' && (
+                                <p className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-200">此車已成交，請避免重複建立銷售紀錄。</p>
+                            )}
+                            {hasActiveSale && (
+                                <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">此車目前已有進行中的銷售紀錄。</p>
+                            )}
+                        </div>
+
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <div className="rounded-xl border border-default p-3">
                                 <p className="text-xs text-muted">銷售狀態</p>
@@ -313,7 +329,7 @@ export default function VehiclesEdit({
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                     <label className="text-sm"><span className="mb-1 block text-muted">客戶名稱</span><input type="text" value={saleForm.data.customer_name} onChange={(event) => saleForm.setData('customer_name', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
                                     <label className="text-sm"><span className="mb-1 block text-muted">客戶電話</span><input type="text" value={saleForm.data.customer_phone} onChange={(event) => saleForm.setData('customer_phone', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
-                                    <label className="text-sm"><span className="mb-1 block text-muted">銷售狀態</span><select value={saleForm.data.sale_status} onChange={(event) => saleForm.setData('sale_status', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm">{Object.entries(vehicleSaleStatuses || {}).map(([value, label]) => (<option key={value} value={value}>{label}</option>))}</select></label>
+                                    <label className="text-sm"><span className="mb-1 block text-muted">銷售狀態</span><select value={saleForm.data.sale_status} onChange={(event) => saleForm.setData('sale_status', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm">{Object.entries(vehicleSaleStatuses || {}).map(([value, label]) => (<option key={value} value={value}>{label}</option>))}</select>{saleStatusHelpText[saleForm.data.sale_status] && <span className="mt-1 block text-xs text-muted">{saleStatusHelpText[saleForm.data.sale_status]}</span>}</label>
                                     <label className="text-sm"><span className="mb-1 block text-muted">銷售價格</span><input type="number" step="0.01" min="0" value={saleForm.data.sale_price} onChange={(event) => saleForm.setData('sale_price', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
                                     <label className="text-sm"><span className="mb-1 block text-muted">訂金</span><input type="number" step="0.01" min="0" value={saleForm.data.deposit_amount} onChange={(event) => saleForm.setData('deposit_amount', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
                                     <label className="text-sm"><span className="mb-1 block text-muted">已收款</span><input type="number" step="0.01" min="0" value={saleForm.data.paid_amount} onChange={(event) => saleForm.setData('paid_amount', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>

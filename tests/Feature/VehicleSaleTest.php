@@ -36,6 +36,8 @@ beforeEach(function (): void {
     Permission::findOrCreate('module.vehicles.sales.view', 'web');
     Permission::findOrCreate('module.vehicles.sales.create', 'web');
     Permission::findOrCreate('module.vehicles.sales.update', 'web');
+    Permission::findOrCreate('module.vehicles.costs.view', 'web');
+    Permission::findOrCreate('module.vehicles.pricing.view', 'web');
 });
 
 function ensureVehicleSaleTenantRows(int $companyId, ?int $branchId): void
@@ -205,6 +207,19 @@ it('有 sales.create 權限可建立銷售且後端決定系統欄位', function
         ->and($sale->updated_by)->toBe($user->id);
 });
 
+it('已成交車輛不可建立新的銷售紀錄', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-sold-create-deny@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.sales.create');
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-SOLD-DENY-001', 'vin-sale-sold-deny-001');
+    $vehicle->update(['lifecycle_status' => 'sold']);
+
+    $this->actingAs($user)
+        ->post(route('employee-system.vehicles.sales.store', $vehicle->id), validVehicleSalePayload(['sale_status' => 'reserved']))
+        ->assertStatus(422)
+        ->assertJsonPath('message', '已成交車輛不可建立新的銷售紀錄。');
+});
+
 it('無 sales.create 權限建立回 403', function (): void {
     $user = makeVehicleSaleUser('vehicle-sale-create-deny@example.com');
     $user->givePermissionTo('module.vehicles.view');
@@ -316,6 +331,36 @@ it('reserved/sold/cancelled 同步 vehicle.lifecycle_status 且取消已售不�
     expect($secondVehicle->fresh()->lifecycle_status)->toBe('in_stock');
 });
 
+it('draft 不會強制改寫 vehicle.lifecycle_status', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-draft-lifecycle@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.sales.create');
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-DRAFT-LIFE-001', 'vin-sale-draft-life-001');
+    $vehicle->update(['lifecycle_status' => 'reserved']);
+
+    $this->actingAs($user)
+        ->post(route('employee-system.vehicles.sales.store', $vehicle->id), validVehicleSalePayload([
+            'sale_status' => 'draft',
+            'sale_price' => null,
+        ]))
+        ->assertRedirect(route('employee-system.vehicles.show', $vehicle->id));
+
+    expect($vehicle->fresh()->lifecycle_status)->toBe('reserved');
+});
+
+it('已成交銷售紀錄不可改回保留狀態', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-sold-to-reserved-deny@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.sales.update');
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-SOLD-RESERVED-001', 'vin-sale-sold-reserved-001');
+    $sale = makeVehicleSaleRecord($vehicle, $user, ['sale_status' => 'sold']);
+
+    $this->actingAs($user)
+        ->patch(route('employee-system.vehicles.sales.update', [$vehicle->id, $sale->id]), validVehicleSalePayload(['sale_status' => 'reserved']))
+        ->assertStatus(422)
+        ->assertJsonPath('message', '已成交銷售紀錄不可改回保留狀態。');
+});
+
 it('同車不可建立多筆 active sale 避免生命週期互相覆寫', function (): void {
     $user = makeVehicleSaleUser('vehicle-sale-active-conflict@example.com');
     $user->givePermissionTo('module.vehicles.view');
@@ -325,7 +370,37 @@ it('同車不可建立多筆 active sale 避免生命週期互相覆寫', functi
 
     $this->actingAs($user)
         ->post(route('employee-system.vehicles.sales.store', $vehicle->id), validVehicleSalePayload(['sale_status' => 'sold']))
-        ->assertStatus(422);
+        ->assertStatus(422)
+        ->assertJsonPath('message', '此車已有進行中的銷售紀錄。');
+});
+
+it('Show/Edit 在無 sales.view costs.view pricing.view 時不回傳銷售成本價格或毛利 payload', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-isolation-deny@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.update');
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-ISOLATION-001', 'vin-sale-isolation-001');
+    $vehicle->update(['asking_price' => 980000, 'floor_price' => 900000]);
+    makeVehicleSaleRecord($vehicle, $user, ['customer_phone' => 'secret-phone', 'commission_amount' => 99999]);
+
+    foreach (['show', 'edit'] as $action) {
+        $this->actingAs($user)
+            ->get(route('employee-system.vehicles.'.$action, $vehicle->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->missing('vehicleSales')
+                ->missing('vehicleSaleSummary')
+                ->missing('vehicle.asking_price')
+                ->missing('vehicle.floor_price')
+                ->where('vehicleCosts', null)
+                ->where('vehicleCostSummary', null)
+                ->missing('vehicleSales.0.sale_price')
+                ->missing('vehicleSales.0.customer_phone')
+                ->missing('vehicleSales.0.commission_amount')
+                ->missing('vehicleSales.0.gross_profit')
+                ->missing('vehicleSales.0.gross_margin')
+                ->missing('vehicleSales.0.profit')
+            );
+    }
 });
 
 it('sales 資料不暴露成本或毛利欄位', function (): void {
@@ -342,6 +417,10 @@ it('sales 資料不暴露成本或毛利欄位', function (): void {
             ->missing('vehicleSales.0.cost_amount')
             ->missing('vehicleSales.0.gross_profit')
             ->missing('vehicleSales.0.gross_margin')
+            ->missing('vehicleSales.0.profit')
+            ->missing('vehicleSaleSummary.gross_profit')
+            ->missing('vehicleSaleSummary.gross_margin')
+            ->missing('vehicleSaleSummary.profit')
             ->missing('vehicleSales.0.company_id')
             ->missing('vehicleSales.0.branch_id')
             ->missing('vehicleSales.0.vehicle_id')

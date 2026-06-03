@@ -91,6 +91,7 @@ class VehicleSaleController extends Controller
 
         $this->authorize('update', [$foundVehicleSale, $foundVehicle]);
 
+        $this->ensureSoldSaleIsNotReservedAgain($foundVehicleSale, $request->validated('sale_status'));
         $this->ensureNoActiveSaleConflict($foundVehicle, $request->validated('sale_status'), $foundVehicleSale->id);
 
         DB::transaction(function () use ($request, $user, $foundVehicle, $foundVehicleSale): void {
@@ -142,6 +143,12 @@ class VehicleSaleController extends Controller
             return;
         }
 
+        if ($vehicle->lifecycle_status === 'sold') {
+            throw new HttpResponseException(response()->json([
+                'message' => '已成交車輛不可建立新的銷售紀錄。',
+            ], 422));
+        }
+
         $exists = $vehicle->sales()
             ->whereIn('sale_status', ['draft', 'reserved', 'sold'])
             ->when($ignoreSaleId !== null, fn (Builder $query): Builder => $query->whereKeyNot($ignoreSaleId))
@@ -149,9 +156,23 @@ class VehicleSaleController extends Controller
 
         if ($exists) {
             throw new HttpResponseException(response()->json([
-                'message' => '此車輛已有進行中的銷售紀錄，無法建立或切換為 active sale。',
+                'message' => '此車已有進行中的銷售紀錄。',
             ], 422));
         }
+    }
+
+    /**
+     * 技術註解：已成交紀錄不可退回保留，避免用簡化狀態切換繞過後續退車/退款/作廢流程。
+     */
+    private function ensureSoldSaleIsNotReservedAgain(VehicleSale $vehicleSale, string $nextStatus): void
+    {
+        if ($vehicleSale->sale_status !== 'sold' || $nextStatus !== 'reserved') {
+            return;
+        }
+
+        throw new HttpResponseException(response()->json([
+            'message' => '已成交銷售紀錄不可改回保留狀態。',
+        ], 422));
     }
 
     /**
