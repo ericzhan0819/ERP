@@ -2,7 +2,7 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Module 第一代 MVP 已完成。
+- 專案狀態：Early Development，Vehicle Module 第一代 MVP 已完成，Customer Module MVP foundation 已加入。
 - 穩定節點：Vehicle Sales Flow QA polish 已完成。
 - 最新驗證狀態：`157 passed / 1020 assertions`，`npm run build` 通過。
 - 本文件為 Vehicle Module MVP Final Review 封版整理；目前不實作新功能、不做完整會計、不做報表、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload。
@@ -29,6 +29,17 @@
 - Vehicle pricing
 - Vehicle costs
 - Vehicle sales
+- Customer management foundation
+
+## Customer Module MVP 能力
+
+- Customer CRUD foundation：Index / Show / Create / Edit / Store / Update。
+- `customer_number` 自動產生：格式為 `CU-YYYYMM-0001`，依 company 與月份遞增。
+- Tenant scope：以 `company_id` / `branch_id` 作為客戶主檔資料邊界。
+- RBAC / Policy：客戶一般 CRUD 與敏感個資由後端 Policy / FormRequest 控制。
+- Sensitive data isolation：`id_number`、`birthday`、`address` 僅在 `module.customers.sensitive.view` 下輸出，建立 / 更新需 `module.customers.sensitive.update`。
+- 基本搜尋篩選：`q` 搜尋 `name`、`phone`、`secondary_phone`、`customer_number`；`status` 篩選 `lead`、`active`、`archived`。
+- Customer audit events：`customer.created`、`customer.updated`；audit snapshot 不記敏感個資與 tenant / actor 欄位。
 
 ## Vehicle Module MVP 能力
 
@@ -98,12 +109,15 @@
 - `vehicle_sale.created`
 - `vehicle_sale.updated`
 - `company_settings.updated`
+- `customer.created`
+- `customer.updated`
 
 Audit 資料原則：
 
 - Vehicle audit 僅記錄主要業務欄位，避免將內部備註等潛在敏感內容寫入快照。
 - Vehicle costs audit 只記錄白名單欄位，不記 `internal_notes`。
 - Vehicle sales audit 只記錄白名單欄位，不記 tenant / actor / internal-only sensitive 欄位。
+- Customer audit 只記錄一般白名單欄位，不記 `id_number`、`birthday`、`address`。
 - Audit snapshot 不記 `company_id`、`branch_id`、`vehicle_id`、`created_by`、`updated_by` 等系統欄位。
 - `auth.*` 不進一般 operation audit；登入成功、登入失敗、停用帳號登入、登出等事件保留在 Login logs。
 
@@ -135,7 +149,7 @@ Audit 資料原則：
 
 - 尚未做完整會計。
 - 尚未做租賃模組。
-- 尚未做客戶模組。
+- 客戶模組目前僅完成第一代 Customer CRUD foundation，尚未串接銷售、合約、收款或完整 CRM。
 - 尚未做收款流程。
 - 尚未做圖片上傳。
 - 尚未做報表。

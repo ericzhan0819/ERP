@@ -17,9 +17,9 @@
 
 # System Status
 
-目前開發中（Early Development），Vehicle Module MVP completed。
+目前開發中（Early Development），Vehicle Module MVP completed，Customer Management foundation completed。
 
-目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛銷售、系統稽核紀錄與登入紀錄。
+目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛銷售、客戶管理 foundation、系統稽核紀錄與登入紀錄。
 
 目前穩定節點：
 
@@ -168,6 +168,19 @@ reserved   已保留
 sold       已售出
 archived   已封存
 ```
+
+## Customer Management Foundation
+
+已完成 Customer Module MVP：
+
+- Customer CRUD foundation
+- Customer number auto-generation：`CU-YYYYMM-0001`
+- Tenant-scoped query：`company_id` / `branch_id`
+- RBAC / Policy authorization
+- Sensitive data permission isolation：`id_number` / `birthday` / `address`
+- Search / status filter / pagination
+- Customer audit events：`customer.created` / `customer.updated`
+- Staff Permission matrix 支援 `customers.sensitive` nested permissions
 
 ## Audit Foundation
 

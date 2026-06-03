@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CompanySettingController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StaffPermissionController;
 use App\Http\Controllers\VehicleController;
@@ -98,6 +99,39 @@ Route::patch('/employee-system/vehicles/{vehicle}', [VehicleController::class, '
     ->middleware(['auth', 'module.access:vehicles'])
     ->whereNumber('vehicle')
     ->name('employee-system.vehicles.update');
+
+Route::get('/employee-system/customers', [CustomerController::class, 'index'])
+    // 技術註解：客戶模組採獨立 module.access:customers，不與車輛或銷售權限混用，避免權限邊界擴張。
+    ->middleware(['auth', 'module.access:customers'])
+    ->name('employee-system.customers.index');
+
+Route::get('/employee-system/customers/create', [CustomerController::class, 'create'])
+    // 技術註解：建立頁同樣受 customers 模組門禁保護，細部 create 授權交由 Policy/FormRequest。
+    ->middleware(['auth', 'module.access:customers'])
+    ->name('employee-system.customers.create');
+
+Route::post('/employee-system/customers', [CustomerController::class, 'store'])
+    // 技術註解：寫入路由保留 module access 與 request/policy 雙層授權，避免直接 URL 越權建立客戶。
+    ->middleware(['auth', 'module.access:customers'])
+    ->name('employee-system.customers.store');
+
+Route::get('/employee-system/customers/{customer}', [CustomerController::class, 'show'])
+    // 技術註解：不使用 implicit binding，Controller 先 scoped 查詢再授權，跨 tenant 優先 404。
+    ->middleware(['auth', 'module.access:customers'])
+    ->whereNumber('customer')
+    ->name('employee-system.customers.show');
+
+Route::get('/employee-system/customers/{customer}/edit', [CustomerController::class, 'edit'])
+    // 技術註解：編輯頁與詳情頁一致採 scoped 查詢，避免透過 ID 探測他租戶客戶資料。
+    ->middleware(['auth', 'module.access:customers'])
+    ->whereNumber('customer')
+    ->name('employee-system.customers.edit');
+
+Route::patch('/employee-system/customers/{customer}', [CustomerController::class, 'update'])
+    // 技術註解：更新路由不接收任何租戶或流水號欄位，後端以 scoped query 防止 IDOR。
+    ->middleware(['auth', 'module.access:customers'])
+    ->whereNumber('customer')
+    ->name('employee-system.customers.update');
 
 Route::post('/employee-system/vehicles/{vehicle}/costs', [VehicleCostController::class, 'store'])
     // 技術註解：成本建立路由維持在 vehicles 模組門禁下，細部授權由 policy 執行，避免前端判斷被誤當安全機制。

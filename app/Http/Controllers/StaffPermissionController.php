@@ -35,6 +35,15 @@ class StaffPermissionController extends Controller
         'vehicles.pricing' => '車輛價格',
         'vehicles.costs' => '車輛成本',
         'vehicles.sales' => '車輛銷售',
+        'customers.sensitive' => '客戶個資',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    private const MODULE_LABELS = [
+        'customers' => '客戶管理',
+        'vehicles' => '車輛管理',
     ];
 
     public function __construct(
@@ -105,7 +114,7 @@ class StaffPermissionController extends Controller
                 ? $moduleKey.'.'.$segments[2]
                 : $moduleKey;
 
-            $moduleLabels[$moduleKey] = $moduleLabels[$moduleKey] ?? ucfirst(str_replace('-', ' ', $moduleKey));
+            $moduleLabels[$moduleKey] = $moduleLabels[$moduleKey] ?? (self::MODULE_LABELS[$moduleKey] ?? ucfirst(str_replace('-', ' ', $moduleKey)));
             $matrixLabel = count($segments) === 4
                 ? (self::SUB_SCOPE_LABELS[$matrixKey] ?? ucfirst(str_replace(['-', '.'], ' ', $matrixKey)))
                 : $moduleLabels[$moduleKey];
