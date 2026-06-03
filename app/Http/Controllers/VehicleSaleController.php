@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreVehicleSaleRequest;
 use App\Http\Requests\UpdateVehicleSaleRequest;
+use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\VehicleSale;
 use App\Services\AuditLogService;
@@ -33,20 +34,22 @@ class VehicleSaleController extends Controller
         $this->ensureNoActiveSaleConflict($foundVehicle, $request->validated('sale_status'));
 
         $vehicleSale = DB::transaction(function () use ($request, $user, $foundVehicle): VehicleSale {
+            $validated = $request->validated();
+            $customerSnapshot = $this->resolveCustomerSnapshot($user, $validated['customer_id'] ?? null, $validated);
+
             $created = VehicleSale::create([
                 'company_id' => (int) $foundVehicle->company_id,
                 'branch_id' => (int) $foundVehicle->branch_id,
                 'vehicle_id' => (int) $foundVehicle->id,
-                'customer_name' => $request->validated('customer_name'),
-                'customer_phone' => $request->validated('customer_phone'),
-                'sale_price' => $request->validated('sale_price'),
-                'deposit_amount' => $request->validated('deposit_amount'),
-                'paid_amount' => $request->validated('paid_amount'),
-                'sale_status' => $request->validated('sale_status'),
-                'sold_at' => $request->validated('sold_at'),
-                'salesperson_name' => $request->validated('salesperson_name'),
-                'commission_amount' => $request->validated('commission_amount'),
-                'notes' => $request->validated('notes'),
+                ...$customerSnapshot,
+                'sale_price' => $validated['sale_price'] ?? null,
+                'deposit_amount' => $validated['deposit_amount'] ?? null,
+                'paid_amount' => $validated['paid_amount'] ?? null,
+                'sale_status' => $validated['sale_status'],
+                'sold_at' => $validated['sold_at'] ?? null,
+                'salesperson_name' => $validated['salesperson_name'] ?? null,
+                'commission_amount' => $validated['commission_amount'] ?? null,
+                'notes' => $validated['notes'] ?? null,
                 'created_by' => (int) $user->id,
                 'updated_by' => (int) $user->id,
             ]);
@@ -95,6 +98,8 @@ class VehicleSaleController extends Controller
         $this->ensureNoActiveSaleConflict($foundVehicle, $request->validated('sale_status'), $foundVehicleSale->id);
 
         DB::transaction(function () use ($request, $user, $foundVehicle, $foundVehicleSale): void {
+            $validated = $request->validated();
+            $customerSnapshot = $this->resolveCustomerSnapshot($user, $validated['customer_id'] ?? null, $validated);
             $oldValues = $this->buildAuditableSaleValues($foundVehicleSale);
             $oldSaleStatus = $foundVehicleSale->sale_status;
 
@@ -102,16 +107,15 @@ class VehicleSaleController extends Controller
                 'company_id' => (int) $foundVehicle->company_id,
                 'branch_id' => (int) $foundVehicle->branch_id,
                 'vehicle_id' => (int) $foundVehicle->id,
-                'customer_name' => $request->validated('customer_name'),
-                'customer_phone' => $request->validated('customer_phone'),
-                'sale_price' => $request->validated('sale_price'),
-                'deposit_amount' => $request->validated('deposit_amount'),
-                'paid_amount' => $request->validated('paid_amount'),
-                'sale_status' => $request->validated('sale_status'),
-                'sold_at' => $request->validated('sold_at'),
-                'salesperson_name' => $request->validated('salesperson_name'),
-                'commission_amount' => $request->validated('commission_amount'),
-                'notes' => $request->validated('notes'),
+                ...$customerSnapshot,
+                'sale_price' => $validated['sale_price'] ?? null,
+                'deposit_amount' => $validated['deposit_amount'] ?? null,
+                'paid_amount' => $validated['paid_amount'] ?? null,
+                'sale_status' => $validated['sale_status'],
+                'sold_at' => $validated['sold_at'] ?? null,
+                'salesperson_name' => $validated['salesperson_name'] ?? null,
+                'commission_amount' => $validated['commission_amount'] ?? null,
+                'notes' => $validated['notes'] ?? null,
                 'updated_by' => (int) $user->id,
             ]);
 
@@ -208,6 +212,7 @@ class VehicleSaleController extends Controller
         }
 
         return [
+            'customer_id' => $vehicleSale->customer_id,
             'customer_name' => $vehicleSale->customer_name,
             'customer_phone' => $vehicleSale->customer_phone,
             'sale_price' => $vehicleSale->sale_price,
@@ -237,6 +242,51 @@ class VehicleSaleController extends Controller
         }
 
         return $query;
+    }
+
+    /**
+     * 技術註解：Customer 主檔查詢必須套用與登入者相同 tenant 邊界，避免以 customer_id 探測或綁定他租戶個資。
+     */
+    private function scopedCustomerQuery(?Authenticatable $user): Builder
+    {
+        /** @var \App\Models\User $user */
+        $userCompanyId = (int) ($user?->company_id ?? 0);
+        $userBranchId = $user?->branch_id;
+
+        $query = Customer::query()->where('company_id', $userCompanyId);
+
+        if ($userBranchId !== null) {
+            $query->where('branch_id', (int) $userBranchId);
+        }
+
+        return $query;
+    }
+
+    /**
+     * 技術註解：選擇 customer_id 時一律由 Customer 主檔覆寫 snapshot，防止前端竄改成交客戶姓名或電話。
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array{customer_id: int|null, customer_name: string|null, customer_phone: string|null}
+     */
+    private function resolveCustomerSnapshot(?Authenticatable $user, ?int $customerId, array $validated): array
+    {
+        if ($customerId === null) {
+            return [
+                'customer_id' => null,
+                'customer_name' => $validated['customer_name'] ?? null,
+                'customer_phone' => $validated['customer_phone'] ?? null,
+            ];
+        }
+
+        $customer = $this->scopedCustomerQuery($user)
+            ->whereKey($customerId)
+            ->firstOrFail(['id', 'name', 'phone']);
+
+        return [
+            'customer_id' => (int) $customer->id,
+            'customer_name' => $customer->name,
+            'customer_phone' => $customer->phone,
+        ];
     }
 
     /**

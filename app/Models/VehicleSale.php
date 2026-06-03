@@ -16,6 +16,7 @@ class VehicleSale extends Model
         'company_id',
         'branch_id',
         'vehicle_id',
+        'customer_id',
         'customer_name',
         'customer_phone',
         'sale_price',
@@ -39,6 +40,7 @@ class VehicleSale extends Model
             'company_id' => 'integer',
             'branch_id' => 'integer',
             'vehicle_id' => 'integer',
+            'customer_id' => 'integer',
             'sale_price' => 'decimal:2',
             'deposit_amount' => 'decimal:2',
             'paid_amount' => 'decimal:2',
@@ -62,6 +64,11 @@ class VehicleSale extends Model
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function creator(): BelongsTo

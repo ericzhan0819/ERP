@@ -197,8 +197,8 @@ export default function VehiclesShow({
                                     <thead className="bg-slate-50 text-left text-xs text-muted dark:bg-slate-900/40">
                                         <tr>
                                             <th className="px-3 py-2 font-medium">狀態</th>
-                                            <th className="px-3 py-2 font-medium">客戶名稱</th>
-                                            <th className="px-3 py-2 font-medium">客戶電話</th>
+                                            <th className="px-3 py-2 font-medium">客戶</th>
+                                            <th className="px-3 py-2 font-medium">電話</th>
                                             <th className="px-3 py-2 font-medium">成交價</th>
                                             <th className="px-3 py-2 font-medium">訂金</th>
                                             <th className="px-3 py-2 font-medium">已付款</th>
@@ -218,7 +218,7 @@ export default function VehiclesShow({
                                                         {displayValue(sale.sale_status_label)}
                                                     </span>
                                                 </td>
-                                                <td className="px-3 py-2">{displayValue(sale.customer_name)}</td>
+                                                <td className="px-3 py-2">{sale.customer ? `${sale.customer.customer_number}｜${displayValue(sale.customer_name)}` : displayValue(sale.customer_name)}</td>
                                                 <td className="px-3 py-2">{displayValue(sale.customer_phone)}</td>
                                                 <td className="px-3 py-2">{formatNumber(sale.sale_price)}</td>
                                                 <td className="px-3 py-2">{formatNumber(sale.deposit_amount)}</td>

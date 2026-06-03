@@ -18,6 +18,7 @@ export default function VehiclesEdit({
     vehicleSales = [],
     vehicleSaleSummary = null,
     vehicleSaleStatuses = {},
+    customerOptions = [],
 }) {
     const canUpdateVehiclePricing = can.update_vehicle_pricing === true;
     const canViewVehicleCosts = can.view_vehicle_costs === true;
@@ -73,6 +74,7 @@ export default function VehiclesEdit({
     });
 
     const saleForm = useForm({
+        customer_id: '',
         customer_name: '',
         customer_phone: '',
         sale_price: '',
@@ -165,6 +167,7 @@ export default function VehiclesEdit({
     const resetSaleForm = () => {
         setEditingSaleId(null);
         saleForm.setData({
+            customer_id: '',
             customer_name: '',
             customer_phone: '',
             sale_price: '',
@@ -182,6 +185,7 @@ export default function VehiclesEdit({
     const startEditSale = (sale) => {
         setEditingSaleId(sale.id);
         saleForm.setData({
+            customer_id: sale.customer_id ?? '',
             customer_name: sale.customer_name ?? '',
             customer_phone: sale.customer_phone ?? '',
             sale_price: sale.sale_price ?? '',
@@ -196,11 +200,29 @@ export default function VehiclesEdit({
         saleForm.clearErrors();
     };
 
+    const formatCustomerOption = (customer) => [customer.customer_number, customer.name, customer.phone]
+        .filter((value) => value !== null && value !== undefined && value !== '')
+        .join('｜');
+
+    const handleSaleCustomerChange = (event) => {
+        const customerId = event.target.value;
+        const selectedCustomer = (customerOptions || []).find((customer) => String(customer.id) === String(customerId));
+
+        // 技術註解：選取客戶時只更新交易快照預覽，真正覆寫仍由後端 tenant-scoped Customer 查詢執行以防前端竄改。
+        saleForm.setData({
+            ...saleForm.data,
+            customer_id: customerId,
+            customer_name: selectedCustomer?.name ?? '',
+            customer_phone: selectedCustomer?.phone ?? '',
+        });
+    };
+
     const submitSaleForm = (event) => {
         event.preventDefault();
 
         // 技術註解：銷售請求只送出 allowlist 欄位，避免 company_id/branch_id/vehicle_id 與成本/毛利欄位注入。
         const payload = {
+            customer_id: saleForm.data.customer_id || null,
             customer_name: saleForm.data.customer_name,
             customer_phone: saleForm.data.customer_phone,
             sale_price: saleForm.data.sale_price,
@@ -327,8 +349,16 @@ export default function VehiclesEdit({
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                    <label className="text-sm"><span className="mb-1 block text-muted">客戶名稱</span><input type="text" value={saleForm.data.customer_name} onChange={(event) => saleForm.setData('customer_name', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
-                                    <label className="text-sm"><span className="mb-1 block text-muted">客戶電話</span><input type="text" value={saleForm.data.customer_phone} onChange={(event) => saleForm.setData('customer_phone', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
+                                    <label className="text-sm">
+                                        <span className="mb-1 block text-muted">客戶主檔</span>
+                                        <select value={saleForm.data.customer_id} onChange={handleSaleCustomerChange} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm">
+                                            <option value="">不指定客戶，手動輸入</option>
+                                            {(customerOptions || []).map((customer) => (<option key={customer.id} value={customer.id}>{formatCustomerOption(customer)}</option>))}
+                                        </select>
+                                        <span className="mt-1 block text-xs text-muted">選擇客戶時，姓名與電話會作為本筆銷售快照，主檔仍由客戶模組維護。</span>
+                                    </label>
+                                    <label className="text-sm"><span className="mb-1 block text-muted">客戶名稱快照</span><input type="text" value={saleForm.data.customer_name} onChange={(event) => saleForm.setData('customer_name', event.target.value)} readOnly={saleForm.data.customer_id !== ''} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm read-only:bg-slate-50 read-only:text-muted dark:read-only:bg-slate-900/40" /></label>
+                                    <label className="text-sm"><span className="mb-1 block text-muted">客戶電話快照</span><input type="text" value={saleForm.data.customer_phone} onChange={(event) => saleForm.setData('customer_phone', event.target.value)} readOnly={saleForm.data.customer_id !== ''} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm read-only:bg-slate-50 read-only:text-muted dark:read-only:bg-slate-900/40" /></label>
                                     <label className="text-sm"><span className="mb-1 block text-muted">銷售狀態</span><select value={saleForm.data.sale_status} onChange={(event) => saleForm.setData('sale_status', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm">{Object.entries(vehicleSaleStatuses || {}).map(([value, label]) => (<option key={value} value={value}>{label}</option>))}</select>{saleStatusHelpText[saleForm.data.sale_status] && <span className="mt-1 block text-xs text-muted">{saleStatusHelpText[saleForm.data.sale_status]}</span>}</label>
                                     <label className="text-sm"><span className="mb-1 block text-muted">銷售價格</span><input type="number" step="0.01" min="0" value={saleForm.data.sale_price} onChange={(event) => saleForm.setData('sale_price', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
                                     <label className="text-sm"><span className="mb-1 block text-muted">訂金</span><input type="number" step="0.01" min="0" value={saleForm.data.deposit_amount} onChange={(event) => saleForm.setData('deposit_amount', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
@@ -360,8 +390,8 @@ export default function VehiclesEdit({
                                     <thead className="bg-slate-50 text-left text-xs text-muted dark:bg-slate-900/40">
                                         <tr>
                                             <th className="px-3 py-2 font-medium">狀態</th>
-                                            <th className="px-3 py-2 font-medium">客戶名稱</th>
-                                            <th className="px-3 py-2 font-medium">客戶電話</th>
+                                            <th className="px-3 py-2 font-medium">客戶</th>
+                                            <th className="px-3 py-2 font-medium">客戶電話快照</th>
                                             <th className="px-3 py-2 font-medium">成交價</th>
                                             <th className="px-3 py-2 font-medium">訂金</th>
                                             <th className="px-3 py-2 font-medium">已付款</th>
@@ -382,7 +412,7 @@ export default function VehiclesEdit({
                                                         {displayValue(sale.sale_status_label)}
                                                     </span>
                                                 </td>
-                                                <td className="px-3 py-2">{displayValue(sale.customer_name)}</td>
+                                                <td className="px-3 py-2">{sale.customer ? `${sale.customer.customer_number}｜${displayValue(sale.customer_name)}` : displayValue(sale.customer_name)}</td>
                                                 <td className="px-3 py-2">{displayValue(sale.customer_phone)}</td>
                                                 <td className="px-3 py-2">{formatNumber(sale.sale_price)}</td>
                                                 <td className="px-3 py-2">{formatNumber(sale.deposit_amount)}</td>

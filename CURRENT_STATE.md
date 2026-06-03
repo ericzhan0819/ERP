@@ -52,6 +52,8 @@
 - Pricing / Costs / Sales 權限隔離：價格、成本、銷售 payload 依後端權限輸出，前端隱藏不作為安全依據。
 - Sales lifecycle sync：銷售狀態會同步車輛 lifecycle。
 - Active sale guard：每台車只允許一筆 active sale。
+- Vehicle Sales customer linking：銷售可 nullable 關聯 `customer_id`，`customer_name` / `customer_phone` 保留為交易當下 snapshot。
+- Vehicle Sales customer payload 僅輸出 `id`、`customer_number`、`name`、`phone` 基本顯示資訊，不暴露 Customer sensitive 欄位。
 - Audit events：車輛、成本、銷售與公司設定異動已記錄 operation audit。
 - Show / Edit UI split：Show 偏只讀展示；Edit 承載可編輯流程與 mutation UI 所需選項。
 
@@ -149,7 +151,7 @@ Audit 資料原則：
 
 - 尚未做完整會計。
 - 尚未做租賃模組。
-- 客戶模組目前僅完成第一代 Customer CRUD foundation，尚未串接銷售、合約、收款或完整 CRM。
+- 客戶模組目前已提供 Vehicle Sales customer linking foundation；尚未串接合約、收款或完整 CRM。
 - 尚未做收款流程。
 - 尚未做圖片上傳。
 - 尚未做報表。

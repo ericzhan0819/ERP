@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreVehicleRequest;
 use App\Http\Requests\UpdateVehicleRequest;
+use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\VehicleCost;
 use App\Models\VehicleSale;
@@ -393,6 +394,7 @@ class VehicleController extends Controller
         $vehicleCostPaymentStatuses = null;
         $vehicleSales = null;
         $vehicleSaleSummary = null;
+        $customerOptions = null;
         $vehicleSaleStatuses = null;
 
         // 技術註解：編輯頁成本 payload 嚴格比照 show，僅在具備 costs.view 時回傳，避免未授權者取得財務敏感資訊。
@@ -452,6 +454,10 @@ class VehicleController extends Controller
             $vehicleSales = $salesPayload['sales'];
             $vehicleSaleSummary = $salesPayload['summary'];
             $vehicleSaleStatuses = config('vehicle_sales.sale_statuses', []);
+
+            if ($canCreateVehicleSales || $canUpdateVehicleSales) {
+                $customerOptions = $this->buildCustomerOptions($request->user());
+            }
         }
 
         $props = [
@@ -498,6 +504,7 @@ class VehicleController extends Controller
             $props['vehicleSales'] = $vehicleSales;
             $props['vehicleSaleSummary'] = $vehicleSaleSummary;
             $props['vehicleSaleStatuses'] = $vehicleSaleStatuses;
+            $props['customerOptions'] = $customerOptions;
         }
 
         return Inertia::render('Vehicles/Edit', $props);
@@ -610,6 +617,45 @@ class VehicleController extends Controller
     }
 
     /**
+     * 技術註解：Customer 選單只能讀取登入者 tenant 範圍，避免車輛銷售表單成為跨租戶客戶枚舉入口。
+     */
+    private function scopedCustomerQuery(?Authenticatable $user): Builder
+    {
+        /** @var \App\Models\User $user */
+        $userCompanyId = (int) ($user?->company_id ?? 0);
+        $userBranchId = $user?->branch_id;
+
+        $query = Customer::query()->where('company_id', $userCompanyId);
+
+        if ($userBranchId !== null) {
+            $query->where('branch_id', (int) $userBranchId);
+        }
+
+        return $query;
+    }
+
+    /**
+     * 技術註解：Customer option 僅輸出銷售連結必要欄位，不帶 email/地址/身分證/生日等個資，降低敏感資料暴露面。
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function buildCustomerOptions(?Authenticatable $user)
+    {
+        return $this->scopedCustomerQuery($user)
+            ->latest('id')
+            ->limit(100)
+            ->get(['id', 'customer_number', 'name', 'phone', 'status'])
+            ->map(fn (Customer $customer): array => [
+                'id' => $customer->id,
+                'customer_number' => $customer->customer_number,
+                'name' => $customer->name,
+                'phone' => $customer->phone,
+                'status' => $customer->status,
+            ])
+            ->values();
+    }
+
+    /**
      * 技術註解：集中銷售 payload 白名單，確保未加入成本、毛利或租戶欄位，維持 Sales/Costs/Pricing 權限隔離。
      *
      * @return array{sales: \Illuminate\Support\Collection<int, array<string, mixed>>, summary: array<string, mixed>}
@@ -619,11 +665,12 @@ class VehicleController extends Controller
         $saleStatuses = config('vehicle_sales.sale_statuses', []);
 
         $saleRows = $vehicle->sales()
-            ->with(['creator:id,name', 'updater:id,name'])
+            ->with(['creator:id,name', 'updater:id,name', 'customer:id,customer_number,name,phone'])
             ->orderByDesc('sold_at')
             ->orderByDesc('id')
             ->get([
                 'id',
+                'customer_id',
                 'customer_name',
                 'customer_phone',
                 'sale_price',
@@ -642,6 +689,13 @@ class VehicleController extends Controller
             'sales' => $saleRows->map(function (VehicleSale $sale) use ($saleStatuses): array {
                 return [
                     'id' => $sale->id,
+                    'customer_id' => $sale->customer_id,
+                    'customer' => $sale->customer ? [
+                        'id' => $sale->customer->id,
+                        'customer_number' => $sale->customer->customer_number,
+                        'name' => $sale->customer->name,
+                        'phone' => $sale->customer->phone,
+                    ] : null,
                     'customer_name' => $sale->customer_name,
                     'customer_phone' => $sale->customer_phone,
                     'sale_price' => $sale->sale_price,

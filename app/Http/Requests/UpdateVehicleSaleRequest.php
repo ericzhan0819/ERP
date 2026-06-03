@@ -28,6 +28,9 @@ class UpdateVehicleSaleRequest extends FormRequest
             'profit_rate',
             'purchase_cost',
             'maintenance_cost',
+            'id_number',
+            'birthday',
+            'address',
         ]);
     }
 
@@ -37,6 +40,7 @@ class UpdateVehicleSaleRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'customer_id' => ['nullable', 'integer'],
             'customer_name' => ['nullable', 'string', 'max:255'],
             'customer_phone' => ['nullable', 'string', 'max:50'],
             'sale_price' => ['nullable', 'numeric', 'min:0'],

@@ -150,6 +150,7 @@ module.audit.view
 - Vehicle Pricing：`asking_price` / `floor_price` 依權限輸出與更新。
 - Vehicle Costs：成本新增、更新、摘要與 audit logging。
 - Vehicle Sales：銷售新增、更新、active sale guard 與 lifecycle sync。
+- Vehicle Sales customer linking foundation：可關聯 Customer 主檔並保留交易 snapshot，銷售 payload 不暴露 Customer sensitive 欄位。
 - Staff Permission matrix 支援 `vehicles.pricing`、`vehicles.costs`、`vehicles.sales` nested permissions。
 - 後端 payload 必須依權限控制；前端隱藏不等於安全；無權限者不能取得價格、成本、銷售、佣金等敏感資料。
 

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ActivityLog;
+use App\Models\Customer;
 use App\Models\Module;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -97,12 +98,34 @@ function makeVehicleSaleVehicle(int $companyId, int $branchId, string $stock, st
     ]);
 }
 
+function makeVehicleSaleCustomer(int $companyId, int $branchId, string $number, array $overrides = []): Customer
+{
+    ensureVehicleSaleTenantRows($companyId, $branchId);
+
+    return Customer::create(array_merge([
+        'company_id' => $companyId,
+        'branch_id' => $branchId,
+        'customer_number' => $number,
+        'name' => '主檔客戶',
+        'phone' => '0987654321',
+        'id_number' => 'A123456789',
+        'birthday' => '1990-01-01',
+        'address' => '敏感地址',
+        'email' => 'customer-secret@example.com',
+        'line_id' => 'secret-line',
+        'source' => 'walk-in',
+        'notes' => 'customer sensitive notes',
+        'status' => 'active',
+    ], $overrides));
+}
+
 /** @return array<string, mixed> */
 function validVehicleSalePayload(array $overrides = []): array
 {
     return array_merge([
         'customer_name' => '王小明',
         'customer_phone' => '0912345678',
+        'customer_id' => null,
         'sale_price' => 880000,
         'deposit_amount' => 50000,
         'paid_amount' => 100000,
@@ -120,6 +143,7 @@ function makeVehicleSaleRecord(Vehicle $vehicle, User $actor, array $overrides =
         'company_id' => $vehicle->company_id,
         'branch_id' => $vehicle->branch_id,
         'vehicle_id' => $vehicle->id,
+        'customer_id' => null,
         'customer_name' => 'Existing Customer',
         'customer_phone' => '0900000000',
         'sale_price' => 760000,
@@ -160,6 +184,133 @@ it('有 sales.view 權限者 Show/Edit payload 看得到 sales', function (): vo
             ->where('vehicleSales.0.customer_phone', '0900000000')
             ->where('vehicleSaleStatuses.sold', '成交')
         );
+});
+
+it('有 sales.view 時 sales payload 僅回傳 Customer 基本資訊且排除敏感個資', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-customer-payload@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.update');
+    $user->givePermissionTo('module.vehicles.sales.view');
+    $user->givePermissionTo('module.vehicles.sales.create');
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-CUS-PAYLOAD-001', 'vin-sale-cus-payload-001');
+    $customer = makeVehicleSaleCustomer(1, 10, 'CU-202606-0003');
+    makeVehicleSaleRecord($vehicle, $user, [
+        'customer_id' => $customer->id,
+        'customer_name' => $customer->name,
+        'customer_phone' => $customer->phone,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.show', $vehicle->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicleSales.0.customer.id', $customer->id)
+            ->where('vehicleSales.0.customer.customer_number', 'CU-202606-0003')
+            ->where('vehicleSales.0.customer.name', '主檔客戶')
+            ->where('vehicleSales.0.customer.phone', '0987654321')
+            ->missing('vehicleSales.0.customer.id_number')
+            ->missing('vehicleSales.0.customer.birthday')
+            ->missing('vehicleSales.0.customer.address')
+            ->missing('vehicleSales.0.customer.email')
+            ->missing('vehicleSales.0.customer.line_id')
+            ->missing('vehicleSales.0.customer.notes')
+            ->missing('vehicleSales.0.customer.source')
+        );
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicles.edit', $vehicle->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('customerOptions.0.customer_number', 'CU-202606-0003')
+            ->where('customerOptions.0.status', 'active')
+            ->missing('customerOptions.0.id_number')
+            ->missing('customerOptions.0.birthday')
+            ->missing('customerOptions.0.address')
+            ->missing('customerOptions.0.email')
+            ->missing('customerOptions.0.line_id')
+            ->missing('customerOptions.0.notes')
+            ->missing('customerOptions.0.source')
+        );
+});
+
+it('create 可帶 customer_id 並以同 tenant Customer 主檔覆寫 snapshot', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-customer-create@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.sales.create');
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-CUS-CRT-001', 'vin-sale-cus-crt-001');
+    $customer = makeVehicleSaleCustomer(1, 10, 'CU-202606-0001', [
+        'name' => '主檔王小明',
+        'phone' => '0999888777',
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('employee-system.vehicles.sales.store', $vehicle->id), validVehicleSalePayload([
+            'customer_id' => $customer->id,
+            'customer_name' => '前端竄改姓名',
+            'customer_phone' => '0000000000',
+        ]))
+        ->assertRedirect(route('employee-system.vehicles.show', $vehicle->id));
+
+    $sale = VehicleSale::query()->latest('id')->firstOrFail();
+    expect($sale->customer_id)->toBe($customer->id)
+        ->and($sale->customer_name)->toBe('主檔王小明')
+        ->and($sale->customer_phone)->toBe('0999888777');
+});
+
+it('跨 company 或 branch 的 customer_id 建立銷售回 404 防止 IDOR', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-customer-create-idor@example.com', 1, 10);
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.sales.create');
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-CUS-IDOR-001', 'vin-sale-cus-idor-001');
+    $crossCustomer = makeVehicleSaleCustomer(2, 20, 'CU-202606-0999');
+
+    $this->actingAs($user)
+        ->post(route('employee-system.vehicles.sales.store', $vehicle->id), validVehicleSalePayload([
+            'customer_id' => $crossCustomer->id,
+        ]))
+        ->assertNotFound();
+});
+
+it('update 可改 customer_id 並重新套用 Customer snapshot', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-customer-update@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.sales.update');
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-CUS-UPD-001', 'vin-sale-cus-upd-001');
+    $sale = makeVehicleSaleRecord($vehicle, $user, ['sale_status' => 'cancelled']);
+    $customer = makeVehicleSaleCustomer(1, 10, 'CU-202606-0002', [
+        'name' => '更新主檔客戶',
+        'phone' => '0911111222',
+    ]);
+
+    $this->actingAs($user)
+        ->patch(route('employee-system.vehicles.sales.update', [$vehicle->id, $sale->id]), validVehicleSalePayload([
+            'customer_id' => $customer->id,
+            'customer_name' => '更新竄改姓名',
+            'customer_phone' => '123',
+            'sale_status' => 'cancelled',
+        ]))
+        ->assertRedirect(route('employee-system.vehicles.show', $vehicle->id));
+
+    $sale->refresh();
+    expect($sale->customer_id)->toBe($customer->id)
+        ->and($sale->customer_name)->toBe('更新主檔客戶')
+        ->and($sale->customer_phone)->toBe('0911111222');
+});
+
+it('跨 tenant customer_id 更新銷售回 404', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-customer-update-idor@example.com', 1, 10);
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.sales.update');
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-CUS-UPD-IDOR-001', 'vin-sale-cus-upd-idor-001');
+    $sale = makeVehicleSaleRecord($vehicle, $user, ['sale_status' => 'cancelled']);
+    $crossCustomer = makeVehicleSaleCustomer(1, 11, 'CU-202606-0888');
+
+    $this->actingAs($user)
+        ->patch(route('employee-system.vehicles.sales.update', [$vehicle->id, $sale->id]), validVehicleSalePayload([
+            'customer_id' => $crossCustomer->id,
+            'sale_status' => 'cancelled',
+        ]))
+        ->assertNotFound();
 });
 
 it('無 sales.view 權限者 payload 不回傳 sales 且不暴露銷售敏感欄位', function (): void {
@@ -276,6 +427,21 @@ it('前端嘗試覆寫系統欄位或成本毛利欄位時拒絕', function (): 
             'created_by' => 777,
             'updated_by' => 666,
             'gross_profit' => 12345,
+        ]))
+        ->assertForbidden();
+});
+
+it('Vehicle Sales request 夾帶 Customer 敏感個資欄位時拒絕', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-sensitive-fields-deny@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.sales.create');
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-SENSITIVE-DENY-001', 'vin-sale-sensitive-deny-001');
+
+    $this->actingAs($user)
+        ->post(route('employee-system.vehicles.sales.store', $vehicle->id), validVehicleSalePayload([
+            'id_number' => 'A123456789',
+            'birthday' => '1990-01-01',
+            'address' => '不應進入銷售請求',
         ]))
         ->assertForbidden();
 });
@@ -454,6 +620,33 @@ it('audit log 有 vehicle_sale.created / vehicle_sale.updated 且不記系統欄
         ->and($updatedLog?->old_values['notes'] ?? null)->toBe('created audit')
         ->and($updatedLog?->new_values['notes'] ?? null)->toBe('updated audit')
         ->and(array_key_exists('updated_by', $updatedLog?->new_values ?? []))->toBeFalse();
+});
+
+it('audit log 可記 customer_id 但不記 Customer 敏感個資欄位', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-customer-audit@example.com');
+    $user->givePermissionTo('module.vehicles.view');
+    $user->givePermissionTo('module.vehicles.sales.create');
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-CUS-AUDIT-001', 'vin-sale-cus-audit-001');
+    $customer = makeVehicleSaleCustomer(1, 10, 'CU-202606-0004', [
+        'name' => '稽核主檔客戶',
+        'phone' => '0922222333',
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('employee-system.vehicles.sales.store', $vehicle->id), validVehicleSalePayload([
+            'customer_id' => $customer->id,
+        ]))
+        ->assertRedirect(route('employee-system.vehicles.show', $vehicle->id));
+
+    $createdLog = ActivityLog::query()->where('event', 'vehicle_sale.created')->latest('id')->first();
+
+    expect($createdLog)->not->toBeNull()
+        ->and($createdLog?->new_values['customer_id'] ?? null)->toBe($customer->id)
+        ->and($createdLog?->new_values['customer_name'] ?? null)->toBe('稽核主檔客戶')
+        ->and($createdLog?->new_values['customer_phone'] ?? null)->toBe('0922222333')
+        ->and(array_key_exists('id_number', $createdLog?->new_values ?? []))->toBeFalse()
+        ->and(array_key_exists('birthday', $createdLog?->new_values ?? []))->toBeFalse()
+        ->and(array_key_exists('address', $createdLog?->new_values ?? []))->toBeFalse();
 });
 
 it('Staff Permission 權限矩陣可看到 vehicles.sales nested permission', function (): void {
