@@ -12,6 +12,21 @@ export default function CustomersShow({ auth, customer, customerStatuses = {}, c
         return value;
     };
 
+    const displayDateTime = (value) => {
+        const formatted = formatDateTime(value);
+        return formatted === '-' ? '—' : formatted;
+    };
+
+    const statusBadgeClass = (value) => {
+        const classes = {
+            lead: 'border-amber-200 bg-amber-50 text-amber-700',
+            active: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+            archived: 'border-slate-200 bg-slate-50 text-slate-600',
+        };
+
+        return classes[value] ?? 'border-default bg-surface-muted text-secondary';
+    };
+
     const rows = [
         { label: '客戶編號', value: customer.customer_number },
         { label: '姓名', value: customer.name },
@@ -27,7 +42,15 @@ export default function CustomersShow({ auth, customer, customerStatuses = {}, c
         <DashboardLayout user={auth.user}>
             <div className="space-y-4 p-4 md:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h1 className="text-xl font-semibold text-primary">客戶詳情</h1>
+                    <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-xl font-semibold text-primary">客戶詳情</h1>
+                            <span className="text-sm font-medium text-secondary">{displayValue(customer.customer_number)}</span>
+                            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${statusBadgeClass(customer.status)}`}>
+                                {customerStatuses[customer.status] ?? customer.status}
+                            </span>
+                        </div>
+                    </div>
                     <div className="flex items-center gap-2">
                         <Link href={route('employee-system.customers.index')} className="rounded-lg border border-default px-3 py-2 text-sm font-medium text-secondary">返回列表</Link>
                         {can.update_customers && (
@@ -62,12 +85,11 @@ export default function CustomersShow({ auth, customer, customerStatuses = {}, c
                         <p className="sm:col-span-2"><span className="text-muted">備註：</span>{displayValue(customer.notes)}</p>
                         <p><span className="text-muted">建立者：</span>{displayValue(customer.creator?.name)}</p>
                         <p><span className="text-muted">更新者：</span>{displayValue(customer.updater?.name)}</p>
-                        <p><span className="text-muted">建立時間：</span>{formatDateTime(customer.created_at)}</p>
-                        <p><span className="text-muted">更新時間：</span>{formatDateTime(customer.updated_at)}</p>
+                        <p><span className="text-muted">建立時間：</span>{displayDateTime(customer.created_at)}</p>
+                        <p><span className="text-muted">更新時間：</span>{displayDateTime(customer.updated_at)}</p>
                     </div>
                 </section>
             </div>
         </DashboardLayout>
     );
 }
-

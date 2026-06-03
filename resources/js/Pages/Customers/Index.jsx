@@ -10,6 +10,21 @@ export default function CustomersIndex({ auth, customers = { data: [], links: []
     const [q, setQ] = React.useState(filters.q ?? '');
     const [status, setStatus] = React.useState(filters.status ?? '');
 
+    const displayDateTime = (value) => {
+        const formatted = formatDateTime(value);
+        return formatted === '-' ? '—' : formatted;
+    };
+
+    const statusBadgeClass = (value) => {
+        const classes = {
+            lead: 'border-amber-200 bg-amber-50 text-amber-700',
+            active: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+            archived: 'border-slate-200 bg-slate-50 text-slate-600',
+        };
+
+        return classes[value] ?? 'border-default bg-surface-muted text-secondary';
+    };
+
     const handleSearch = (event) => {
         event.preventDefault();
 
@@ -31,8 +46,11 @@ export default function CustomersIndex({ auth, customers = { data: [], links: []
     return (
         <DashboardLayout user={auth.user}>
             <div className="space-y-4 p-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-xl font-semibold text-primary">客戶列表</h1>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <h1 className="text-xl font-semibold text-primary">客戶管理</h1>
+                        <p className="mt-1 text-sm text-secondary">管理潛在客戶、正式客戶與封存客戶資料</p>
+                    </div>
                     {can.create_customers && (
                         <Link href={route('employee-system.customers.create')} className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white">
                             新增客戶
@@ -41,21 +59,24 @@ export default function CustomersIndex({ auth, customers = { data: [], links: []
                 </div>
 
                 <form onSubmit={handleSearch} className="rounded-2xl border border-default bg-surface p-4">
-                    <div className="grid gap-3 md:grid-cols-3">
-                        <input
-                            type="text"
-                            value={q}
-                            onChange={(event) => setQ(event.target.value)}
-                            placeholder="搜尋客戶編號 / 姓名 / 電話"
-                            className="rounded-lg border border-default bg-surface px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none"
-                        />
+                    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]">
+                        <div>
+                            <input
+                                type="text"
+                                value={q}
+                                onChange={(event) => setQ(event.target.value)}
+                                placeholder="搜尋客戶編號 / 姓名 / 電話"
+                                className="w-full rounded-lg border border-default bg-surface px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none"
+                            />
+                            <p className="mt-2 text-xs text-muted">可搜尋客戶編號、姓名、電話</p>
+                        </div>
                         <select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-default bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:outline-none">
                             <option value="">全部狀態</option>
                             {Object.entries(customerStatuses).map(([value, label]) => (
                                 <option key={value} value={value}>{label}</option>
                             ))}
                         </select>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-start gap-2">
                             <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white">查詢</button>
                             <button type="button" onClick={handleClear} className="rounded-lg border border-default px-4 py-2 text-sm font-medium text-secondary">清除篩選</button>
                         </div>
@@ -81,11 +102,15 @@ export default function CustomersIndex({ auth, customers = { data: [], links: []
                                     <td className="px-4 py-3">{customer.customer_number}</td>
                                     <td className="px-4 py-3">{customer.name}</td>
                                     <td className="px-4 py-3 text-secondary">{customer.phone ?? '—'}</td>
-                                    <td className="px-4 py-3 text-secondary">{customerStatuses[customer.status] ?? customer.status}</td>
+                                    <td className="px-4 py-3">
+                                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${statusBadgeClass(customer.status)}`}>
+                                            {customerStatuses[customer.status] ?? customer.status}
+                                        </span>
+                                    </td>
                                     <td className="px-4 py-3 text-secondary">{customer.source ?? '—'}</td>
                                     <td className="px-4 py-3 text-secondary">
-                                        <div>{formatDateTime(customer.created_at)}</div>
-                                        <div className="text-xs text-muted">{formatDateTime(customer.updated_at)}</div>
+                                        <div>{displayDateTime(customer.created_at)}</div>
+                                        <div className="text-xs text-muted">{displayDateTime(customer.updated_at)}</div>
                                     </td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
@@ -122,4 +147,3 @@ export default function CustomersIndex({ auth, customers = { data: [], links: []
         </DashboardLayout>
     );
 }
-

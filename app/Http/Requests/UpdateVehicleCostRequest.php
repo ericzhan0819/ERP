@@ -16,6 +16,8 @@ class UpdateVehicleCostRequest extends FormRequest
     }
 
     /**
+     * 技術註解：此 request 僅驗證成本業務欄位；tenant、vehicle 與 actor 欄位由 controller 在 scoped vehicle 後端寫入，避免前端覆寫資料邊界。
+     * 因此 company_id、branch_id、vehicle_id、created_by、updated_by 不應進入 rules。
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
@@ -32,4 +34,3 @@ class UpdateVehicleCostRequest extends FormRequest
         ];
     }
 }
-
