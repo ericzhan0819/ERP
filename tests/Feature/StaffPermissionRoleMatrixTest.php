@@ -143,7 +143,12 @@ it('permissionMatrix 支援 vehicles 子範圍四段式權限並保留 action �
                     && ($matrix['vehicles.costs']['label'] ?? null) === '車輛成本'
                     && ($matrix['vehicles.costs']['actions']['view']['permission'] ?? null) === 'module.vehicles.costs.view'
                     && ($matrix['vehicles.costs']['actions']['create']['permission'] ?? null) === 'module.vehicles.costs.create'
-                    && ($matrix['vehicles.costs']['actions']['update']['permission'] ?? null) === 'module.vehicles.costs.update';
+                    && ($matrix['vehicles.costs']['actions']['update']['permission'] ?? null) === 'module.vehicles.costs.update'
+                    && isset($matrix['vehicles.sales'])
+                    && ($matrix['vehicles.sales']['label'] ?? null) === '車輛銷售'
+                    && ($matrix['vehicles.sales']['actions']['view']['permission'] ?? null) === 'module.vehicles.sales.view'
+                    && ($matrix['vehicles.sales']['actions']['create']['permission'] ?? null) === 'module.vehicles.sales.create'
+                    && ($matrix['vehicles.sales']['actions']['update']['permission'] ?? null) === 'module.vehicles.sales.update';
             })
             ->missing('permissionMatrix.vehicle')
         );

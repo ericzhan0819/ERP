@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { formatDateTime } from '@/utils/formatDateTime';
+import { formatDate, formatDateTime } from '@/utils/formatDateTime';
 
 /**
  * 技術註解：詳情頁僅輸出只讀核心欄位，避免誤導為可編輯流程並降低敏感資料暴露面。
@@ -15,6 +15,8 @@ export default function VehiclesShow({
     vehicleCostSummary = null,
     vehicleCostTypes = {},
     vehicleCostPaymentStatuses = {},
+    vehicleSales = [],
+    vehicleSaleSummary = null,
 }) {
     /**
      * 技術註解：統一空值佔位，避免不同欄位出現不一致的缺值符號造成判讀成本上升。
@@ -43,6 +45,7 @@ export default function VehiclesShow({
      */
     const canViewVehiclePricing = can.view_vehicle_pricing === true;
     const canViewVehicleCosts = can.view_vehicle_costs === true;
+    const canViewVehicleSales = can.view_vehicle_sales === true;
 
     const formatNumber = (value) => {
         if (value === null || value === undefined || value === '') {
@@ -148,6 +151,70 @@ export default function VehiclesShow({
                     </section>
                 )}
 
+                {canViewVehicleSales && (
+                    <section className="space-y-4 rounded-2xl border border-default bg-surface p-4 text-secondary">
+                        <h2 className="text-sm font-semibold text-primary">銷售紀錄</h2>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">銷售筆數</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.count)}</p>
+                            </div>
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">最新狀態</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{displayValue(vehicleSaleSummary?.latest_status_label)}</p>
+                            </div>
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">最新銷售價格</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.latest_sale_price)}</p>
+                            </div>
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">最新已收款</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.latest_paid_amount)}</p>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto rounded-xl border border-default">
+                            {vehicleSales.length === 0 ? (
+                                <div className="p-6 text-center text-sm text-muted">目前沒有銷售資料。</div>
+                            ) : (
+                                <table className="min-w-full text-sm">
+                                    <thead className="bg-slate-50 text-left text-xs text-muted dark:bg-slate-900/40">
+                                        <tr>
+                                            <th className="px-3 py-2 font-medium">狀態</th>
+                                            <th className="px-3 py-2 font-medium">客戶</th>
+                                            <th className="px-3 py-2 font-medium">電話</th>
+                                            <th className="px-3 py-2 font-medium">銷售價格</th>
+                                            <th className="px-3 py-2 font-medium">訂金</th>
+                                            <th className="px-3 py-2 font-medium">已收款</th>
+                                            <th className="px-3 py-2 font-medium">成交日</th>
+                                            <th className="px-3 py-2 font-medium">業務</th>
+                                            <th className="px-3 py-2 font-medium">佣金</th>
+                                            <th className="px-3 py-2 font-medium">備註</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {vehicleSales.map((sale) => (
+                                            <tr key={sale.id} className="border-t border-default">
+                                                <td className="px-3 py-2">{displayValue(sale.sale_status_label)}</td>
+                                                <td className="px-3 py-2">{displayValue(sale.customer_name)}</td>
+                                                <td className="px-3 py-2">{displayValue(sale.customer_phone)}</td>
+                                                <td className="px-3 py-2">{formatNumber(sale.sale_price)}</td>
+                                                <td className="px-3 py-2">{formatNumber(sale.deposit_amount)}</td>
+                                                <td className="px-3 py-2">{formatNumber(sale.paid_amount)}</td>
+                                                <td className="px-3 py-2">{formatDate(sale.sold_at)}</td>
+                                                <td className="px-3 py-2">{displayValue(sale.salesperson_name)}</td>
+                                                <td className="px-3 py-2">{formatNumber(sale.commission_amount)}</td>
+                                                <td className="px-3 py-2">{displayValue(sale.notes)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </section>
+                )}
+
                 {canViewVehicleCosts && (
                     <section className="space-y-4 rounded-2xl border border-default bg-surface p-4 text-secondary">
                         <h2 className="text-sm font-semibold text-primary">成本管理</h2>
@@ -194,7 +261,7 @@ export default function VehiclesShow({
                                                 <td className="px-3 py-2">{displayValue(cost.cost_type_label)}</td>
                                                 <td className="px-3 py-2">{displayValue(cost.description)}</td>
                                                 <td className="px-3 py-2">{formatNumber(cost.amount)}</td>
-                                                <td className="px-3 py-2">{displayValue(cost.cost_date)}</td>
+                                                <td className="px-3 py-2">{formatDate(cost.cost_date)}</td>
                                                 <td className="px-3 py-2">{displayValue(cost.vendor_name)}</td>
                                                 <td className="px-3 py-2">{displayValue(cost.payment_status_label)}</td>
                                                 <td className="px-3 py-2">{displayValue(cost.creator?.name)}</td>

@@ -6,6 +6,7 @@ use App\Http\Requests\StoreVehicleRequest;
 use App\Http\Requests\UpdateVehicleRequest;
 use App\Models\Vehicle;
 use App\Models\VehicleCost;
+use App\Models\VehicleSale;
 use App\Services\AuditLogService;
 use App\Services\VehicleStockNumberService;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -217,6 +218,9 @@ class VehicleController extends Controller
         $canViewVehicleCosts = $request->user()?->can('module.vehicles.costs.view') ?? false;
         $canCreateVehicleCosts = $request->user()?->can('module.vehicles.costs.create') ?? false;
         $canUpdateVehicleCosts = $request->user()?->can('module.vehicles.costs.update') ?? false;
+        $canViewVehicleSales = $request->user()?->can('module.vehicles.sales.view') ?? false;
+        $canCreateVehicleSales = $request->user()?->can('module.vehicles.sales.create') ?? false;
+        $canUpdateVehicleSales = $request->user()?->can('module.vehicles.sales.update') ?? false;
 
         $foundVehicle = $this->scopedVehicleQuery($request->user())
             ->with([
@@ -235,6 +239,8 @@ class VehicleController extends Controller
         $vehicleCostSummary = null;
         $vehicleCostTypes = null;
         $vehicleCostPaymentStatuses = null;
+        $vehicleSales = null;
+        $vehicleSaleSummary = null;
 
         // 技術註解：僅在具備 costs.view 時查詢與輸出成本資料，避免未授權使用者取得任何財務資訊。
         if ($canViewVehicleCosts) {
@@ -288,7 +294,14 @@ class VehicleController extends Controller
             $vehicleCostPaymentStatuses = null;
         }
 
-        return Inertia::render('Vehicles/Show', [
+        // 技術註解：僅在具備 sales.view 時查詢與輸出銷售資料，避免未授權者取得成交價、客戶電話與佣金資訊。
+        if ($canViewVehicleSales) {
+            $salesPayload = $this->buildVehicleSalesPayload($foundVehicle);
+            $vehicleSales = $salesPayload['sales'];
+            $vehicleSaleSummary = $salesPayload['summary'];
+        }
+
+        $props = [
             'vehicle' => [
                 'id' => $foundVehicle->id,
                 'stock_number' => $foundVehicle->stock_number,
@@ -339,8 +352,18 @@ class VehicleController extends Controller
                 'view_vehicle_costs' => $canViewVehicleCosts,
                 'create_vehicle_costs' => $canCreateVehicleCosts,
                 'update_vehicle_costs' => $canUpdateVehicleCosts,
+                'view_vehicle_sales' => $canViewVehicleSales,
+                'create_vehicle_sales' => $canCreateVehicleSales,
+                'update_vehicle_sales' => $canUpdateVehicleSales,
             ],
-        ]);
+        ];
+
+        if ($canViewVehicleSales) {
+            $props['vehicleSales'] = $vehicleSales;
+            $props['vehicleSaleSummary'] = $vehicleSaleSummary;
+        }
+
+        return Inertia::render('Vehicles/Show', $props);
     }
 
     /**
@@ -354,6 +377,9 @@ class VehicleController extends Controller
         $canViewVehicleCosts = $request->user()?->can('module.vehicles.costs.view') ?? false;
         $canCreateVehicleCosts = $request->user()?->can('module.vehicles.costs.create') ?? false;
         $canUpdateVehicleCosts = $request->user()?->can('module.vehicles.costs.update') ?? false;
+        $canViewVehicleSales = $request->user()?->can('module.vehicles.sales.view') ?? false;
+        $canCreateVehicleSales = $request->user()?->can('module.vehicles.sales.create') ?? false;
+        $canUpdateVehicleSales = $request->user()?->can('module.vehicles.sales.update') ?? false;
 
         $foundVehicle = $this->scopedVehicleQuery($request->user())
             ->whereKey($vehicle)
@@ -365,6 +391,9 @@ class VehicleController extends Controller
         $vehicleCostSummary = null;
         $vehicleCostTypes = null;
         $vehicleCostPaymentStatuses = null;
+        $vehicleSales = null;
+        $vehicleSaleSummary = null;
+        $vehicleSaleStatuses = null;
 
         // 技術註解：編輯頁成本 payload 嚴格比照 show，僅在具備 costs.view 時回傳，避免未授權者取得財務敏感資訊。
         if ($canViewVehicleCosts) {
@@ -417,7 +446,15 @@ class VehicleController extends Controller
             $vehicleCostPaymentStatuses = $paymentStatuses;
         }
 
-        return Inertia::render('Vehicles/Edit', [
+        // 技術註解：編輯頁銷售 payload 仍以 sales.view 為前提，create/update 只控制 mutation UI，不可單獨暴露敏感銷售資料。
+        if ($canViewVehicleSales) {
+            $salesPayload = $this->buildVehicleSalesPayload($foundVehicle);
+            $vehicleSales = $salesPayload['sales'];
+            $vehicleSaleSummary = $salesPayload['summary'];
+            $vehicleSaleStatuses = config('vehicle_sales.sale_statuses', []);
+        }
+
+        $props = [
             'vehicle' => [
                 'id' => $foundVehicle->id,
                 'stock_number' => $foundVehicle->stock_number,
@@ -451,8 +488,19 @@ class VehicleController extends Controller
                 'view_vehicle_costs' => $canViewVehicleCosts,
                 'create_vehicle_costs' => $canCreateVehicleCosts,
                 'update_vehicle_costs' => $canUpdateVehicleCosts,
+                'view_vehicle_sales' => $canViewVehicleSales,
+                'create_vehicle_sales' => $canCreateVehicleSales,
+                'update_vehicle_sales' => $canUpdateVehicleSales,
             ],
-        ]);
+        ];
+
+        if ($canViewVehicleSales) {
+            $props['vehicleSales'] = $vehicleSales;
+            $props['vehicleSaleSummary'] = $vehicleSaleSummary;
+            $props['vehicleSaleStatuses'] = $vehicleSaleStatuses;
+        }
+
+        return Inertia::render('Vehicles/Edit', $props);
     }
 
     /**
@@ -559,5 +607,65 @@ class VehicleController extends Controller
         }
 
         return $query;
+    }
+
+    /**
+     * 技術註解：集中銷售 payload 白名單，確保未加入成本、毛利或租戶欄位，維持 Sales/Costs/Pricing 權限隔離。
+     *
+     * @return array{sales: \Illuminate\Support\Collection<int, array<string, mixed>>, summary: array<string, mixed>}
+     */
+    private function buildVehicleSalesPayload(Vehicle $vehicle): array
+    {
+        $saleStatuses = config('vehicle_sales.sale_statuses', []);
+
+        $saleRows = $vehicle->sales()
+            ->with(['creator:id,name', 'updater:id,name'])
+            ->orderByDesc('sold_at')
+            ->orderByDesc('id')
+            ->get([
+                'id',
+                'customer_name',
+                'customer_phone',
+                'sale_price',
+                'deposit_amount',
+                'paid_amount',
+                'sale_status',
+                'sold_at',
+                'salesperson_name',
+                'commission_amount',
+                'notes',
+                'created_by',
+                'updated_by',
+            ]);
+
+        return [
+            'sales' => $saleRows->map(function (VehicleSale $sale) use ($saleStatuses): array {
+                return [
+                    'id' => $sale->id,
+                    'customer_name' => $sale->customer_name,
+                    'customer_phone' => $sale->customer_phone,
+                    'sale_price' => $sale->sale_price,
+                    'deposit_amount' => $sale->deposit_amount,
+                    'paid_amount' => $sale->paid_amount,
+                    'sale_status' => $sale->sale_status,
+                    'sale_status_label' => $saleStatuses[$sale->sale_status] ?? $sale->sale_status,
+                    'sold_at' => optional($sale->sold_at)->format('Y-m-d'),
+                    'salesperson_name' => $sale->salesperson_name,
+                    'commission_amount' => $sale->commission_amount,
+                    'notes' => $sale->notes,
+                    'creator' => $sale->creator ? ['name' => $sale->creator->name] : null,
+                    'updater' => $sale->updater ? ['name' => $sale->updater->name] : null,
+                ];
+            })->values(),
+            'summary' => [
+                'count' => $saleRows->count(),
+                'latest_status' => $saleRows->first()?->sale_status,
+                'latest_status_label' => $saleRows->first()
+                    ? ($saleStatuses[$saleRows->first()->sale_status] ?? $saleRows->first()->sale_status)
+                    : null,
+                'latest_sale_price' => $saleRows->first()?->sale_price,
+                'latest_paid_amount' => $saleRows->first()?->paid_amount,
+            ],
+        ];
     }
 }

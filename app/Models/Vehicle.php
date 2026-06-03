@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Vehicle extends Model
@@ -107,5 +108,21 @@ class Vehicle extends Model
     public function costs(): HasMany
     {
         return $this->hasMany(VehicleCost::class);
+    }
+
+    /**
+     * 技術註解：車輛銷售關聯集中於 Vehicle model，避免控制器分散拼接查詢造成銷售敏感資料 tenant 範圍不一致。
+     */
+    public function sales(): HasMany
+    {
+        return $this->hasMany(VehicleSale::class);
+    }
+
+    /**
+     * 技術註解：最新銷售紀錄供 MVP 顯示摘要使用，不在此推導毛利或會計資料以維持權限隔離。
+     */
+    public function latestSale(): HasOne
+    {
+        return $this->hasOne(VehicleSale::class)->latestOfMany();
     }
 }

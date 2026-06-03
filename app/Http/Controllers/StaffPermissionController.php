@@ -34,6 +34,7 @@ class StaffPermissionController extends Controller
     private const SUB_SCOPE_LABELS = [
         'vehicles.pricing' => '車輛價格',
         'vehicles.costs' => '車輛成本',
+        'vehicles.sales' => '車輛銷售',
     ];
 
     public function __construct(

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { formatDate } from '@/utils/formatDateTime';
 
 /**
  * 技術註解：編輯頁與建立頁保持相近結構，降低維護成本並避免過度抽象造成認知負擔。
@@ -14,10 +15,17 @@ export default function VehiclesEdit({
     vehicleCostSummary = null,
     vehicleCostTypes = {},
     vehicleCostPaymentStatuses = {},
+    vehicleSales = [],
+    vehicleSaleSummary = null,
+    vehicleSaleStatuses = {},
 }) {
     const canUpdateVehiclePricing = can.update_vehicle_pricing === true;
     const canViewVehicleCosts = can.view_vehicle_costs === true;
     const canCreateVehicleCosts = can.create_vehicle_costs === true;
+    const canViewVehicleSales = can.view_vehicle_sales === true;
+    const canCreateVehicleSales = can.create_vehicle_sales === true;
+    const canUpdateVehicleSales = can.update_vehicle_sales === true;
+    const [editingSaleId, setEditingSaleId] = useState(null);
 
     const { data, setData, patch, processing, errors } = useForm({
         vin: vehicle.vin ?? '',
@@ -44,6 +52,19 @@ export default function VehiclesEdit({
         payment_status: '',
         paid_at: '',
         internal_notes: '',
+    });
+
+    const saleForm = useForm({
+        customer_name: '',
+        customer_phone: '',
+        sale_price: '',
+        deposit_amount: '',
+        paid_amount: '',
+        sale_status: 'draft',
+        sold_at: '',
+        salesperson_name: '',
+        commission_amount: '',
+        notes: '',
     });
 
     const handleSubmit = (e) => {
@@ -123,6 +144,73 @@ export default function VehiclesEdit({
         });
     };
 
+    const resetSaleForm = () => {
+        setEditingSaleId(null);
+        saleForm.setData({
+            customer_name: '',
+            customer_phone: '',
+            sale_price: '',
+            deposit_amount: '',
+            paid_amount: '',
+            sale_status: 'draft',
+            sold_at: '',
+            salesperson_name: '',
+            commission_amount: '',
+            notes: '',
+        });
+        saleForm.clearErrors();
+    };
+
+    const startEditSale = (sale) => {
+        setEditingSaleId(sale.id);
+        saleForm.setData({
+            customer_name: sale.customer_name ?? '',
+            customer_phone: sale.customer_phone ?? '',
+            sale_price: sale.sale_price ?? '',
+            deposit_amount: sale.deposit_amount ?? '',
+            paid_amount: sale.paid_amount ?? '',
+            sale_status: sale.sale_status ?? 'draft',
+            sold_at: sale.sold_at ?? '',
+            salesperson_name: sale.salesperson_name ?? '',
+            commission_amount: sale.commission_amount ?? '',
+            notes: sale.notes ?? '',
+        });
+        saleForm.clearErrors();
+    };
+
+    const submitSaleForm = (event) => {
+        event.preventDefault();
+
+        // 技術註解：銷售請求只送出 allowlist 欄位，避免 company_id/branch_id/vehicle_id 與成本/毛利欄位注入。
+        const payload = {
+            customer_name: saleForm.data.customer_name,
+            customer_phone: saleForm.data.customer_phone,
+            sale_price: saleForm.data.sale_price,
+            deposit_amount: saleForm.data.deposit_amount,
+            paid_amount: saleForm.data.paid_amount,
+            sale_status: saleForm.data.sale_status,
+            sold_at: saleForm.data.sold_at,
+            salesperson_name: saleForm.data.salesperson_name,
+            commission_amount: saleForm.data.commission_amount,
+            notes: saleForm.data.notes,
+        };
+
+        if (editingSaleId) {
+            saleForm.patch(route('employee-system.vehicles.sales.update', [vehicle.id, editingSaleId]), {
+                data: payload,
+                preserveScroll: true,
+                onSuccess: resetSaleForm,
+            });
+            return;
+        }
+
+        saleForm.post(route('employee-system.vehicles.sales.store', vehicle.id), {
+            data: payload,
+            preserveScroll: true,
+            onSuccess: resetSaleForm,
+        });
+    };
+
     return (
         <DashboardLayout user={auth.user}>
             <div className="space-y-4 p-6">
@@ -164,6 +252,107 @@ export default function VehiclesEdit({
                         <Link href={route('employee-system.vehicles.show', vehicle.id)} className="text-sm text-secondary underline decoration-1 underline-offset-2">返回詳情</Link>
                     </div>
                 </form>
+
+                {canViewVehicleSales && (
+                    <section className="space-y-4 rounded-2xl border border-default bg-surface p-4 text-secondary">
+                        <h2 className="text-sm font-semibold text-primary">銷售紀錄</h2>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">銷售筆數</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.count)}</p>
+                            </div>
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">最新狀態</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{displayValue(vehicleSaleSummary?.latest_status_label)}</p>
+                            </div>
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">最新銷售價格</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.latest_sale_price)}</p>
+                            </div>
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">最新已收款</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.latest_paid_amount)}</p>
+                            </div>
+                        </div>
+
+                        {(canCreateVehicleSales || (canUpdateVehicleSales && editingSaleId)) && (
+                            <form onSubmit={submitSaleForm} className="space-y-3 rounded-xl border border-default p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <h3 className="text-sm font-semibold text-primary">{editingSaleId ? '更新銷售' : '新增銷售'}</h3>
+                                    {editingSaleId && (
+                                        <button type="button" onClick={resetSaleForm} className="text-xs text-secondary underline decoration-1 underline-offset-2">
+                                            取消編輯
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                    <label className="text-sm"><span className="mb-1 block text-muted">客戶名稱</span><input type="text" value={saleForm.data.customer_name} onChange={(event) => saleForm.setData('customer_name', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
+                                    <label className="text-sm"><span className="mb-1 block text-muted">客戶電話</span><input type="text" value={saleForm.data.customer_phone} onChange={(event) => saleForm.setData('customer_phone', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
+                                    <label className="text-sm"><span className="mb-1 block text-muted">銷售狀態</span><select value={saleForm.data.sale_status} onChange={(event) => saleForm.setData('sale_status', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm">{Object.entries(vehicleSaleStatuses || {}).map(([value, label]) => (<option key={value} value={value}>{label}</option>))}</select></label>
+                                    <label className="text-sm"><span className="mb-1 block text-muted">銷售價格</span><input type="number" step="0.01" min="0" value={saleForm.data.sale_price} onChange={(event) => saleForm.setData('sale_price', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
+                                    <label className="text-sm"><span className="mb-1 block text-muted">訂金</span><input type="number" step="0.01" min="0" value={saleForm.data.deposit_amount} onChange={(event) => saleForm.setData('deposit_amount', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
+                                    <label className="text-sm"><span className="mb-1 block text-muted">已收款</span><input type="number" step="0.01" min="0" value={saleForm.data.paid_amount} onChange={(event) => saleForm.setData('paid_amount', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
+                                    <label className="text-sm"><span className="mb-1 block text-muted">成交日</span><input type="date" value={saleForm.data.sold_at} onChange={(event) => saleForm.setData('sold_at', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
+                                    <label className="text-sm"><span className="mb-1 block text-muted">業務姓名</span><input type="text" value={saleForm.data.salesperson_name} onChange={(event) => saleForm.setData('salesperson_name', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
+                                    <label className="text-sm"><span className="mb-1 block text-muted">佣金</span><input type="number" step="0.01" min="0" value={saleForm.data.commission_amount} onChange={(event) => saleForm.setData('commission_amount', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
+                                </div>
+
+                                <label className="block text-sm"><span className="mb-1 block text-muted">備註</span><textarea value={saleForm.data.notes} onChange={(event) => saleForm.setData('notes', event.target.value)} className="min-h-20 w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
+
+                                {Object.keys(saleForm.errors).length > 0 && (
+                                    <ul className="space-y-1 text-xs text-red-600">
+                                        {Object.values(saleForm.errors).map((error) => (<li key={error}>{error}</li>))}
+                                    </ul>
+                                )}
+
+                                <button type="submit" disabled={saleForm.processing || (!editingSaleId && !canCreateVehicleSales) || (editingSaleId && !canUpdateVehicleSales)} className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60">
+                                    {editingSaleId ? '更新銷售' : '新增銷售'}
+                                </button>
+                            </form>
+                        )}
+
+                        <div className="overflow-x-auto rounded-xl border border-default">
+                            {vehicleSales.length === 0 ? (
+                                <div className="p-6 text-center text-sm text-muted">目前沒有銷售資料。</div>
+                            ) : (
+                                <table className="min-w-full text-sm">
+                                    <thead className="bg-slate-50 text-left text-xs text-muted dark:bg-slate-900/40">
+                                        <tr>
+                                            <th className="px-3 py-2 font-medium">狀態</th>
+                                            <th className="px-3 py-2 font-medium">客戶</th>
+                                            <th className="px-3 py-2 font-medium">電話</th>
+                                            <th className="px-3 py-2 font-medium">銷售價格</th>
+                                            <th className="px-3 py-2 font-medium">已收款</th>
+                                            <th className="px-3 py-2 font-medium">成交日</th>
+                                            <th className="px-3 py-2 font-medium">業務</th>
+                                            <th className="px-3 py-2 font-medium">佣金</th>
+                                            {canUpdateVehicleSales && <th className="px-3 py-2 font-medium">操作</th>}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(vehicleSales || []).map((sale) => (
+                                            <tr key={sale.id} className="border-t border-default">
+                                                <td className="px-3 py-2">{displayValue(sale.sale_status_label)}</td>
+                                                <td className="px-3 py-2">{displayValue(sale.customer_name)}</td>
+                                                <td className="px-3 py-2">{displayValue(sale.customer_phone)}</td>
+                                                <td className="px-3 py-2">{formatNumber(sale.sale_price)}</td>
+                                                <td className="px-3 py-2">{formatNumber(sale.paid_amount)}</td>
+                                                <td className="px-3 py-2">{formatDate(sale.sold_at)}</td>
+                                                <td className="px-3 py-2">{displayValue(sale.salesperson_name)}</td>
+                                                <td className="px-3 py-2">{formatNumber(sale.commission_amount)}</td>
+                                                {canUpdateVehicleSales && (
+                                                    <td className="px-3 py-2"><button type="button" onClick={() => startEditSale(sale)} className="text-xs text-accent underline decoration-1 underline-offset-2">編輯</button></td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </section>
+                )}
 
                 {canViewVehicleCosts && (
                     <section className="space-y-4 rounded-2xl border border-default bg-surface p-4 text-secondary">
@@ -320,7 +509,7 @@ export default function VehiclesEdit({
                                                 <td className="px-3 py-2">{displayValue(cost.cost_type_label)}</td>
                                                 <td className="px-3 py-2">{displayValue(cost.description)}</td>
                                                 <td className="px-3 py-2">{formatNumber(cost.amount)}</td>
-                                                <td className="px-3 py-2">{displayValue(cost.cost_date)}</td>
+                                                <td className="px-3 py-2">{formatDate(cost.cost_date)}</td>
                                                 <td className="px-3 py-2">{displayValue(cost.vendor_name)}</td>
                                                 <td className="px-3 py-2">{displayValue(cost.payment_status_label)}</td>
                                                 <td className="px-3 py-2">{displayValue(cost.creator?.name)}</td>

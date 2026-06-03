@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Models\Vehicle;
 use App\Models\VehicleCost;
-use App\Policies\VehiclePolicy;
+use App\Models\VehicleSale;
 use App\Policies\VehicleCostPolicy;
+use App\Policies\VehiclePolicy;
+use App\Policies\VehicleSalePolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
@@ -29,6 +31,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Vehicle::class, VehiclePolicy::class);
         // 技術註解：成本操作屬財務敏感路徑，需顯式綁定 Policy，避免授權漏接造成越權風險。
         Gate::policy(VehicleCost::class, VehicleCostPolicy::class);
+        // 技術註解：銷售操作包含客戶、成交價與佣金資訊，需顯式綁定 Policy 避免敏感資料越權存取。
+        Gate::policy(VehicleSale::class, VehicleSalePolicy::class);
 
         Vite::prefetch(concurrency: 3);
     }

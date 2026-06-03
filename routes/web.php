@@ -7,6 +7,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StaffPermissionController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCostController;
+use App\Http\Controllers\VehicleSaleController;
 use App\Services\CompanyBrandService;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -110,6 +111,19 @@ Route::patch('/employee-system/vehicles/{vehicle}/costs/{vehicleCost}', [Vehicle
     ->whereNumber('vehicle')
     ->whereNumber('vehicleCost')
     ->name('employee-system.vehicles.costs.update');
+
+Route::post('/employee-system/vehicles/{vehicle}/sales', [VehicleSaleController::class, 'store'])
+    // 技術註解：銷售建立路由掛在 vehicles 模組門禁下，細部銷售權限與 tenant 邊界由 controller/policy 執行。
+    ->middleware(['auth', 'module.access:vehicles'])
+    ->whereNumber('vehicle')
+    ->name('employee-system.vehicles.sales.store');
+
+Route::patch('/employee-system/vehicles/{vehicle}/sales/{vehicleSale}', [VehicleSaleController::class, 'update'])
+    // 技術註解：銷售更新使用數字約束並保留後端 tenant scoped 查詢，降低跨車與跨租戶 IDOR 嘗試面。
+    ->middleware(['auth', 'module.access:vehicles'])
+    ->whereNumber('vehicle')
+    ->whereNumber('vehicleSale')
+    ->name('employee-system.vehicles.sales.update');
 
 Route::get('/employee-system/audit/activity-logs', [AuditLogController::class, 'activityLogs'])
     ->middleware(['auth', 'module.access:audit'])
