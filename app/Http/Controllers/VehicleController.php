@@ -664,7 +664,9 @@ class VehicleController extends Controller
                     ? ($saleStatuses[$saleRows->first()->sale_status] ?? $saleRows->first()->sale_status)
                     : null,
                 'latest_sale_price' => $saleRows->first()?->sale_price,
+                'latest_deposit_amount' => $saleRows->first()?->deposit_amount,
                 'latest_paid_amount' => $saleRows->first()?->paid_amount,
+                'latest_sold_at' => optional($saleRows->first()?->sold_at)->format('Y-m-d'),
             ],
         ];
     }

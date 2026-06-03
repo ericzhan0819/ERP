@@ -35,10 +35,13 @@ export default function VehiclesShow({
         reserved: 'bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:ring-amber-800',
         sold: 'bg-sky-100 text-sky-700 ring-sky-200 dark:bg-sky-900/40 dark:text-sky-200 dark:ring-sky-800',
         archived: 'bg-zinc-100 text-zinc-700 ring-zinc-200 dark:bg-zinc-900/40 dark:text-zinc-300 dark:ring-zinc-800',
+        cancelled: 'bg-zinc-100 text-zinc-700 ring-zinc-200 dark:bg-zinc-900/40 dark:text-zinc-300 dark:ring-zinc-800',
     };
 
     const lifecycleLabel = lifecycleStatuses[vehicle.lifecycle_status] ?? displayValue(vehicle.lifecycle_status);
     const lifecycleBadgeClass = lifecycleBadgeMap[vehicle.lifecycle_status] ?? lifecycleBadgeMap.draft;
+
+    const statusBadgeClass = (status) => lifecycleBadgeMap[status] ?? lifecycleBadgeMap.draft;
 
     /**
      * 技術註解：價格資訊顯示權限僅由後端 can 旗標決定，避免前端角色推斷造成敏感資訊誤曝。
@@ -157,46 +160,64 @@ export default function VehiclesShow({
 
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">銷售狀態</p>
+                                <p className="mt-1">
+                                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusBadgeClass(vehicleSaleSummary?.latest_status)}`}>
+                                        {displayValue(vehicleSaleSummary?.latest_status_label)}
+                                    </span>
+                                </p>
+                            </div>
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">成交價</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.latest_sale_price)}</p>
+                            </div>
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">訂金</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.latest_deposit_amount)}</p>
+                            </div>
+                            <div className="rounded-xl border border-default p-3">
+                                <p className="text-xs text-muted">已付款</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.latest_paid_amount)}</p>
+                            </div>
+                            <div className="rounded-xl border border-default p-3">
                                 <p className="text-xs text-muted">銷售筆數</p>
                                 <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.count)}</p>
                             </div>
                             <div className="rounded-xl border border-default p-3">
-                                <p className="text-xs text-muted">最新狀態</p>
-                                <p className="mt-1 text-base font-semibold text-primary">{displayValue(vehicleSaleSummary?.latest_status_label)}</p>
-                            </div>
-                            <div className="rounded-xl border border-default p-3">
-                                <p className="text-xs text-muted">最新銷售價格</p>
-                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.latest_sale_price)}</p>
-                            </div>
-                            <div className="rounded-xl border border-default p-3">
-                                <p className="text-xs text-muted">最新已收款</p>
-                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.latest_paid_amount)}</p>
+                                <p className="text-xs text-muted">最近成交日</p>
+                                <p className="mt-1 text-base font-semibold text-primary">{formatDate(vehicleSaleSummary?.latest_sold_at)}</p>
                             </div>
                         </div>
 
                         <div className="overflow-x-auto rounded-xl border border-default">
                             {vehicleSales.length === 0 ? (
-                                <div className="p-6 text-center text-sm text-muted">目前沒有銷售資料。</div>
+                                <div className="p-6 text-center text-sm text-muted">尚無銷售紀錄。</div>
                             ) : (
                                 <table className="min-w-full text-sm">
                                     <thead className="bg-slate-50 text-left text-xs text-muted dark:bg-slate-900/40">
                                         <tr>
                                             <th className="px-3 py-2 font-medium">狀態</th>
-                                            <th className="px-3 py-2 font-medium">客戶</th>
-                                            <th className="px-3 py-2 font-medium">電話</th>
-                                            <th className="px-3 py-2 font-medium">銷售價格</th>
+                                            <th className="px-3 py-2 font-medium">客戶名稱</th>
+                                            <th className="px-3 py-2 font-medium">客戶電話</th>
+                                            <th className="px-3 py-2 font-medium">成交價</th>
                                             <th className="px-3 py-2 font-medium">訂金</th>
-                                            <th className="px-3 py-2 font-medium">已收款</th>
+                                            <th className="px-3 py-2 font-medium">已付款</th>
                                             <th className="px-3 py-2 font-medium">成交日</th>
                                             <th className="px-3 py-2 font-medium">業務</th>
                                             <th className="px-3 py-2 font-medium">佣金</th>
                                             <th className="px-3 py-2 font-medium">備註</th>
+                                            <th className="px-3 py-2 font-medium">建立者</th>
+                                            <th className="px-3 py-2 font-medium">更新者</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {vehicleSales.map((sale) => (
                                             <tr key={sale.id} className="border-t border-default">
-                                                <td className="px-3 py-2">{displayValue(sale.sale_status_label)}</td>
+                                                <td className="px-3 py-2">
+                                                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusBadgeClass(sale.sale_status)}`}>
+                                                        {displayValue(sale.sale_status_label)}
+                                                    </span>
+                                                </td>
                                                 <td className="px-3 py-2">{displayValue(sale.customer_name)}</td>
                                                 <td className="px-3 py-2">{displayValue(sale.customer_phone)}</td>
                                                 <td className="px-3 py-2">{formatNumber(sale.sale_price)}</td>
@@ -206,6 +227,8 @@ export default function VehiclesShow({
                                                 <td className="px-3 py-2">{displayValue(sale.salesperson_name)}</td>
                                                 <td className="px-3 py-2">{formatNumber(sale.commission_amount)}</td>
                                                 <td className="px-3 py-2">{displayValue(sale.notes)}</td>
+                                                <td className="px-3 py-2">{displayValue(sale.creator?.name)}</td>
+                                                <td className="px-3 py-2">{displayValue(sale.updater?.name)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
