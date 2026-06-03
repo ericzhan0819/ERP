@@ -17,22 +17,22 @@
 
 # System Status
 
-目前開發中（Early Development）。
+目前開發中（Early Development），Vehicle Module MVP completed。
 
-目前已完成後台基礎架構、模組系統、權限地基、車輛管理基礎模組、系統稽核紀錄與登入紀錄。
+目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛銷售、系統稽核紀錄與登入紀錄。
 
 目前穩定節點：
 
 ```txt
 main / origin main
-Vehicle Foundation + Audit Foundation stable
+Vehicle Module MVP completed
 ```
 
 最近一次驗證結果：
 
 ```bash
 ./vendor/bin/sail artisan test
-# 103 passed, 461 assertions
+# 157 passed, 1020 assertions
 
 npm run build
 # Vite build success
@@ -142,6 +142,16 @@ module.audit.view
 - Company / Branch relationship display
 - Minimal vehicle detail payload
 - Vehicle CRUD / access tests
+
+## Vehicle Pricing / Costs / Sales
+
+已完成 Vehicle Module MVP 延伸能力：
+
+- Vehicle Pricing：`asking_price` / `floor_price` 依權限輸出與更新。
+- Vehicle Costs：成本新增、更新、摘要與 audit logging。
+- Vehicle Sales：銷售新增、更新、active sale guard 與 lifecycle sync。
+- Staff Permission matrix 支援 `vehicles.pricing`、`vehicles.costs`、`vehicles.sales` nested permissions。
+- 後端 payload 必須依權限控制；前端隱藏不等於安全；無權限者不能取得價格、成本、銷售、佣金等敏感資料。
 
 車輛庫存編號格式：
 
@@ -291,7 +301,8 @@ npm run build
 ## Fresh Migration + Seed
 
 ```bash
-./vendor/bin/sail artisan migrate:fresh --seed
+./vendor/bin/sail artisan migrate
+./vendor/bin/sail artisan db:seed
 ```
 
 ## Reset Permission Cache
@@ -355,15 +366,16 @@ refactor: 不改行為的重構
 
 短期優先事項：
 
-1. 完成 Vehicle Foundation 收尾
-2. 維持 RBAC / tenant scope / audit foundation 穩定
-3. 補齊 README 與專案交接資訊
-4. 再開始下一個業務模組
+1. 先封版 Vehicle Module MVP。
+2. 維持 RBAC / tenant scope / audit foundation 穩定。
+3. 後續再選擇租賃 / 客戶 / 收款 / 報表 / 圖片等模組。
+4. 完整資安 hardening 之後再做。
 
 暫緩事項：
 
-- Sales module
-- Vehicle cost module
+- Leasing module
+- Customer module
+- Payment / receivables flow
 - Image upload
 - Reports / exports
 - Global audit middleware

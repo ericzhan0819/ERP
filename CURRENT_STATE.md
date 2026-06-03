@@ -2,63 +2,175 @@
 
 ## 狀態摘要
 
-- 目前專案是純 UI Demo，沒有真實 Auth、User、Role、Permission 流程。
-- `HandleInertiaRequests` 固定共享 `auth.user = null`。
-- 登入頁只做前端展示，送出後直接導向展示主控台。
-- Sidebar 是靜態 demo 選單，只保留「總覽」，不連接權限系統。
+- 專案狀態：Early Development，Vehicle Module 第一代 MVP 已完成。
+- 穩定節點：Vehicle Sales Flow QA polish 已完成。
+- 最新驗證狀態：`157 passed / 1020 assertions`，`npm run build` 通過。
+- 本文件為 Vehicle Module MVP Final Review 封版整理；目前不實作新功能、不做完整會計、不做報表、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload。
 
-## 目前保留路由
+## 技術棧
 
-- `GET /`：顯示 `Welcome`。
-- `GET /login`：顯示 `Auth/Login`，route name 為 `login`。
-- `GET /employee-system`：顯示 `Dashboard/index`，route name 為 `employee-system.overview`。
-- `GET /dashboard`：重新導向 `/employee-system`，route name 為 `dashboard`。
+- Laravel
+- Inertia.js
+- React
+- TailwindCSS
+- MySQL
+- Laravel Sail
+- Spatie Permission
 
-## 目前保留頁面與 Layout
+## 已完成模組
 
-### 頁面
+- Dashboard foundation
+- RBAC / Module Registry
+- Staff Permission matrix
+- Audit foundation
+- Login logs
+- Company settings foundation
+- Vehicle foundation
+- Vehicle pricing
+- Vehicle costs
+- Vehicle sales
 
-- `resources/js/Pages/Welcome.jsx`：官網／入口展示頁。
-- `resources/js/Pages/Auth/Login.jsx`：登入 UI Demo，不送後端認證請求。
-- `resources/js/Pages/Dashboard/index.jsx`：營運總覽 UI Demo，資料為前端靜態展示。
+## Vehicle Module MVP 能力
 
-### Layout
+- Vehicle CRUD：Index / Show / Create / Edit / Store / Update。
+- Tenant scope：以 `company_id` / `branch_id` 作為車輛、成本、銷售資料邊界。
+- RBAC / Policy：車輛、價格、成本、銷售皆由後端權限與 Policy 控制。
+- IDOR 防護：車輛、成本、銷售查詢皆先套用 tenant scope；跨 company / branch 以 404 優先阻斷。
+- `stock_number` 自動產生：格式為 `VH-YYYYMM-0001`，依 company 與月份遞增。
+- `lifecycle_status` 白名單：目前包含 `draft`、`in_stock`、`reserved`、`sold`、`archived`。
+- Pricing / Costs / Sales 權限隔離：價格、成本、銷售 payload 依後端權限輸出，前端隱藏不作為安全依據。
+- Sales lifecycle sync：銷售狀態會同步車輛 lifecycle。
+- Active sale guard：每台車只允許一筆 active sale。
+- Audit events：車輛、成本、銷售與公司設定異動已記錄 operation audit。
+- Show / Edit UI split：Show 偏只讀展示；Edit 承載可編輯流程與 mutation UI 所需選項。
 
-- `resources/js/Layouts/DashboardLayout.jsx`：目前主控台實際使用的版型。
-- `resources/js/Layouts/AuthenticatedLayout.jsx`：仍存在，但依賴 `auth.user` 與已不存在的 auth route，不是目前 demo 主流程。
-- `resources/js/Layouts/GuestLayout.jsx`：仍存在，屬於基礎 guest 版型。
+## 車輛流程
 
-### Dashboard 元件
+- 主要流程：`in_stock` → `reserved` → `sold`。
+- `reserved` 可取消並回到 `in_stock`。
+- `sold` 不可任意退回 `reserved`。
+- `sold vehicle` 不可建立新 sale。
+- 每台車只允許一筆 active sale；active sale 目前包含 `draft`、`reserved`、`sold`，`cancelled` 不算 active。
+- 已成交銷售取消不會自動把車輛回到 `in_stock`，避免 MVP 簡化流程誤導退車 / 退款 / 作廢邏輯。
 
-- `resources/js/Components/Dashboard/Header.jsx`：使用 demo 使用者資料。
-- `resources/js/Components/Dashboard/Sidebar.jsx`：桌面側欄。
-- `resources/js/Components/Dashboard/MobileSidebar.jsx`：行動版側欄。
-- `resources/js/config/sidebar.ts`：靜態 sidebar 設定，目前只含 `dashboard` 項目。
+## 車輛權限清單
 
-## 已移除／目前不存在的後端功能
+### 一般車輛
 
-- 沒有 `User` model。
-- 沒有 Role、Permission、ModulePermission 相關 model、controller、migration、seeder 或設定檔。
-- 沒有登入、登出、註冊、密碼重設、profile 等 Auth routes。
-- 沒有使用者、角色、權限資料表 migration。
-- `database/seeders/DatabaseSeeder.php` 不建立任何 user、role、permission seed data。
-- `app/Http/Controllers/` 目前只保留基底 `Controller.php`。
+- `module.vehicles.view`
+- `module.vehicles.create`
+- `module.vehicles.update`
+- `module.vehicles.delete`
+- `module.vehicles.export`
 
-## 目前資料庫與設定狀態
+### 車輛價格
 
-- `database/migrations/` 只保留 cache 與 jobs migration。
-- `database/seeders/` 只保留 `DatabaseSeeder.php`。
-- `config/` 保留 Laravel 基礎設定：`app.php`、`auth.php`、`cache.php`、`database.php`、`filesystems.php`、`logging.php`、`mail.php`、`queue.php`、`services.php`、`session.php`。
-- 沒有 `config/permissions.php`。
+- `module.vehicles.pricing.view`
+- `module.vehicles.pricing.update`
 
-## 未來若要重建登入與權限系統
+### 車輛成本
 
-建議從以下項目開始，逐步恢復，不要直接假設目前已存在：
+- `module.vehicles.costs.view`
+- `module.vehicles.costs.create`
+- `module.vehicles.costs.update`
 
-1. 新增 `app/Models/User.php` 與 users table migration。
-2. 建立登入／登出 routes 與對應 controller。
-3. 調整 `app/Http/Middleware/HandleInertiaRequests.php`，共享真實 `auth.user`。
-4. 規劃 roles、permissions、role_user、permission_role 或 module_permissions 等資料表。
-5. 建立 role／permission seeders，並由 `DatabaseSeeder.php` 明確呼叫。
-6. 將 `resources/js/config/sidebar.ts` 從靜態 demo 選單改為可依權限過濾的設定。
-7. 檢查 `AuthenticatedLayout.jsx` 內仍引用的 `profile.edit`、`logout` 等 route，確認重建後才接回主流程。
+### 車輛銷售
+
+- `module.vehicles.sales.view`
+- `module.vehicles.sales.create`
+- `module.vehicles.sales.update`
+
+### 權限狀態
+
+- `admin` 預設取得車輛、價格、成本、銷售完整權限。
+- `staff` / `viewer` 不預設取得價格、成本、銷售等敏感權限。
+- `pricing` / `costs` / `sales` 為 `module.vehicles.*` 下的 nested permissions。
+- Staff Permission matrix 已支援 `vehicles.pricing`、`vehicles.costs`、`vehicles.sales` 四段式權限分組。
+
+## Audit Events
+
+目前整理的 operation audit events：
+
+- `vehicle.created`
+- `vehicle.updated`
+- `vehicle_cost.created`
+- `vehicle_cost.updated`
+- `vehicle_sale.created`
+- `vehicle_sale.updated`
+- `company_settings.updated`
+
+Audit 資料原則：
+
+- Vehicle audit 僅記錄主要業務欄位，避免將內部備註等潛在敏感內容寫入快照。
+- Vehicle costs audit 只記錄白名單欄位，不記 `internal_notes`。
+- Vehicle sales audit 只記錄白名單欄位，不記 tenant / actor / internal-only sensitive 欄位。
+- Audit snapshot 不記 `company_id`、`branch_id`、`vehicle_id`、`created_by`、`updated_by` 等系統欄位。
+- `auth.*` 不進一般 operation audit；登入成功、登入失敗、停用帳號登入、登出等事件保留在 Login logs。
+
+## Vehicle Module Manual QA Checklist
+
+1. 使用 `admin@example.com` / `password` 登入。
+2. 確認 Sidebar 顯示車輛管理入口，且入口來自後端 module / permission 資料。
+3. 進入 Vehicle Index，確認列表可正常載入。
+4. 使用 stock number 搜尋車輛，確認只回傳符合資料。
+5. 使用 VIN 搜尋車輛，確認 VIN 正規化後仍可查詢。
+6. 使用 license plate 搜尋車輛，確認篩選結果正確。
+7. 使用 brand / model 搜尋車輛，確認結果正確。
+8. 使用 lifecycle status 篩選 `in_stock` / `reserved` / `sold`，確認篩選與 URL query 正常。
+9. 建立車輛，確認 `stock_number` 自動產生且前端傳入 stock number 不會生效。
+10. 建立車輛時確認 company / branch / created_by / updated_by 由後端決定。
+11. 編輯一般車輛欄位，確認可更新且不改變 tenant 欄位。
+12. 測試無 `module.vehicles.pricing.view` 時，Index / Show 不顯示 `asking_price` 與 `floor_price`。
+13. 測試有 `module.vehicles.pricing.update` 時，可建立 / 更新價格欄位。
+14. 測試無 `module.vehicles.costs.view` 時，Show / Edit 不回傳成本 payload。
+15. 測試有 `module.vehicles.costs.create` 時，可新增成本並回到車輛 Show。
+16. 測試有 `module.vehicles.costs.update` 時，可更新成本且產生 audit event。
+17. 測試無 `module.vehicles.sales.view` 時，Show / Edit 不回傳銷售、成交價、客戶電話、佣金或毛利相關 payload。
+18. 測試有 `module.vehicles.sales.create` 時，可建立 `reserved` sale，車輛 lifecycle 同步為 `reserved`。
+19. 將 sale 更新為 `sold`，確認車輛 lifecycle 同步為 `sold`，且該車不可再建立新 sale。
+20. 將非 sold 的 `reserved` sale 取消，確認車輛 lifecycle 回到 `in_stock`；確認 sold sale 不可改回 `reserved`。
+21. 以無權限或跨 company / branch 使用者直接開 URL / mutation，確認回 403 或 404，且敏感 payload 不外洩。
+
+## 已知限制
+
+- 尚未做完整會計。
+- 尚未做租賃模組。
+- 尚未做客戶模組。
+- 尚未做收款流程。
+- 尚未做圖片上傳。
+- 尚未做報表。
+- 尚未做 PDF / Excel。
+- 尚未做完整 security hardening。
+- 尚未做全站 audit middleware。
+- 尚未做完整 profit / gross margin 計算，也未新增毛利 payload。
+
+## 下一階段 Backlog（目前不實作，僅列為 backlog）
+
+### A. 車輛模組後續 polish
+
+- 車輛 Show / Edit 表單體驗細節整理。
+- 成本與銷售區塊 UX 文案精修。
+- 車輛狀態切換規則補強與人工操作警示。
+- 車輛列表欄位密度與行動版呈現優化。
+
+### B. 業務模組
+
+- 租賃流程。
+- 客戶資料。
+- 收款 / 應收款。
+- 退車 / 退款 / 作廢流程。
+
+### C. 管理與報表
+
+- 報表 dashboard。
+- Export / PDF / Excel。
+- 圖片上傳與車輛相簿。
+- 更完整的管理者檢視與營運彙總。
+
+### D. 系統安全與維護
+
+- 完整 security hardening。
+- 全站 audit middleware。
+- 更完整的 destructive action audit。
+- Production deployment hardening。
+- 權限、tenant scope、敏感 payload 的 regression test 擴充。
