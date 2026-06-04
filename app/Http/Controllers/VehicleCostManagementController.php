@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Vehicle;
 use App\Models\VehicleCost;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
@@ -80,6 +81,72 @@ class VehicleCostManagementController extends Controller
                 'count' => (int) ($summaryRows?->cost_count ?? 0),
             ],
             'can' => [
+                'create_cost' => $user->can('module.vehicles.costs.create'),
+                'update_cost' => $user->can('module.vehicles.costs.update'),
+                'edit_vehicle' => $user->can('module.vehicles.update'),
+            ],
+        ]);
+    }
+
+    /**
+     * 技術註解：獨立新增工作台僅輸出 tenant scoped 車輛選項與成本白名單，不接受前端提供 tenant/actor 欄位以防越權寫入。
+     */
+    public function create(Request $request): Response
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        abort_unless($user->can('module.vehicles.costs.create'), 403);
+
+        $validated = $request->validate([
+            'vehicle_id' => ['nullable', 'integer'],
+        ]);
+        $selectedVehicleId = $validated['vehicle_id'] ?? null;
+
+        if ($selectedVehicleId !== null) {
+            $this->scopedVehicleQuery($user)->whereKey($selectedVehicleId)->firstOrFail();
+        }
+
+        return Inertia::render('VehicleCosts/Create', [
+            'vehicleOptions' => $this->vehicleOptions($user),
+            'costTypes' => config('vehicles.vehicle_cost_types', []),
+            'paymentStatuses' => config('vehicles.vehicle_cost_payment_statuses', []),
+            'defaults' => [
+                'vehicle_id' => $selectedVehicleId,
+                'cost_date' => Carbon::now()->toDateString(),
+                'payment_status' => 'unpaid',
+            ],
+            'can' => [
+                'create_cost' => $user->can('module.vehicles.costs.create'),
+                'update_cost' => $user->can('module.vehicles.costs.update'),
+                'edit_vehicle' => $user->can('module.vehicles.update'),
+            ],
+        ]);
+    }
+
+    /**
+     * 技術註解：獨立編輯工作台以成本與關聯車輛雙重 tenant scope 查詢，並經 VehicleCostPolicy update 二次授權防止 IDOR。
+     */
+    public function edit(Request $request, int $vehicleCost): Response
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        abort_unless($user->can('module.vehicles.costs.update'), 403);
+
+        $cost = $this->scopedCostQuery($user)
+            ->with('vehicle:id,stock_number,brand,model,license_plate,lifecycle_status,company_id,branch_id')
+            ->whereKey($vehicleCost)
+            ->firstOrFail();
+
+        abort_unless($cost->vehicle !== null, 404);
+        $this->authorize('update', [$cost, $cost->vehicle]);
+
+        return Inertia::render('VehicleCosts/Edit', [
+            'cost' => $this->serializeEditableCost($cost),
+            'costTypes' => config('vehicles.vehicle_cost_types', []),
+            'paymentStatuses' => config('vehicles.vehicle_cost_payment_statuses', []),
+            'can' => [
+                'create_cost' => $user->can('module.vehicles.costs.create'),
+                'update_cost' => $user->can('module.vehicles.costs.update'),
                 'edit_vehicle' => $user->can('module.vehicles.update'),
             ],
         ]);
@@ -156,6 +223,42 @@ class VehicleCostManagementController extends Controller
     }
 
     /**
+     * 技術註解：車輛選項集中套用 tenant scope，避免獨立成本頁洩漏其他公司或分店車輛。
+     */
+    private function scopedVehicleQuery(?Authenticatable $user): Builder
+    {
+        /** @var \App\Models\User $user */
+        $userCompanyId = (int) ($user?->company_id ?? 0);
+        $userBranchId = $user?->branch_id;
+
+        return Vehicle::query()
+            ->where('company_id', $userCompanyId)
+            ->when($userBranchId !== null, fn (Builder $query) => $query->where('branch_id', (int) $userBranchId));
+    }
+
+    /**
+     * 技術註解：前端只需要辨識車輛的最小欄位，刻意不輸出 company_id/branch_id 以降低 tenant 資訊外洩面。
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function vehicleOptions(?Authenticatable $user): array
+    {
+        return $this->scopedVehicleQuery($user)
+            ->select(['id', 'stock_number', 'brand', 'model', 'license_plate', 'lifecycle_status'])
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (Vehicle $vehicle): array => [
+                'id' => $vehicle->id,
+                'stock_number' => $vehicle->stock_number,
+                'brand' => $vehicle->brand,
+                'model' => $vehicle->model,
+                'license_plate' => $vehicle->license_plate,
+                'lifecycle_status' => $vehicle->lifecycle_status,
+            ])
+            ->all();
+    }
+
+    /**
      * 技術註解：所有查詢條件皆經 validation 與白名單過濾，避免動態查詢條件引入 injection 或報表口徑漂移。
      *
      * @param array<string, mixed> $filters
@@ -211,6 +314,35 @@ class VehicleCostManagementController extends Controller
             'updater_name' => $cost->updater?->name,
             'created_at' => optional($cost->created_at)->toISOString(),
             'updated_at' => optional($cost->updated_at)->toISOString(),
+        ];
+    }
+
+    /**
+     * 技術註解：編輯頁 payload 採獨立 allowlist，允許 internal_notes 編輯但不輸出 tenant、actor 或利潤衍生欄位。
+     *
+     * @return array<string, mixed>
+     */
+    private function serializeEditableCost(VehicleCost $cost): array
+    {
+        return [
+            'id' => $cost->id,
+            'vehicle_id' => $cost->vehicle_id,
+            'cost_type' => $cost->cost_type,
+            'description' => $cost->description,
+            'amount' => (string) $cost->amount,
+            'cost_date' => optional($cost->cost_date)->format('Y-m-d'),
+            'vendor_name' => $cost->vendor_name,
+            'payment_status' => $cost->payment_status,
+            'paid_at' => optional($cost->paid_at)->format('Y-m-d'),
+            'internal_notes' => $cost->internal_notes,
+            'vehicle' => $cost->vehicle ? [
+                'id' => $cost->vehicle->id,
+                'stock_number' => $cost->vehicle->stock_number,
+                'brand' => $cost->vehicle->brand,
+                'model' => $cost->vehicle->model,
+                'license_plate' => $cost->vehicle->license_plate,
+                'lifecycle_status' => $cost->vehicle->lifecycle_status,
+            ] : null,
         ];
     }
 }

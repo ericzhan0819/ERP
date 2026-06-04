@@ -102,6 +102,17 @@ Route::get('/employee-system/vehicle-costs', [VehicleCostManagementController::c
     ->middleware(['auth', 'module.access:vehicle-costs'])
     ->name('employee-system.vehicle-costs.index');
 
+Route::get('/employee-system/vehicle-costs/create', [VehicleCostManagementController::class, 'create'])
+    // 技術註解：獨立新增工作台只提供頁面入口，寫入仍沿用既有 vehicle-scoped mutation，避免新增另一套成本寫入邏輯。
+    ->middleware(['auth', 'module.access:vehicle-costs'])
+    ->name('employee-system.vehicle-costs.create');
+
+Route::get('/employee-system/vehicle-costs/{vehicleCost}/edit', [VehicleCostManagementController::class, 'edit'])
+    // 技術註解：不使用 implicit binding，Controller 會 tenant scoped 查詢成本與車輛以降低 IDOR 資訊探測。
+    ->middleware(['auth', 'module.access:vehicle-costs'])
+    ->whereNumber('vehicleCost')
+    ->name('employee-system.vehicle-costs.edit');
+
 Route::patch('/employee-system/vehicles/{vehicle}', [VehicleController::class, 'update'])
     // 技術註解：更新路由不使用 implicit model binding，避免未 scoped 查詢造成跨租戶 IDOR。
     ->middleware(['auth', 'module.access:vehicles'])

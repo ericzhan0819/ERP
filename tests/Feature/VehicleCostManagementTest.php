@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Module;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -25,7 +26,17 @@ beforeEach(function (): void {
         'is_active' => true,
     ]);
 
-    foreach (['module.vehicles.costs.view', 'module.vehicles.update'] as $permission) {
+    Module::updateOrCreate(['key' => 'vehicles'], [
+        'label' => '車輛管理',
+        'section' => 'operations',
+        'route_name' => 'employee-system.vehicles.index',
+        'base_permission' => 'module.vehicles.view',
+        'permission_prefix' => 'module.vehicles',
+        'is_enabled' => true,
+        'is_active' => true,
+    ]);
+
+    foreach (['module.vehicles.view', 'module.vehicles.costs.view', 'module.vehicles.costs.create', 'module.vehicles.costs.update', 'module.vehicles.update'] as $permission) {
         Permission::findOrCreate($permission, 'web');
     }
 });
@@ -67,6 +78,21 @@ function vcmCost(Vehicle $vehicle, User $user, array $overrides = []): VehicleCo
         'created_by' => $user->id,
         'updated_by' => $user->id,
     ], $overrides));
+}
+
+/** @return array<string, mixed> */
+function vcmValidCostPayload(array $overrides = []): array
+{
+    return array_merge([
+        'cost_type' => 'repair',
+        'description' => '獨立入口成本',
+        'amount' => 1500,
+        'cost_date' => '2026-06-05',
+        'vendor_name' => '獨立入口廠商',
+        'payment_status' => 'unpaid',
+        'paid_at' => null,
+        'internal_notes' => '不進 audit 的備註',
+    ], $overrides);
 }
 
 it('admin 或有成本檢視權限者可以進入 vehicle costs index', function (): void {
@@ -311,4 +337,222 @@ it('module registry seed 後有 vehicle-costs module 且沿用既有 base permis
         ->and($module->route_name)->toBe('employee-system.vehicle-costs.index')
         ->and($module->base_permission)->toBe('module.vehicles.costs.view')
         ->and($module->permission_prefix)->toBe('module.vehicles.costs');
+});
+
+it('有 module.vehicles.costs.create 的使用者可以進入 create 頁', function (): void {
+    $user = vcmUser('vcm-create-page-allow@example.com');
+    $user->givePermissionTo(['module.vehicles.costs.view', 'module.vehicles.costs.create']);
+    $vehicle = vcmVehicle($user, 'VCM-CREATE-PAGE');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.create', ['vehicle_id' => $vehicle->id]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('VehicleCosts/Create')
+            ->where('defaults.vehicle_id', (string) $vehicle->id)
+            ->where('can.create_cost', true)
+        );
+});
+
+it('沒有 module.vehicles.costs.create 的使用者進 create 頁回 403', function (): void {
+    $user = vcmUser('vcm-create-page-deny@example.com');
+    $user->givePermissionTo('module.vehicles.costs.view');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.create'))
+        ->assertForbidden();
+});
+
+it('create 頁 vehicleOptions 只包含同 company branch 車輛且不輸出 tenant 欄位', function (): void {
+    $user = vcmUser('vcm-create-options@example.com');
+    $user->givePermissionTo(['module.vehicles.costs.view', 'module.vehicles.costs.create']);
+    $own = vcmVehicle($user, 'VCM-OPTION-OWN');
+    $otherBranchUser = vcmUser('vcm-create-options-other-branch@example.com', 1, 11);
+    vcmVehicle($otherBranchUser, 'VCM-OPTION-BRANCH');
+    $crossUser = vcmUser('vcm-create-options-cross@example.com', 2, 20);
+    vcmVehicle($crossUser, 'VCM-OPTION-CROSS');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('vehicleOptions.0.id', $own->id)
+            ->where('vehicleOptions.0.stock_number', 'VCM-OPTION-OWN')
+            ->missing('vehicleOptions.0.company_id')
+            ->missing('vehicleOptions.0.branch_id')
+            ->missing('vehicleOptions.1')
+        );
+});
+
+it('create 頁帶跨 tenant vehicle_id 時回 404', function (): void {
+    $user = vcmUser('vcm-create-cross-id@example.com');
+    $user->givePermissionTo(['module.vehicles.costs.view', 'module.vehicles.costs.create']);
+    $crossUser = vcmUser('vcm-create-cross-id-owner@example.com', 2, 20);
+    $crossVehicle = vcmVehicle($crossUser, 'VCM-CREATE-CROSS-ID');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.create', ['vehicle_id' => $crossVehicle->id]))
+        ->assertNotFound();
+});
+
+it('有 module.vehicles.costs.update 的使用者可以進入 edit 頁', function (): void {
+    $user = vcmUser('vcm-edit-page-allow@example.com');
+    $user->givePermissionTo(['module.vehicles.costs.view', 'module.vehicles.costs.update']);
+    $vehicle = vcmVehicle($user, 'VCM-EDIT-PAGE');
+    $cost = vcmCost($vehicle, $user, ['internal_notes' => 'edit note']);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.edit', $cost->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('VehicleCosts/Edit')
+            ->where('cost.id', $cost->id)
+            ->where('cost.vehicle.stock_number', 'VCM-EDIT-PAGE')
+            ->where('cost.internal_notes', 'edit note')
+            ->where('can.update_cost', true)
+        );
+});
+
+it('沒有 module.vehicles.costs.update 的使用者進 edit 頁回 403', function (): void {
+    $user = vcmUser('vcm-edit-page-deny@example.com');
+    $user->givePermissionTo('module.vehicles.costs.view');
+    $cost = vcmCost(vcmVehicle($user, 'VCM-EDIT-DENY'), $user);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.edit', $cost->id))
+        ->assertForbidden();
+});
+
+it('edit 頁跨 tenant vehicleCost 不能進入', function (): void {
+    $user = vcmUser('vcm-edit-cross@example.com');
+    $user->givePermissionTo(['module.vehicles.costs.view', 'module.vehicles.costs.update']);
+    $crossUser = vcmUser('vcm-edit-cross-owner@example.com', 2, 20);
+    $crossCost = vcmCost(vcmVehicle($crossUser, 'VCM-EDIT-CROSS'), $crossUser);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.edit', $crossCost->id))
+        ->assertNotFound();
+});
+
+it('edit 頁 payload 不包含 tenant actor 與 profit 類欄位', function (): void {
+    $user = vcmUser('vcm-edit-payload@example.com');
+    $user->givePermissionTo(['module.vehicles.costs.view', 'module.vehicles.costs.update']);
+    $cost = vcmCost(vcmVehicle($user, 'VCM-EDIT-PAYLOAD'), $user);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.edit', $cost->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->missing('cost.company_id')
+            ->missing('cost.branch_id')
+            ->missing('cost.created_by')
+            ->missing('cost.updated_by')
+            ->missing('cost.profit')
+            ->missing('cost.gross_margin')
+            ->missing('cost.margin')
+            ->missing('cost.net_profit')
+            ->missing('cost.vehicle.company_id')
+            ->missing('cost.vehicle.branch_id')
+        );
+});
+
+it('Index 有 create_cost update_cost can flags 且依權限正確', function (): void {
+    $creator = vcmUser('vcm-index-can-create@example.com');
+    $creator->givePermissionTo(['module.vehicles.costs.view', 'module.vehicles.costs.create']);
+    vcmCost(vcmVehicle($creator, 'VCM-CAN-CREATE'), $creator);
+
+    $this->actingAs($creator)
+        ->get(route('employee-system.vehicle-costs.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('can.create_cost', true)
+            ->where('can.update_cost', false)
+        );
+
+    $updater = vcmUser('vcm-index-can-update@example.com');
+    $updater->givePermissionTo(['module.vehicles.costs.view', 'module.vehicles.costs.update']);
+    vcmCost(vcmVehicle($updater, 'VCM-CAN-UPDATE'), $updater);
+
+    $this->actingAs($updater)
+        ->get(route('employee-system.vehicle-costs.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('can.create_cost', false)
+            ->where('can.update_cost', true)
+        );
+});
+
+it('透過獨立 Create 頁提交到既有 store route 可以建立成本且 audit event 維持 vehicle_cost.created', function (): void {
+    $user = vcmUser('vcm-create-submit@example.com');
+    $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.costs.view', 'module.vehicles.costs.create']);
+    $vehicle = vcmVehicle($user, 'VCM-CREATE-SUBMIT');
+
+    $this->actingAs($user)
+        ->from(route('employee-system.vehicle-costs.create', ['vehicle_id' => $vehicle->id]))
+        ->post(route('employee-system.vehicles.costs.store', $vehicle->id), vcmValidCostPayload())
+        ->assertRedirect(route('employee-system.vehicles.show', $vehicle->id));
+
+    $this->assertDatabaseHas('vehicle_costs', ['vehicle_id' => $vehicle->id, 'description' => '獨立入口成本']);
+    expect(ActivityLog::query()->where('event', 'vehicle_cost.created')->exists())->toBeTrue();
+});
+
+it('透過獨立 Edit 頁提交到既有 update route 可以更新成本且 audit event 維持 vehicle_cost.updated', function (): void {
+    $user = vcmUser('vcm-edit-submit@example.com');
+    $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.costs.view', 'module.vehicles.costs.update']);
+    $vehicle = vcmVehicle($user, 'VCM-EDIT-SUBMIT');
+    $cost = vcmCost($vehicle, $user, ['description' => '更新前']);
+
+    $this->actingAs($user)
+        ->from(route('employee-system.vehicle-costs.edit', $cost->id))
+        ->patch(route('employee-system.vehicles.costs.update', [$vehicle->id, $cost->id]), vcmValidCostPayload(['description' => '更新後']))
+        ->assertRedirect(route('employee-system.vehicles.show', $vehicle->id));
+
+    $cost->refresh();
+    expect($cost->description)->toBe('更新後')
+        ->and(ActivityLog::query()->where('event', 'vehicle_cost.updated')->exists())->toBeTrue();
+});
+
+it('create update payload 夾帶 tenant actor 與 profit 欄位不會覆寫後端資料', function (): void {
+    $user = vcmUser('vcm-mass-assignment-regression@example.com');
+    $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.costs.view', 'module.vehicles.costs.create', 'module.vehicles.costs.update']);
+    $vehicle = vcmVehicle($user, 'VCM-MASS-OWN');
+    $other = vcmVehicle($user, 'VCM-MASS-OTHER');
+
+    $this->actingAs($user)
+        ->post(route('employee-system.vehicles.costs.store', $vehicle->id), vcmValidCostPayload([
+            'company_id' => 999,
+            'branch_id' => 888,
+            'vehicle_id' => $other->id,
+            'created_by' => 777,
+            'updated_by' => 666,
+            'profit' => 100000,
+            'gross_margin' => 99,
+        ]))
+        ->assertRedirect(route('employee-system.vehicles.show', $vehicle->id));
+
+    $cost = VehicleCost::query()->latest('id')->firstOrFail();
+    expect($cost->company_id)->toBe($user->company_id)
+        ->and($cost->branch_id)->toBe($user->branch_id)
+        ->and($cost->vehicle_id)->toBe($vehicle->id)
+        ->and($cost->created_by)->toBe($user->id)
+        ->and($cost->updated_by)->toBe($user->id);
+
+    $this->actingAs($user)
+        ->patch(route('employee-system.vehicles.costs.update', [$vehicle->id, $cost->id]), vcmValidCostPayload([
+            'company_id' => 999,
+            'branch_id' => 888,
+            'vehicle_id' => $other->id,
+            'created_by' => 777,
+            'updated_by' => 666,
+            'profit' => 100000,
+            'gross_margin' => 99,
+        ]))
+        ->assertRedirect(route('employee-system.vehicles.show', $vehicle->id));
+
+    $cost->refresh();
+    expect($cost->company_id)->toBe($user->company_id)
+        ->and($cost->branch_id)->toBe($user->branch_id)
+        ->and($cost->vehicle_id)->toBe($vehicle->id)
+        ->and($cost->created_by)->toBe($user->id)
+        ->and($cost->updated_by)->toBe($user->id);
 });

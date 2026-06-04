@@ -71,9 +71,14 @@ export default function VehicleCostsIndex({ auth, costs, filters = {}, periodOpt
         <DashboardLayout user={auth.user}>
             <div className="space-y-5 p-4 md:p-6">
                 <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Vehicle Costs</p>
-                    <h1 className="mt-1 text-2xl font-semibold text-primary">車輛成本管理</h1>
-                    <p className="mt-1 text-sm text-secondary">集中查看車輛整備、維修、採購等成本紀錄。</p>
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Vehicle Costs</p>
+                            <h1 className="mt-1 text-2xl font-semibold text-primary">車輛成本管理</h1>
+                            <p className="mt-1 text-sm text-secondary">集中查看車輛整備、維修、採購等成本紀錄。</p>
+                        </div>
+                        {can.create_cost && <Link href={route('employee-system.vehicle-costs.create')} className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">新增成本</Link>}
+                    </div>
                 </div>
 
                 <section className="rounded-2xl border border-default bg-surface p-4">
@@ -145,6 +150,7 @@ export default function VehicleCostsIndex({ auth, costs, filters = {}, periodOpt
                                         <td className="px-3 py-3 whitespace-nowrap">
                                             {cost.vehicle?.id && <Link href={route('employee-system.vehicles.show', cost.vehicle.id)} className="text-accent underline underline-offset-2">查看車輛</Link>}
                                             {can.edit_vehicle && cost.vehicle?.id && <Link href={route('employee-system.vehicles.edit', cost.vehicle.id)} className="ml-3 text-secondary underline underline-offset-2">編輯車輛</Link>}
+                                            {can.update_cost && <Link href={route('employee-system.vehicle-costs.edit', cost.id)} className="ml-3 text-primary underline underline-offset-2">編輯成本</Link>}
                                         </td>
                                     </tr>
                                 ))}
