@@ -86,7 +86,7 @@ it('可新增收款、自動產號且拒絕未授權與系統欄位注入', func
     $denySale = vspSale(vspVehicle($deny, 'VSP-CD'), $deny);
     $this->actingAs($deny)->post(route('employee-system.vehicles.sales.payments.store', [$denySale->vehicle_id, $denySale->id]), $payload)->assertForbidden();
 
-    $this->actingAs($user)->post(route('employee-system.vehicles.sales.payments.store', [$sale->vehicle_id, $sale->id]), $payload + ['company_id' => 999, 'branch_id' => 999, 'vehicle_id' => 999, 'vehicle_sale_id' => 999, 'customer_id' => 999, 'payment_number' => 'X', 'status' => 'voided', 'created_by' => 1, 'gross_profit' => 1])->assertForbidden();
+    $this->actingAs($user)->post(route('employee-system.vehicles.sales.payments.store', [$sale->vehicle_id, $sale->id]), $payload + ['company_id' => 999, 'branch_id' => 999, 'vehicle_id' => 999, 'vehicle_sale_id' => 999, 'customer_id' => 999, 'payment_number' => 'X', 'status' => 'voided', 'created_by' => 1, 'system' => ['status' => 'voided'], 'tenant' => ['company_id' => 999], 'gross_profit' => 1])->assertForbidden();
 });
 
 it('跨 tenant 建立或作廢回 404，作廢權限與狀態計算正確', function (): void {
@@ -104,6 +104,9 @@ it('跨 tenant 建立或作廢回 404，作廢權限與狀態計算正確', func
     $this->actingAs($user)->patch(route('employee-system.vehicles.sales.payments.void', [$sale->vehicle_id, $sale->id, $ownPayment->id]), ['void_reason' => '輸入錯誤'])->assertRedirect();
     expect($ownPayment->fresh()->status)->toBe('voided');
     $this->actingAs($user)->get(route('employee-system.vehicles.show', $sale->vehicle_id))->assertInertia(fn (AssertableInertia $page) => $page->where('vehicleSales.0.payment_summary.received_amount', '0.00')->where('vehicleSales.0.payment_summary.receivable_status', 'unpaid'));
+
+    $secondPayment = vspPayment($sale, $user, 50);
+    $this->actingAs($user)->patch(route('employee-system.vehicles.sales.payments.void', [$sale->vehicle_id, $sale->id, $secondPayment->id]), ['void_reason' => 'x', 'system' => ['status' => 'received'], 'tenant' => ['company_id' => 999], 'gross_margin' => 1])->assertForbidden();
 });
 
 it('paid partial unpaid overpaid 狀態、audit 與無 sales.view 隔離正確', function (): void {
