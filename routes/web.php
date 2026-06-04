@@ -9,6 +9,7 @@ use App\Http\Controllers\StaffPermissionController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCostController;
 use App\Http\Controllers\VehicleSaleController;
+use App\Http\Controllers\VehicleSalePaymentController;
 use App\Services\CompanyBrandService;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -158,6 +159,21 @@ Route::patch('/employee-system/vehicles/{vehicle}/sales/{vehicleSale}', [Vehicle
     ->whereNumber('vehicle')
     ->whereNumber('vehicleSale')
     ->name('employee-system.vehicles.sales.update');
+
+Route::post('/employee-system/vehicles/{vehicle}/sales/{vehicleSale}/payments', [VehicleSalePaymentController::class, 'store'])
+    // 技術註解：收款建立掛於銷售底下，Controller 先 tenant scoped vehicle/sale 後授權，避免跨車收款注入。
+    ->middleware(['auth', 'module.access:vehicles'])
+    ->whereNumber('vehicle')
+    ->whereNumber('vehicleSale')
+    ->name('employee-system.vehicles.sales.payments.store');
+
+Route::patch('/employee-system/vehicles/{vehicle}/sales/{vehicleSale}/payments/{vehicleSalePayment}/void', [VehicleSalePaymentController::class, 'void'])
+    // 技術註解：收款不可刪除，僅提供作廢並保留完整審計軌跡。
+    ->middleware(['auth', 'module.access:vehicles'])
+    ->whereNumber('vehicle')
+    ->whereNumber('vehicleSale')
+    ->whereNumber('vehicleSalePayment')
+    ->name('employee-system.vehicles.sales.payments.void');
 
 Route::get('/employee-system/audit/activity-logs', [AuditLogController::class, 'activityLogs'])
     ->middleware(['auth', 'module.access:audit'])

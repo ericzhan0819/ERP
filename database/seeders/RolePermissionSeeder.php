@@ -199,6 +199,9 @@ class RolePermissionSeeder extends Seeder
             'module.vehicles.sales.view' => ['label' => '查看車輛銷售', 'group' => '車輛銷售'],
             'module.vehicles.sales.create' => ['label' => '建立車輛銷售', 'group' => '車輛銷售'],
             'module.vehicles.sales.update' => ['label' => '更新車輛銷售', 'group' => '車輛銷售'],
+            'module.vehicles.sales.payments.view' => ['label' => '查看銷售收款', 'group' => '車輛銷售收款'],
+            'module.vehicles.sales.payments.create' => ['label' => '建立銷售收款', 'group' => '車輛銷售收款'],
+            'module.vehicles.sales.payments.void' => ['label' => '作廢銷售收款', 'group' => '車輛銷售收款'],
             'module.customers.view' => ['label' => '查看客戶', 'group' => '客戶管理'],
             'module.customers.create' => ['label' => '建立客戶', 'group' => '客戶管理'],
             'module.customers.update' => ['label' => '更新客戶', 'group' => '客戶管理'],
@@ -235,7 +238,7 @@ class RolePermissionSeeder extends Seeder
                 $segments = explode('.', $name);
                 $action = $segments[count($segments) - 1] ?? null;
 
-                return in_array(count($segments), [3, 4], true)
+                return in_array(count($segments), [3, 4, 5], true)
                     && in_array($action, self::ACTION_WHITELIST, true);
             })
             ->mapWithKeys(fn (array $definition, string $name) => [
@@ -293,6 +296,9 @@ class RolePermissionSeeder extends Seeder
                 'module.vehicles.sales.view',
                 'module.vehicles.sales.create',
                 'module.vehicles.sales.update',
+                'module.vehicles.sales.payments.view',
+                'module.vehicles.sales.payments.create',
+                'module.vehicles.sales.payments.void',
                 'module.customers.view',
                 'module.customers.create',
                 'module.customers.update',

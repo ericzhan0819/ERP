@@ -49,6 +49,7 @@ export default function VehiclesShow({
     const canViewVehiclePricing = can.view_vehicle_pricing === true;
     const canViewVehicleCosts = can.view_vehicle_costs === true;
     const canViewVehicleSales = can.view_vehicle_sales === true;
+    const canViewVehicleSalePayments = can.view_vehicle_sale_payments === true;
 
     const formatNumber = (value) => {
         if (value === null || value === undefined || value === '') {
@@ -212,24 +213,41 @@ export default function VehiclesShow({
                                     </thead>
                                     <tbody>
                                         {vehicleSales.map((sale) => (
-                                            <tr key={sale.id} className="border-t border-default">
-                                                <td className="px-3 py-2">
-                                                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusBadgeClass(sale.sale_status)}`}>
-                                                        {displayValue(sale.sale_status_label)}
-                                                    </span>
-                                                </td>
-                                                <td className="px-3 py-2">{sale.customer ? `${sale.customer.customer_number}｜${displayValue(sale.customer_name)}` : displayValue(sale.customer_name)}</td>
-                                                <td className="px-3 py-2">{displayValue(sale.customer_phone)}</td>
-                                                <td className="px-3 py-2">{formatNumber(sale.sale_price)}</td>
-                                                <td className="px-3 py-2">{formatNumber(sale.deposit_amount)}</td>
-                                                <td className="px-3 py-2">{formatNumber(sale.paid_amount)}</td>
-                                                <td className="px-3 py-2">{formatDate(sale.sold_at)}</td>
-                                                <td className="px-3 py-2">{displayValue(sale.salesperson_name)}</td>
-                                                <td className="px-3 py-2">{formatNumber(sale.commission_amount)}</td>
-                                                <td className="px-3 py-2">{displayValue(sale.notes)}</td>
-                                                <td className="px-3 py-2">{displayValue(sale.creator?.name)}</td>
-                                                <td className="px-3 py-2">{displayValue(sale.updater?.name)}</td>
-                                            </tr>
+                                            <React.Fragment key={sale.id}>
+                                                <tr className="border-t border-default">
+                                                    <td className="px-3 py-2"><span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusBadgeClass(sale.sale_status)}`}>{displayValue(sale.sale_status_label)}</span></td>
+                                                    <td className="px-3 py-2">{sale.customer ? `${sale.customer.customer_number}｜${displayValue(sale.customer_name)}` : displayValue(sale.customer_name)}</td>
+                                                    <td className="px-3 py-2">{displayValue(sale.customer_phone)}</td>
+                                                    <td className="px-3 py-2">{formatNumber(sale.sale_price)}</td>
+                                                    <td className="px-3 py-2">{formatNumber(sale.deposit_amount)}</td>
+                                                    <td className="px-3 py-2">{formatNumber(sale.paid_amount)}</td>
+                                                    <td className="px-3 py-2">{formatDate(sale.sold_at)}</td>
+                                                    <td className="px-3 py-2">{displayValue(sale.salesperson_name)}</td>
+                                                    <td className="px-3 py-2">{formatNumber(sale.commission_amount)}</td>
+                                                    <td className="px-3 py-2">{displayValue(sale.notes)}</td>
+                                                    <td className="px-3 py-2">{displayValue(sale.creator?.name)}</td>
+                                                    <td className="px-3 py-2">{displayValue(sale.updater?.name)}</td>
+                                                </tr>
+                                                {canViewVehicleSalePayments && sale.payment_summary && (
+                                                    <tr className="border-t border-default bg-slate-50/60 dark:bg-slate-900/30">
+                                                        <td colSpan="12" className="px-3 py-3">
+                                                            <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-5">
+                                                                <span>應收：{formatNumber(sale.payment_summary.receivable_amount)}</span>
+                                                                <span>已收：{formatNumber(sale.payment_summary.received_amount)}</span>
+                                                                <span>未收：{formatNumber(sale.payment_summary.receivable_balance)}</span>
+                                                                <span>狀態：{displayValue(sale.payment_summary.receivable_status_label)}</span>
+                                                                <span>收款筆數：{formatNumber(sale.payment_summary.payment_count)}</span>
+                                                            </div>
+                                                            {sale.payment_summary.receivable_status === 'overpaid' && <p className="mt-2 text-xs text-amber-700">提醒：此筆銷售目前為超收狀態，請確認收款紀錄。</p>}
+                                                            <div className="mt-2 space-y-1 text-xs text-secondary">
+                                                                {(sale.payments || []).length === 0 ? <p className="text-muted">尚無收款紀錄。</p> : sale.payments.map((payment) => (
+                                                                    <p key={payment.id}>{payment.payment_number}｜{payment.payment_type_label}｜{payment.payment_method_label}｜{formatNumber(payment.amount)}｜{formatDate(payment.paid_at)}｜{payment.status_label}</p>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
                                         ))}
                                     </tbody>
                                 </table>

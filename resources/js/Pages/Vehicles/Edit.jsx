@@ -18,6 +18,8 @@ export default function VehiclesEdit({
     vehicleSales = [],
     vehicleSaleSummary = null,
     vehicleSaleStatuses = {},
+    vehicleSalePaymentTypes = {},
+    vehicleSalePaymentMethods = {},
     customerOptions = [],
 }) {
     const canUpdateVehiclePricing = can.update_vehicle_pricing === true;
@@ -26,7 +28,12 @@ export default function VehiclesEdit({
     const canViewVehicleSales = can.view_vehicle_sales === true;
     const canCreateVehicleSales = can.create_vehicle_sales === true;
     const canUpdateVehicleSales = can.update_vehicle_sales === true;
+    const canViewVehicleSalePayments = can.view_vehicle_sale_payments === true;
+    const canCreateVehicleSalePayments = can.create_vehicle_sale_payments === true;
+    const canVoidVehicleSalePayments = can.void_vehicle_sale_payments === true;
     const [editingSaleId, setEditingSaleId] = useState(null);
+    const [paymentSaleId, setPaymentSaleId] = useState(null);
+    const [voidingPaymentId, setVoidingPaymentId] = useState(null);
 
     const hasActiveSale = (vehicleSales || []).some((sale) => ['draft', 'reserved', 'sold'].includes(sale.sale_status));
     const saleStatusHelpText = {
@@ -86,6 +93,9 @@ export default function VehiclesEdit({
         commission_amount: '',
         notes: '',
     });
+
+    const paymentForm = useForm({ payment_type: 'deposit', payment_method: 'cash', amount: '', paid_at: '', reference_no: '', notes: '' });
+    const voidForm = useForm({ void_reason: '' });
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -251,6 +261,31 @@ export default function VehiclesEdit({
         });
     };
 
+    const submitPaymentForm = (event, saleId) => {
+        event.preventDefault();
+        paymentForm.post(route('employee-system.vehicles.sales.payments.store', [vehicle.id, saleId]), {
+            data: {
+                payment_type: paymentForm.data.payment_type,
+                payment_method: paymentForm.data.payment_method,
+                amount: paymentForm.data.amount,
+                paid_at: paymentForm.data.paid_at,
+                reference_no: paymentForm.data.reference_no,
+                notes: paymentForm.data.notes,
+            },
+            preserveScroll: true,
+            onSuccess: () => { paymentForm.reset(); setPaymentSaleId(null); },
+        });
+    };
+
+    const submitVoidPayment = (event, saleId, paymentId) => {
+        event.preventDefault();
+        voidForm.patch(route('employee-system.vehicles.sales.payments.void', [vehicle.id, saleId, paymentId]), {
+            data: { void_reason: voidForm.data.void_reason },
+            preserveScroll: true,
+            onSuccess: () => { voidForm.reset(); setVoidingPaymentId(null); },
+        });
+    };
+
     return (
         <DashboardLayout user={auth.user}>
             <div className="space-y-4 p-6">
@@ -406,7 +441,8 @@ export default function VehiclesEdit({
                                     </thead>
                                     <tbody>
                                         {(vehicleSales || []).map((sale) => (
-                                            <tr key={sale.id} className="border-t border-default">
+                                            <React.Fragment key={sale.id}>
+                                            <tr className="border-t border-default">
                                                 <td className="px-3 py-2">
                                                     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusBadgeClass(sale.sale_status)}`}>
                                                         {displayValue(sale.sale_status_label)}
@@ -427,6 +463,38 @@ export default function VehiclesEdit({
                                                     <td className="px-3 py-2"><button type="button" onClick={() => startEditSale(sale)} className="text-xs text-accent underline decoration-1 underline-offset-2">編輯</button></td>
                                                 )}
                                             </tr>
+                                            {canViewVehicleSalePayments && sale.payment_summary && (
+                                                <tr className="border-t border-default bg-slate-50/60 dark:bg-slate-900/30">
+                                                    <td colSpan={canUpdateVehicleSales ? 13 : 12} className="px-3 py-3">
+                                                        <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-5">
+                                                            <span>應收：{formatNumber(sale.payment_summary.receivable_amount)}</span><span>已收：{formatNumber(sale.payment_summary.received_amount)}</span><span>未收：{formatNumber(sale.payment_summary.receivable_balance)}</span><span>狀態：{displayValue(sale.payment_summary.receivable_status_label)}</span><span>收款筆數：{formatNumber(sale.payment_summary.payment_count)}</span>
+                                                        </div>
+                                                        {sale.payment_summary.receivable_status === 'overpaid' && <p className="mt-2 text-xs text-amber-700">提醒：此筆銷售目前為超收狀態，請確認收款紀錄。</p>}
+                                                        {canCreateVehicleSalePayments && <button type="button" onClick={() => setPaymentSaleId(paymentSaleId === sale.id ? null : sale.id)} className="mt-2 text-xs text-accent underline">新增收款</button>}
+                                                        {paymentSaleId === sale.id && (
+                                                            <form onSubmit={(event) => submitPaymentForm(event, sale.id)} className="mt-3 grid grid-cols-1 gap-2 rounded-lg border border-default p-3 sm:grid-cols-3">
+                                                                <select value={paymentForm.data.payment_type} onChange={(event) => paymentForm.setData('payment_type', event.target.value)} className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm">{Object.entries(vehicleSalePaymentTypes || {}).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+                                                                <select value={paymentForm.data.payment_method} onChange={(event) => paymentForm.setData('payment_method', event.target.value)} className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm">{Object.entries(vehicleSalePaymentMethods || {}).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+                                                                <input type="number" step="0.01" min="0.01" placeholder="金額" value={paymentForm.data.amount} onChange={(event) => paymentForm.setData('amount', event.target.value)} className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm" />
+                                                                <input type="date" value={paymentForm.data.paid_at} onChange={(event) => paymentForm.setData('paid_at', event.target.value)} className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm" />
+                                                                <input type="text" placeholder="參考號碼" value={paymentForm.data.reference_no} onChange={(event) => paymentForm.setData('reference_no', event.target.value)} className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm" />
+                                                                <input type="text" placeholder="備註" value={paymentForm.data.notes} onChange={(event) => paymentForm.setData('notes', event.target.value)} className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm" />
+                                                                <button type="submit" disabled={paymentForm.processing} className="rounded-lg bg-accent px-3 py-2 text-sm text-white">送出收款</button>
+                                                            </form>
+                                                        )}
+                                                        <div className="mt-3 space-y-2 text-xs">
+                                                            {(sale.payments || []).length === 0 ? <p className="text-muted">尚無收款紀錄。</p> : sale.payments.map((payment) => (
+                                                                <div key={payment.id} className="rounded-lg border border-default p-2">
+                                                                    <p>{payment.payment_number}｜{payment.payment_type_label}｜{payment.payment_method_label}｜{formatNumber(payment.amount)}｜{formatDate(payment.paid_at)}｜{payment.status_label}</p>
+                                                                    {canVoidVehicleSalePayments && payment.status === 'received' && <button type="button" onClick={() => setVoidingPaymentId(voidingPaymentId === payment.id ? null : payment.id)} className="mt-1 text-red-600 underline">作廢</button>}
+                                                                    {voidingPaymentId === payment.id && <form onSubmit={(event) => submitVoidPayment(event, sale.id, payment.id)} className="mt-2 flex gap-2"><input value={voidForm.data.void_reason} onChange={(event) => voidForm.setData('void_reason', event.target.value)} placeholder="請輸入作廢原因" className="flex-1 rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /><button type="submit" className="rounded-lg bg-red-600 px-3 py-2 text-white">確認作廢</button></form>}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            </React.Fragment>
                                         ))}
                                     </tbody>
                                 </table>

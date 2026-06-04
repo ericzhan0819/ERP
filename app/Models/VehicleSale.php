@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class VehicleSale extends Model
 {
@@ -79,5 +80,10 @@ class VehicleSale extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(VehicleSalePayment::class);
     }
 }

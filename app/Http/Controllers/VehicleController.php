@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\VehicleCost;
 use App\Models\VehicleSale;
+use App\Models\VehicleSalePayment;
 use App\Services\AuditLogService;
 use App\Services\VehicleStockNumberService;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -222,6 +223,9 @@ class VehicleController extends Controller
         $canViewVehicleSales = $request->user()?->can('module.vehicles.sales.view') ?? false;
         $canCreateVehicleSales = $request->user()?->can('module.vehicles.sales.create') ?? false;
         $canUpdateVehicleSales = $request->user()?->can('module.vehicles.sales.update') ?? false;
+        $canViewVehicleSalePayments = $request->user()?->can('module.vehicles.sales.payments.view') ?? false;
+        $canCreateVehicleSalePayments = $request->user()?->can('module.vehicles.sales.payments.create') ?? false;
+        $canVoidVehicleSalePayments = $request->user()?->can('module.vehicles.sales.payments.void') ?? false;
 
         $foundVehicle = $this->scopedVehicleQuery($request->user())
             ->with([
@@ -297,7 +301,7 @@ class VehicleController extends Controller
 
         // 技術註解：僅在具備 sales.view 時查詢與輸出銷售資料，避免未授權者取得成交價、客戶電話與佣金資訊。
         if ($canViewVehicleSales) {
-            $salesPayload = $this->buildVehicleSalesPayload($foundVehicle);
+            $salesPayload = $this->buildVehicleSalesPayload($foundVehicle, $canViewVehicleSalePayments);
             $vehicleSales = $salesPayload['sales'];
             $vehicleSaleSummary = $salesPayload['summary'];
         }
@@ -356,6 +360,9 @@ class VehicleController extends Controller
                 'view_vehicle_sales' => $canViewVehicleSales,
                 'create_vehicle_sales' => $canCreateVehicleSales,
                 'update_vehicle_sales' => $canUpdateVehicleSales,
+                'view_vehicle_sale_payments' => $canViewVehicleSalePayments,
+                'create_vehicle_sale_payments' => $canCreateVehicleSalePayments,
+                'void_vehicle_sale_payments' => $canVoidVehicleSalePayments,
             ],
         ];
 
@@ -381,6 +388,9 @@ class VehicleController extends Controller
         $canViewVehicleSales = $request->user()?->can('module.vehicles.sales.view') ?? false;
         $canCreateVehicleSales = $request->user()?->can('module.vehicles.sales.create') ?? false;
         $canUpdateVehicleSales = $request->user()?->can('module.vehicles.sales.update') ?? false;
+        $canViewVehicleSalePayments = $request->user()?->can('module.vehicles.sales.payments.view') ?? false;
+        $canCreateVehicleSalePayments = $request->user()?->can('module.vehicles.sales.payments.create') ?? false;
+        $canVoidVehicleSalePayments = $request->user()?->can('module.vehicles.sales.payments.void') ?? false;
 
         $foundVehicle = $this->scopedVehicleQuery($request->user())
             ->whereKey($vehicle)
@@ -396,6 +406,8 @@ class VehicleController extends Controller
         $vehicleSaleSummary = null;
         $customerOptions = null;
         $vehicleSaleStatuses = null;
+        $vehicleSalePaymentTypes = null;
+        $vehicleSalePaymentMethods = null;
 
         // 技術註解：編輯頁成本 payload 嚴格比照 show，僅在具備 costs.view 時回傳，避免未授權者取得財務敏感資訊。
         if ($canViewVehicleCosts) {
@@ -450,10 +462,12 @@ class VehicleController extends Controller
 
         // 技術註解：編輯頁銷售 payload 仍以 sales.view 為前提，create/update 只控制 mutation UI，不可單獨暴露敏感銷售資料。
         if ($canViewVehicleSales) {
-            $salesPayload = $this->buildVehicleSalesPayload($foundVehicle);
+            $salesPayload = $this->buildVehicleSalesPayload($foundVehicle, $canViewVehicleSalePayments);
             $vehicleSales = $salesPayload['sales'];
             $vehicleSaleSummary = $salesPayload['summary'];
             $vehicleSaleStatuses = config('vehicle_sales.sale_statuses', []);
+            $vehicleSalePaymentTypes = config('vehicle_sale_payments.payment_types', []);
+            $vehicleSalePaymentMethods = config('vehicle_sale_payments.payment_methods', []);
 
             if ($canCreateVehicleSales || $canUpdateVehicleSales) {
                 $customerOptions = $this->buildCustomerOptions($request->user());
@@ -497,6 +511,9 @@ class VehicleController extends Controller
                 'view_vehicle_sales' => $canViewVehicleSales,
                 'create_vehicle_sales' => $canCreateVehicleSales,
                 'update_vehicle_sales' => $canUpdateVehicleSales,
+                'view_vehicle_sale_payments' => $canViewVehicleSalePayments,
+                'create_vehicle_sale_payments' => $canCreateVehicleSalePayments,
+                'void_vehicle_sale_payments' => $canVoidVehicleSalePayments,
             ],
         ];
 
@@ -504,6 +521,8 @@ class VehicleController extends Controller
             $props['vehicleSales'] = $vehicleSales;
             $props['vehicleSaleSummary'] = $vehicleSaleSummary;
             $props['vehicleSaleStatuses'] = $vehicleSaleStatuses;
+            $props['vehicleSalePaymentTypes'] = $vehicleSalePaymentTypes;
+            $props['vehicleSalePaymentMethods'] = $vehicleSalePaymentMethods;
             $props['customerOptions'] = $customerOptions;
         }
 
@@ -660,12 +679,23 @@ class VehicleController extends Controller
      *
      * @return array{sales: \Illuminate\Support\Collection<int, array<string, mixed>>, summary: array<string, mixed>}
      */
-    private function buildVehicleSalesPayload(Vehicle $vehicle): array
+    private function buildVehicleSalesPayload(Vehicle $vehicle, bool $canViewPayments = false): array
     {
         $saleStatuses = config('vehicle_sales.sale_statuses', []);
+        $paymentTypes = config('vehicle_sale_payments.payment_types', []);
+        $paymentMethods = config('vehicle_sale_payments.payment_methods', []);
+        $paymentStatuses = config('vehicle_sale_payments.statuses', []);
+        $receivableStatuses = config('vehicle_sale_payments.receivable_statuses', []);
 
         $saleRows = $vehicle->sales()
-            ->with(['creator:id,name', 'updater:id,name', 'customer:id,customer_number,name,phone'])
+            ->with(array_filter([
+                'creator:id,name',
+                'updater:id,name',
+                'customer:id,customer_number,name,phone',
+                $canViewPayments ? 'payments.creator:id,name' : null,
+                $canViewPayments ? 'payments.updater:id,name' : null,
+                $canViewPayments ? 'payments.voider:id,name' : null,
+            ]))
             ->orderByDesc('sold_at')
             ->orderByDesc('id')
             ->get([
@@ -686,8 +716,8 @@ class VehicleController extends Controller
             ]);
 
         return [
-            'sales' => $saleRows->map(function (VehicleSale $sale) use ($saleStatuses): array {
-                return [
+            'sales' => $saleRows->map(function (VehicleSale $sale) use ($saleStatuses, $canViewPayments, $paymentTypes, $paymentMethods, $paymentStatuses, $receivableStatuses): array {
+                $payload = [
                     'id' => $sale->id,
                     'customer_id' => $sale->customer_id,
                     'customer' => $sale->customer ? [
@@ -710,6 +740,47 @@ class VehicleController extends Controller
                     'creator' => $sale->creator ? ['name' => $sale->creator->name] : null,
                     'updater' => $sale->updater ? ['name' => $sale->updater->name] : null,
                 ];
+
+                if ($canViewPayments) {
+                    $receivedAmount = (float) $sale->payments->where('status', 'received')->sum(fn (VehicleSalePayment $payment): float => (float) $payment->amount);
+                    $receivableAmount = $sale->sale_price === null ? null : (float) $sale->sale_price;
+                    $balance = $receivableAmount === null ? null : $receivableAmount - $receivedAmount;
+                    $status = $this->resolveReceivableStatus($receivableAmount, $receivedAmount);
+
+                    $payload['payment_summary'] = [
+                        'receivable_amount' => $receivableAmount === null ? null : number_format($receivableAmount, 2, '.', ''),
+                        'received_amount' => number_format($receivedAmount, 2, '.', ''),
+                        'receivable_balance' => $balance === null ? null : number_format($balance, 2, '.', ''),
+                        'receivable_status' => $status,
+                        'receivable_status_label' => $receivableStatuses[$status] ?? $status,
+                        'payment_count' => $sale->payments->count(),
+                    ];
+
+                    $payload['payments'] = $sale->payments
+                        ->sortByDesc('paid_at')
+                        ->sortByDesc('id')
+                        ->map(fn (VehicleSalePayment $payment): array => [
+                            'id' => $payment->id,
+                            'payment_number' => $payment->payment_number,
+                            'payment_type' => $payment->payment_type,
+                            'payment_type_label' => $paymentTypes[$payment->payment_type] ?? $payment->payment_type,
+                            'payment_method' => $payment->payment_method,
+                            'payment_method_label' => $paymentMethods[$payment->payment_method] ?? $payment->payment_method,
+                            'amount' => $payment->amount,
+                            'paid_at' => optional($payment->paid_at)->format('Y-m-d'),
+                            'reference_no' => $payment->reference_no,
+                            'status' => $payment->status,
+                            'status_label' => $paymentStatuses[$payment->status] ?? $payment->status,
+                            'notes' => $payment->notes,
+                            'creator' => $payment->creator ? ['name' => $payment->creator->name] : null,
+                            'updater' => $payment->updater ? ['name' => $payment->updater->name] : null,
+                            'voider' => $payment->voider ? ['name' => $payment->voider->name] : null,
+                            'voided_at' => optional($payment->voided_at)->format('Y-m-d H:i:s'),
+                            'void_reason' => $payment->void_reason,
+                        ])->values();
+                }
+
+                return $payload;
             })->values(),
             'summary' => [
                 'count' => $saleRows->count(),
@@ -723,5 +794,24 @@ class VehicleController extends Controller
                 'latest_sold_at' => optional($saleRows->first()?->sold_at)->format('Y-m-d'),
             ],
         ];
+    }
+
+    private function resolveReceivableStatus(?float $receivableAmount, float $receivedAmount): string
+    {
+        $receivableAmount ??= 0.0;
+
+        if ($receivedAmount <= 0) {
+            return 'unpaid';
+        }
+
+        if ($receivedAmount < $receivableAmount) {
+            return 'partial';
+        }
+
+        if ($receivedAmount == $receivableAmount) {
+            return 'paid';
+        }
+
+        return 'overpaid';
     }
 }

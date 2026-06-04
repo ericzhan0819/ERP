@@ -19,7 +19,7 @@
 
 目前開發中（Early Development），Vehicle Module MVP completed，Customer Management foundation completed。
 
-目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛銷售、客戶管理 foundation、系統稽核紀錄與登入紀錄。
+目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛銷售、銷售收款 / 應收 foundation、客戶管理 foundation、系統稽核紀錄與登入紀錄。
 
 目前穩定節點：
 
@@ -108,6 +108,9 @@ module.vehicles.view
 module.vehicles.create
 module.vehicles.update
 module.audit.view
+module.vehicles.sales.payments.view
+module.vehicles.sales.payments.create
+module.vehicles.sales.payments.void
 ```
 
 ## Staff Permission Management
@@ -151,8 +154,11 @@ module.audit.view
 - Vehicle Costs：成本新增、更新、摘要與 audit logging。
 - Vehicle Sales：銷售新增、更新、active sale guard 與 lifecycle sync。
 - Vehicle Sales customer linking foundation：可關聯 Customer 主檔並保留交易 snapshot，銷售 payload 不暴露 Customer sensitive 欄位。
+- Vehicle Payment / Receivable Foundation：每筆銷售可記錄多筆收款，收款編號 `PAY-YYYYMM-0001` 依公司月份遞增，已作廢收款不計入已收金額。
+- 收款狀態：`unpaid`、`partial`、`paid`、`overpaid`；超收先允許並於 UI 提示。
 - Staff Permission matrix 支援 `vehicles.pricing`、`vehicles.costs`、`vehicles.sales` nested permissions。
 - 後端 payload 必須依權限控制；前端隱藏不等於安全；無權限者不能取得價格、成本、銷售、佣金等敏感資料。
+- 無 `module.vehicles.sales.payments.view` 時，不回傳 payment summary / payment records；無 `module.vehicles.sales.view` 時，即使有 payments.view 也不回傳 sales / payments payload。
 
 車輛庫存編號格式：
 
@@ -181,6 +187,7 @@ archived   已封存
 - Sensitive data permission isolation：`id_number` / `birthday` / `address`
 - Search / status filter / pagination
 - Customer audit events：`customer.created` / `customer.updated`
+- Vehicle sale payment audit events：`vehicle_sale_payment.created` / `vehicle_sale_payment.voided`
 - Staff Permission matrix 支援 `customers.sensitive` nested permissions
 
 ## Audit Foundation
@@ -412,6 +419,14 @@ refactor: 不改行為的重構
 - FormRequest validation
 - Login log separation
 - Activity audit foundation
+
+## Current Vehicle Payment Limitations
+
+- 尚未做完整會計分錄。
+- 尚未做退款流程。
+- 尚未做發票。
+- 尚未做報表 / export / PDF / Excel。
+- 尚未新增 profit / gross_profit / gross_margin payload。
 - Minimal vehicle detail payload
 
 完整資安審查與 production hardening 尚未執行，會在功能與架構更完整後集中處理。

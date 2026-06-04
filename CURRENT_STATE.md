@@ -3,7 +3,7 @@
 ## 狀態摘要
 
 - 專案狀態：Early Development，Vehicle Module 第一代 MVP 已完成，Customer Module MVP foundation 已加入。
-- 穩定節點：Vehicle Sales Flow QA polish 已完成。
+- 穩定節點：Vehicle Payment / Receivable Foundation MVP 已完成。
 - 最新驗證狀態：`157 passed / 1020 assertions`，`npm run build` 通過。
 - 本文件為 Vehicle Module MVP Final Review 封版整理；目前不實作新功能、不做完整會計、不做報表、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload。
 
@@ -29,6 +29,7 @@
 - Vehicle pricing
 - Vehicle costs
 - Vehicle sales
+- Vehicle payment / receivable foundation
 - Customer management foundation
 
 ## Customer Module MVP 能力
@@ -54,6 +55,7 @@
 - Active sale guard：每台車只允許一筆 active sale。
 - Vehicle Sales customer linking：銷售可 nullable 關聯 `customer_id`，`customer_name` / `customer_phone` 保留為交易當下 snapshot。
 - Vehicle Sales customer payload 僅輸出 `id`、`customer_number`、`name`、`phone` 基本顯示資訊，不暴露 Customer sensitive 欄位。
+- Vehicle Payment / Receivable Foundation：每筆 Vehicle Sale 可記錄多筆收款，Show / Edit 顯示應收、已收、未收、收款狀態與收款紀錄；已作廢收款不計入已收金額，超收僅提示不阻擋。
 - Audit events：車輛、成本、銷售與公司設定異動已記錄 operation audit。
 - Show / Edit UI split：Show 偏只讀展示；Edit 承載可編輯流程與 mutation UI 所需選項。
 
@@ -92,13 +94,16 @@
 - `module.vehicles.sales.view`
 - `module.vehicles.sales.create`
 - `module.vehicles.sales.update`
+- `module.vehicles.sales.payments.view`
+- `module.vehicles.sales.payments.create`
+- `module.vehicles.sales.payments.void`
 
 ### 權限狀態
 
-- `admin` 預設取得車輛、價格、成本、銷售完整權限。
+- `admin` 預設取得車輛、價格、成本、銷售與銷售收款完整權限。
 - `staff` / `viewer` 不預設取得價格、成本、銷售等敏感權限。
 - `pricing` / `costs` / `sales` 為 `module.vehicles.*` 下的 nested permissions。
-- Staff Permission matrix 已支援 `vehicles.pricing`、`vehicles.costs`、`vehicles.sales` 四段式權限分組。
+- Staff Permission matrix 已支援 `vehicles.pricing`、`vehicles.costs`、`vehicles.sales` 與 `vehicles.sales.payments` 權限分組。
 
 ## Audit Events
 
@@ -110,6 +115,8 @@
 - `vehicle_cost.updated`
 - `vehicle_sale.created`
 - `vehicle_sale.updated`
+- `vehicle_sale_payment.created`
+- `vehicle_sale_payment.voided`
 - `company_settings.updated`
 - `customer.created`
 - `customer.updated`
@@ -119,6 +126,7 @@ Audit 資料原則：
 - Vehicle audit 僅記錄主要業務欄位，避免將內部備註等潛在敏感內容寫入快照。
 - Vehicle costs audit 只記錄白名單欄位，不記 `internal_notes`。
 - Vehicle sales audit 只記錄白名單欄位，不記 tenant / actor / internal-only sensitive 欄位。
+- Vehicle sale payments audit 只記錄收款白名單欄位，不記 tenant / actor / vehicle / 毛利欄位。
 - Customer audit 只記錄一般白名單欄位，不記 `id_number`、`birthday`、`address`。
 - Audit snapshot 不記 `company_id`、`branch_id`、`vehicle_id`、`created_by`、`updated_by` 等系統欄位。
 - `auth.*` 不進一般 operation audit；登入成功、登入失敗、停用帳號登入、登出等事件保留在 Login logs。
@@ -151,7 +159,9 @@ Audit 資料原則：
 
 - 尚未做完整會計。
 - 尚未做租賃模組。
-- 客戶模組目前已提供 Vehicle Sales customer linking foundation；尚未串接合約、收款或完整 CRM。
+- 客戶模組目前已提供 Vehicle Sales customer linking foundation；尚未串接合約或完整 CRM。
+- 尚未做完整會計分錄、退款流程、發票、報表 / PDF / Excel。
+- 尚未做毛利 payload（profit / gross_profit / gross_margin）。
 - 尚未做收款流程。
 - 尚未做圖片上傳。
 - 尚未做報表。

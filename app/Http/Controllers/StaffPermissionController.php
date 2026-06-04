@@ -35,6 +35,7 @@ class StaffPermissionController extends Controller
         'vehicles.pricing' => '車輛價格',
         'vehicles.costs' => '車輛成本',
         'vehicles.sales' => '車輛銷售',
+        'vehicles.sales.payments' => '車輛銷售收款',
         'customers.sensitive' => '客戶個資',
     ];
 
@@ -96,7 +97,7 @@ class StaffPermissionController extends Controller
             }
 
             $segments = explode('.', $permission->name);
-            if (count($segments) !== 3 && count($segments) !== 4) {
+            if (! in_array(count($segments), [3, 4, 5], true)) {
                 continue;
             }
 
@@ -110,12 +111,12 @@ class StaffPermissionController extends Controller
                 continue;
             }
 
-            $matrixKey = count($segments) === 4
-                ? $moduleKey.'.'.$segments[2]
+            $matrixKey = count($segments) >= 4
+                ? $moduleKey.'.'.implode('.', array_slice($segments, 2, -1))
                 : $moduleKey;
 
             $moduleLabels[$moduleKey] = $moduleLabels[$moduleKey] ?? (self::MODULE_LABELS[$moduleKey] ?? ucfirst(str_replace('-', ' ', $moduleKey)));
-            $matrixLabel = count($segments) === 4
+            $matrixLabel = count($segments) >= 4
                 ? (self::SUB_SCOPE_LABELS[$matrixKey] ?? ucfirst(str_replace(['-', '.'], ' ', $matrixKey)))
                 : $moduleLabels[$moduleKey];
 
