@@ -436,3 +436,13 @@ refactor: 不改行為的重構
 # License
 
 (c) 2026 OO INTERNATIONAL. All rights reserved.
+
+## Receivables Module MVP completed
+
+- 新增「收款管理」模組，Module key：`receivables`，入口：`/employee-system/receivables`。
+- 新權限：`module.receivables.view`、`module.receivables.create`、`module.receivables.void`。
+- 使用既有資料表：`vehicle_sales` 作為交易來源、`vehicle_sale_payments` 作為收款紀錄。
+- 限制：不是完整會計；不做退款、發票、報表、PDF、Excel；不產生 profit / gross margin payload。
+- Vehicle 頁面保留舊 `module.vehicles.sales.payments.*` 相容入口，但主要操作導向收款管理頁。
+- `vehicle_sales.deposit_amount` 僅作「訂金快照」語意；真正已收金額只由 `vehicle_sale_payments.status = received` 計算。
+

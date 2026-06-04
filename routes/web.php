@@ -5,6 +5,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CompanySettingController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReceivableController;
 use App\Http\Controllers\StaffPermissionController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCostController;
@@ -174,6 +175,36 @@ Route::patch('/employee-system/vehicles/{vehicle}/sales/{vehicleSale}/payments/{
     ->whereNumber('vehicleSale')
     ->whereNumber('vehicleSalePayment')
     ->name('employee-system.vehicles.sales.payments.void');
+
+Route::get('/employee-system/receivables', [ReceivableController::class, 'index'])
+    // 技術註解：收款管理使用獨立 receivables 模組門禁，避免沿用車輛頁舊收款權限造成入口邊界混淆。
+    ->middleware(['auth', 'module.access:receivables'])
+    ->name('employee-system.receivables.index');
+
+Route::get('/employee-system/receivables/{vehicleSale}', [ReceivableController::class, 'show'])
+    // 技術註解：不使用 implicit model binding，Controller 會先套用 company/branch scope，跨租戶一律 404。
+    ->middleware(['auth', 'module.access:receivables'])
+    ->whereNumber('vehicleSale')
+    ->name('employee-system.receivables.show');
+
+Route::patch('/employee-system/receivables/{vehicleSale}/mark-sold', [ReceivableController::class, 'markSold'])
+    // 技術註解：成交標記屬敏感狀態轉換，保留 receivables 模組門禁並由 Controller 二次檢查獨立權限以防越權。
+    ->middleware(['auth', 'module.access:receivables'])
+    ->whereNumber('vehicleSale')
+    ->name('employee-system.receivables.mark-sold');
+
+Route::post('/employee-system/receivables/{vehicleSale}/payments', [ReceivableController::class, 'storePayment'])
+    // 技術註解：收款新增需同時通過 module.access 與 controller 內 create 權限，避免僅有 view 者可寫入。
+    ->middleware(['auth', 'module.access:receivables'])
+    ->whereNumber('vehicleSale')
+    ->name('employee-system.receivables.payments.store');
+
+Route::patch('/employee-system/receivables/{vehicleSale}/payments/{vehicleSalePayment}/void', [ReceivableController::class, 'voidPayment'])
+    // 技術註解：作廢保留原紀錄與 audit log，不提供刪除或退款流程。
+    ->middleware(['auth', 'module.access:receivables'])
+    ->whereNumber('vehicleSale')
+    ->whereNumber('vehicleSalePayment')
+    ->name('employee-system.receivables.payments.void');
 
 Route::get('/employee-system/audit/activity-logs', [AuditLogController::class, 'activityLogs'])
     ->middleware(['auth', 'module.access:audit'])

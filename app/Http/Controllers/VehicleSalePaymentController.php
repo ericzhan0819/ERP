@@ -30,6 +30,16 @@ class VehicleSalePaymentController extends Controller
 
         $this->authorize('create', [VehicleSalePayment::class, $foundSale, $foundVehicle]);
 
+        if ($foundSale->sale_status === 'cancelled') {
+            // 技術註解：已取消銷售不可再收款，避免作廢交易被重新累積應收/已收金額造成財務語意污染。
+            throw new HttpResponseException(response()->json(['message' => '已取消銷售不可新增收款紀錄。'], 422));
+        }
+
+        if ($foundSale->sale_price === null || (float) $foundSale->sale_price <= 0) {
+            // 技術註解：沒有有效成交價時禁止新增收款，避免未定價銷售形成無法判讀的應收餘額。
+            throw new HttpResponseException(response()->json(['message' => '銷售價格未設定，無法新增收款。'], 422));
+        }
+
         $payment = DB::transaction(function () use ($request, $user, $foundVehicle, $foundSale): VehicleSalePayment {
             $validated = $request->validated();
             $created = VehicleSalePayment::create([

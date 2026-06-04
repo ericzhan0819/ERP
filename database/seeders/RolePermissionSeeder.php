@@ -17,7 +17,7 @@ class RolePermissionSeeder extends Seeder
     /**
      * 權限 action 白名單（僅允許統一命名的固定動作）。
      */
-    private const ACTION_WHITELIST = ['view', 'create', 'update', 'delete', 'export', 'approve', 'void', 'manage'];
+    private const ACTION_WHITELIST = ['view', 'create', 'update', 'delete', 'export', 'approve', 'void', 'mark-sold', 'manage'];
 
     /**
      * Seed the application's RBAC foundation.
@@ -143,6 +143,21 @@ class RolePermissionSeeder extends Seeder
                 'is_active' => true,
                 'active_patterns' => ['employee-system.customers.*'],
             ],
+            'receivables' => [
+                'label' => '收款管理',
+                'section' => 'operations',
+                'parent_id' => null,
+                'parent_key' => null,
+                'route_name' => 'employee-system.receivables.index',
+                'permission_prefix' => 'module.receivables',
+                'base_permission' => 'module.receivables.view',
+                'icon_key' => 'Receipt',
+                'icon' => 'Receipt',
+                'sort_order' => 37,
+                'is_enabled' => true,
+                'is_active' => true,
+                'active_patterns' => ['employee-system.receivables.*'],
+            ],
             'audit' => [
                 'label' => '稽核紀錄',
                 'section' => 'administration',
@@ -202,6 +217,10 @@ class RolePermissionSeeder extends Seeder
             'module.vehicles.sales.payments.view' => ['label' => '查看銷售收款', 'group' => '車輛銷售收款'],
             'module.vehicles.sales.payments.create' => ['label' => '建立銷售收款', 'group' => '車輛銷售收款'],
             'module.vehicles.sales.payments.void' => ['label' => '作廢銷售收款', 'group' => '車輛銷售收款'],
+            'module.receivables.view' => ['label' => '查看收款管理', 'group' => '收款管理'],
+            'module.receivables.create' => ['label' => '建立收款', 'group' => '收款管理'],
+            'module.receivables.void' => ['label' => '作廢收款', 'group' => '收款管理'],
+            'module.receivables.mark-sold' => ['label' => '標記收款成交', 'group' => '收款管理'],
             'module.customers.view' => ['label' => '查看客戶', 'group' => '客戶管理'],
             'module.customers.create' => ['label' => '建立客戶', 'group' => '客戶管理'],
             'module.customers.update' => ['label' => '更新客戶', 'group' => '客戶管理'],
@@ -299,6 +318,10 @@ class RolePermissionSeeder extends Seeder
                 'module.vehicles.sales.payments.view',
                 'module.vehicles.sales.payments.create',
                 'module.vehicles.sales.payments.void',
+                'module.receivables.view',
+                'module.receivables.create',
+                'module.receivables.void',
+                'module.receivables.mark-sold',
                 'module.customers.view',
                 'module.customers.create',
                 'module.customers.update',
@@ -327,11 +350,16 @@ class RolePermissionSeeder extends Seeder
                 'module.vehicles.view',
                 'module.vehicles.create',
                 'module.vehicles.update',
+                // 技術註解：業務角色僅預設可查看收款管理，不給新增/作廢，避免非會計角色操作現金紀錄。
+                'module.receivables.view',
             ],
             'accounting' => [
                 'module.dashboard.view',
                 'module.vehicles.view',
                 'module.vehicles.export',
+                'module.receivables.view',
+                'module.receivables.create',
+                'module.receivables.void',
             ],
             'inventory' => [
                 'module.dashboard.view',

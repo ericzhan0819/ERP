@@ -37,9 +37,9 @@ function vspVehicle(User $user, string $stock = 'VSP-001'): Vehicle
     return Vehicle::create(['company_id' => $user->company_id, 'branch_id' => $user->branch_id, 'stock_number' => $stock, 'vin' => $stock.'VIN', 'brand' => 'Toyota', 'model' => 'Altis', 'model_year' => 2024, 'lifecycle_status' => 'reserved']);
 }
 
-function vspSale(Vehicle $vehicle, User $user, ?float $price = 100000): VehicleSale
+function vspSale(Vehicle $vehicle, User $user, ?float $price = 100000, string $status = 'reserved'): VehicleSale
 {
-    return VehicleSale::create(['company_id' => $vehicle->company_id, 'branch_id' => $vehicle->branch_id, 'vehicle_id' => $vehicle->id, 'customer_name' => '收款客戶', 'customer_phone' => '0911', 'sale_price' => $price, 'sale_status' => 'reserved', 'created_by' => $user->id, 'updated_by' => $user->id]);
+    return VehicleSale::create(['company_id' => $vehicle->company_id, 'branch_id' => $vehicle->branch_id, 'vehicle_id' => $vehicle->id, 'customer_name' => '收款客戶', 'customer_phone' => '0911', 'sale_price' => $price, 'sale_status' => $status, 'created_by' => $user->id, 'updated_by' => $user->id]);
 }
 
 function vspPayment(VehicleSale $sale, User $user, float $amount, string $status = 'received'): VehicleSalePayment
@@ -58,10 +58,15 @@ it('有/無 payments.view 時 Show/Edit payload 正確隔離', function (): void
         $this->actingAs($user)->get(route('employee-system.vehicles.'.$action, $vehicle->id))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
             ->where('vehicleSales.0.payment_summary.received_amount', '40000.00')
             ->where('vehicleSales.0.payment_summary.receivable_status', 'partial')
+            ->where('vehicleSales.0.payment_summary.received_payment_count', 1)
+            ->where('vehicleSales.0.payment_summary.payment_record_count', 1)
             ->where('vehicleSales.0.payments.0.payment_method_label', '現金')
             ->missing('vehicleSales.0.payments.0.company_id')
             ->missing('vehicleSales.0.payments.0.branch_id')
-            ->missing('vehicleSales.0.payments.0.vehicle_id'));
+            ->missing('vehicleSales.0.payments.0.vehicle_id')
+            ->missing('vehicleSales.0.payments.0.profit')
+            ->missing('vehicleSales.0.payments.0.gross_profit')
+            ->missing('vehicleSales.0.payments.0.gross_margin'));
     }
 
     $deny = vspUser('vsp-view-deny@example.com');
@@ -103,10 +108,38 @@ it('跨 tenant 建立或作廢回 404，作廢權限與狀態計算正確', func
     $ownPayment = vspPayment($sale, $user, 100);
     $this->actingAs($user)->patch(route('employee-system.vehicles.sales.payments.void', [$sale->vehicle_id, $sale->id, $ownPayment->id]), ['void_reason' => '輸入錯誤'])->assertRedirect();
     expect($ownPayment->fresh()->status)->toBe('voided');
-    $this->actingAs($user)->get(route('employee-system.vehicles.show', $sale->vehicle_id))->assertInertia(fn (AssertableInertia $page) => $page->where('vehicleSales.0.payment_summary.received_amount', '0.00')->where('vehicleSales.0.payment_summary.receivable_status', 'unpaid'));
+    $this->actingAs($user)->get(route('employee-system.vehicles.show', $sale->vehicle_id))->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('vehicleSales.0.payment_summary.received_amount', '0.00')
+        ->where('vehicleSales.0.payment_summary.receivable_status', 'unpaid')
+        ->where('vehicleSales.0.payment_summary.received_payment_count', 0)
+        ->where('vehicleSales.0.payment_summary.payment_record_count', 1));
 
     $secondPayment = vspPayment($sale, $user, 50);
     $this->actingAs($user)->patch(route('employee-system.vehicles.sales.payments.void', [$sale->vehicle_id, $sale->id, $secondPayment->id]), ['void_reason' => 'x', 'system' => ['status' => 'received'], 'tenant' => ['company_id' => 999], 'gross_margin' => 1])->assertForbidden();
+});
+
+it('拒絕取消銷售與未設定有效成交價的新增收款', function (): void {
+    $user = vspUser('vsp-guard@example.com');
+    $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.sales.payments.create']);
+    $payload = ['payment_type' => 'deposit', 'payment_method' => 'cash', 'amount' => 1000];
+
+    $cancelledSale = vspSale(vspVehicle($user, 'VSP-CAN'), $user, 100000, 'cancelled');
+    $this->actingAs($user)
+        ->post(route('employee-system.vehicles.sales.payments.store', [$cancelledSale->vehicle_id, $cancelledSale->id]), $payload)
+        ->assertStatus(422)
+        ->assertJson(['message' => '已取消銷售不可新增收款紀錄。']);
+
+    $nullPriceSale = vspSale(vspVehicle($user, 'VSP-NULL'), $user, null, 'draft');
+    $this->actingAs($user)
+        ->post(route('employee-system.vehicles.sales.payments.store', [$nullPriceSale->vehicle_id, $nullPriceSale->id]), $payload)
+        ->assertStatus(422)
+        ->assertJson(['message' => '銷售價格未設定，無法新增收款。']);
+
+    $zeroPriceSale = vspSale(vspVehicle($user, 'VSP-ZERO'), $user, 0, 'draft');
+    $this->actingAs($user)
+        ->post(route('employee-system.vehicles.sales.payments.store', [$zeroPriceSale->vehicle_id, $zeroPriceSale->id]), $payload)
+        ->assertStatus(422)
+        ->assertJson(['message' => '銷售價格未設定，無法新增收款。']);
 });
 
 it('paid partial unpaid overpaid 狀態、audit 與無 sales.view 隔離正確', function (): void {

@@ -742,17 +742,21 @@ class VehicleController extends Controller
                 ];
 
                 if ($canViewPayments) {
-                    $receivedAmount = (float) $sale->payments->where('status', 'received')->sum(fn (VehicleSalePayment $payment): float => (float) $payment->amount);
+                    $receivedPayments = $sale->payments->where('status', 'received');
+                    $receivedAmount = (float) $receivedPayments->sum(fn (VehicleSalePayment $payment): float => (float) $payment->amount);
                     $receivableAmount = $sale->sale_price === null ? null : (float) $sale->sale_price;
                     $balance = $receivableAmount === null ? null : $receivableAmount - $receivedAmount;
                     $status = $this->resolveReceivableStatus($receivableAmount, $receivedAmount);
 
                     $payload['payment_summary'] = [
+                        // 技術註解：畫面收款語意以 vehicle_sale_payments 為唯一來源，舊 sales.paid_amount 僅保留相容 payload 不參與計算。
                         'receivable_amount' => $receivableAmount === null ? null : number_format($receivableAmount, 2, '.', ''),
                         'received_amount' => number_format($receivedAmount, 2, '.', ''),
                         'receivable_balance' => $balance === null ? null : number_format($balance, 2, '.', ''),
                         'receivable_status' => $status,
                         'receivable_status_label' => $receivableStatuses[$status] ?? $status,
+                        'received_payment_count' => $receivedPayments->count(),
+                        'payment_record_count' => $sale->payments->count(),
                         'payment_count' => $sale->payments->count(),
                     ];
 

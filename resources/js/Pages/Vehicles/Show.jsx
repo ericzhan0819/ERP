@@ -173,12 +173,8 @@ export default function VehiclesShow({
                                 <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.latest_sale_price)}</p>
                             </div>
                             <div className="rounded-xl border border-default p-3">
-                                <p className="text-xs text-muted">訂金</p>
+                                <p className="text-xs text-muted">訂金快照</p>
                                 <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.latest_deposit_amount)}</p>
-                            </div>
-                            <div className="rounded-xl border border-default p-3">
-                                <p className="text-xs text-muted">已付款</p>
-                                <p className="mt-1 text-base font-semibold text-primary">{formatNumber(vehicleSaleSummary?.latest_paid_amount)}</p>
                             </div>
                             <div className="rounded-xl border border-default p-3">
                                 <p className="text-xs text-muted">銷售筆數</p>
@@ -201,8 +197,7 @@ export default function VehiclesShow({
                                             <th className="px-3 py-2 font-medium">客戶</th>
                                             <th className="px-3 py-2 font-medium">電話</th>
                                             <th className="px-3 py-2 font-medium">成交價</th>
-                                            <th className="px-3 py-2 font-medium">訂金</th>
-                                            <th className="px-3 py-2 font-medium">已付款</th>
+                                            <th className="px-3 py-2 font-medium">訂金快照</th>
                                             <th className="px-3 py-2 font-medium">成交日</th>
                                             <th className="px-3 py-2 font-medium">業務</th>
                                             <th className="px-3 py-2 font-medium">佣金</th>
@@ -220,7 +215,6 @@ export default function VehiclesShow({
                                                     <td className="px-3 py-2">{displayValue(sale.customer_phone)}</td>
                                                     <td className="px-3 py-2">{formatNumber(sale.sale_price)}</td>
                                                     <td className="px-3 py-2">{formatNumber(sale.deposit_amount)}</td>
-                                                    <td className="px-3 py-2">{formatNumber(sale.paid_amount)}</td>
                                                     <td className="px-3 py-2">{formatDate(sale.sold_at)}</td>
                                                     <td className="px-3 py-2">{displayValue(sale.salesperson_name)}</td>
                                                     <td className="px-3 py-2">{formatNumber(sale.commission_amount)}</td>
@@ -230,15 +224,17 @@ export default function VehiclesShow({
                                                 </tr>
                                                 {canViewVehicleSalePayments && sale.payment_summary && (
                                                     <tr className="border-t border-default bg-slate-50/60 dark:bg-slate-900/30">
-                                                        <td colSpan="12" className="px-3 py-3">
-                                                            <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-5">
+                                                        <td colSpan="11" className="px-3 py-3">
+                                                            <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-6">
                                                                 <span>應收：{formatNumber(sale.payment_summary.receivable_amount)}</span>
                                                                 <span>已收：{formatNumber(sale.payment_summary.received_amount)}</span>
                                                                 <span>未收：{formatNumber(sale.payment_summary.receivable_balance)}</span>
                                                                 <span>狀態：{displayValue(sale.payment_summary.receivable_status_label)}</span>
-                                                                <span>收款筆數：{formatNumber(sale.payment_summary.payment_count)}</span>
+                                                                <span>有效收款：{formatNumber(sale.payment_summary.received_payment_count)} 筆</span>
+                                                                <span>收款紀錄：{formatNumber(sale.payment_summary.payment_record_count)} 筆（含作廢）</span>
                                                             </div>
                                                             {sale.payment_summary.receivable_status === 'overpaid' && <p className="mt-2 text-xs text-amber-700">提醒：此筆銷售目前為超收狀態，請確認收款紀錄。</p>}
+                                                            <Link href={route('employee-system.receivables.show', sale.id)} className="mt-2 inline-flex text-xs text-accent underline">前往收款管理</Link>
                                                             <div className="mt-2 space-y-1 text-xs text-secondary">
                                                                 {(sale.payments || []).length === 0 ? <p className="text-muted">尚無收款紀錄。</p> : sale.payments.map((payment) => (
                                                                     <p key={payment.id}>{payment.payment_number}｜{payment.payment_type_label}｜{payment.payment_method_label}｜{formatNumber(payment.amount)}｜{formatDate(payment.paid_at)}｜{payment.status_label}</p>

@@ -36,6 +36,7 @@ class StaffPermissionController extends Controller
         'vehicles.costs' => '車輛成本',
         'vehicles.sales' => '車輛銷售',
         'vehicles.sales.payments' => '車輛銷售收款',
+        'receivables' => '收款管理',
         'customers.sensitive' => '客戶個資',
     ];
 
@@ -44,6 +45,7 @@ class StaffPermissionController extends Controller
      */
     private const MODULE_LABELS = [
         'customers' => '客戶管理',
+        'receivables' => '收款管理',
         'vehicles' => '車輛管理',
     ];
 
@@ -63,7 +65,7 @@ class StaffPermissionController extends Controller
             403
         );
 
-        $actions = ['view', 'create', 'update', 'delete', 'export', 'approve', 'void', 'manage'];
+        $actions = ['view', 'create', 'update', 'delete', 'export', 'approve', 'void', 'mark-sold', 'manage'];
 
         $roles = Role::query()
             ->withCount('users')
@@ -156,6 +158,7 @@ class StaffPermissionController extends Controller
                 'export' => '匯出',
                 'approve' => '核准',
                 'void' => '作廢',
+                'mark-sold' => '標記成交',
                 'manage' => '管理',
             ],
             'moduleLabels' => $moduleLabels,
