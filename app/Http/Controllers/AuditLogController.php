@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\LoginLog;
+use App\Support\AuditLogDisplay;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -46,6 +47,13 @@ class AuditLogController extends Controller
             ->when($userId !== null && $userId !== '', fn (Builder $query): Builder => $query->where('user_id', (int) $userId))
             ->latest('id')
             ->paginate(20)
+            ->through(function (ActivityLog $log): array {
+                $payload = $log->toArray();
+                // 技術註解：顯示資訊由後端集中產生，避免前端依 raw module key 做權限或模組推斷造成顯示不一致。
+                $payload['display'] = AuditLogDisplay::payload($log);
+
+                return $payload;
+            })
             ->withQueryString();
 
         return Inertia::render('Audit/ActivityLogs', [
