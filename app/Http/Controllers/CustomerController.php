@@ -287,21 +287,27 @@ class CustomerController extends Controller
 
         $canViewReceivables = $user?->can('module.receivables.view') ?? false;
 
+        $relations = [
+            'vehicle' => fn ($query) => $query
+                ->where('company_id', (int) $customer->company_id)
+                ->where('branch_id', (int) $customer->branch_id)
+                ->select('id', 'company_id', 'branch_id', 'stock_number', 'brand', 'model', 'license_plate'),
+        ];
+
+        if ($canViewReceivables) {
+            // 技術註解：只有應收權限者才載入 payments，避免無權使用者即使 payload 未輸出仍觸發不必要的敏感收款關聯查詢。
+            $relations['payments'] = fn ($query) => $query
+                ->where('company_id', (int) $customer->company_id)
+                ->where('branch_id', (int) $customer->branch_id);
+        }
+
         return $this->scopedVehicleSaleQuery($user)
             // 技術註解：客戶交易紀錄僅接受正式 customer_id 關聯，刻意不使用 snapshot 姓名/電話模糊比對，避免錯誤歸戶與個資外洩。
             ->where('customer_id', $customer->id)
             ->where('company_id', (int) $customer->company_id)
             ->where('branch_id', (int) $customer->branch_id)
-            // 技術註解：vehicle/payments 仍額外套 tenant 條件，避免關聯資料被錯誤 FK 指到跨租戶紀錄時形成 IDOR 洩漏。
-            ->with([
-                'vehicle' => fn ($query) => $query
-                    ->where('company_id', (int) $customer->company_id)
-                    ->where('branch_id', (int) $customer->branch_id)
-                    ->select('id', 'company_id', 'branch_id', 'stock_number', 'brand', 'model', 'license_plate'),
-                'payments' => fn ($query) => $query
-                    ->where('company_id', (int) $customer->company_id)
-                    ->where('branch_id', (int) $customer->branch_id),
-            ])
+            // 技術註解：關聯資料仍額外套 tenant 條件，避免錯誤 FK 指到跨租戶紀錄時形成 IDOR 洩漏。
+            ->with($relations)
             ->orderByDesc('sold_at')
             ->orderByDesc('id')
             ->limit(20)

@@ -28,15 +28,20 @@ main / origin main
 Vehicle Module MVP completed
 ```
 
-最近一次驗證結果：
+最近分段驗證結果：
 
 ```bash
-./vendor/bin/sail artisan test
-# 157 passed, 1020 assertions
+./vendor/bin/sail artisan test tests/Feature/CustomerTest.php tests/Feature/ReceivableTest.php
+# 27 passed, 359 assertions
+
+./vendor/bin/sail artisan test tests/Feature/VehicleSaleTest.php tests/Feature/VehicleSalePaymentTest.php
+# 30 passed, 407 assertions
 
 npm run build
 # Vite build success
 ```
+
+最新完整測試：待重新執行 full test。
 
 ---
 

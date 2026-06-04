@@ -4,7 +4,7 @@
 
 - 專案狀態：Early Development，Vehicle Module 第一代 MVP 已完成，Customer Module MVP foundation 已加入。
 - 穩定節點：Customer Transaction History MVP 已完成，Vehicle Payment / Receivable Foundation MVP 已完成。
-- 最新驗證狀態：`157 passed / 1020 assertions`，`npm run build` 通過。
+- 最新驗證狀態：最近分段驗證包含 `CustomerTest + ReceivableTest：27 passed / 359 assertions`、`VehicleSaleTest + VehicleSalePaymentTest：30 passed / 407 assertions`、`npm run build` 通過；最新完整測試待重新執行 full test。
 - 本文件為 Vehicle Module MVP Final Review 封版整理；目前不實作新功能、不做完整會計、不做報表、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload。
 
 ## 技術棧
