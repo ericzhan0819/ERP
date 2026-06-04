@@ -2,10 +2,10 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Module 第一代 MVP 已完成，Customer Module MVP foundation 已加入。
-- 穩定節點：Customer Transaction History MVP 已完成，Vehicle Payment / Receivable Foundation MVP 已完成。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed。
+- 穩定節點：Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed。
 - 最新驗證狀態：最近分段驗證包含 `CustomerTest + ReceivableTest：27 passed / 359 assertions`、`VehicleSaleTest + VehicleSalePaymentTest：30 passed / 407 assertions`、`npm run build` 通過；最新完整測試待重新執行 full test。
-- 本文件為 Vehicle Module MVP Final Review 封版整理；目前不實作新功能、不做完整會計、不做報表、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload。
+- 本文件為目前穩定節點同步整理；目前不實作新功能、不做退款、不做完整會計、不做發票、不做報表、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
 
 ## 技術棧
 
@@ -31,6 +31,9 @@
 - Vehicle sales
 - Vehicle payment / receivable foundation
 - Customer management foundation
+- Customer transaction history
+- Receivables mark-sold action
+- Audit log display localization
 
 ## Customer Module MVP 能力
 
@@ -71,6 +74,18 @@
 - `sold vehicle` 不可建立新 sale。
 - 每台車只允許一筆 active sale；active sale 目前包含 `draft`、`reserved`、`sold`，`cancelled` 不算 active。
 - 已成交銷售取消不會自動把車輛回到 `in_stock`，避免 MVP 簡化流程誤導退車 / 退款 / 作廢邏輯。
+
+## 目前完整業務流
+
+```txt
+Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Customer Transaction History → Audit Logs
+```
+
+- Customer 主檔可被 Vehicle Sale 關聯，並保留交易當下 customer snapshot。
+- Vehicle Sale 建立後可透過 Receivables / Payments 管理應收、已收、未收與收款紀錄。
+- Receivables mark-sold action 可在收款 / 應收流程中完成售出狀態銜接。
+- Customer Transaction History 顯示客戶關聯銷售與收款摘要，並受 tenant scope 與後端權限控制。
+- Audit Logs 已支援主要業務事件與顯示標籤在地化，便於營運人員閱讀。
 
 ## 車輛權限清單
 
@@ -163,10 +178,9 @@ Audit 資料原則：
 
 - 尚未做完整會計。
 - 尚未做租賃模組。
-- 客戶模組目前已提供 Vehicle Sales customer linking foundation；尚未串接合約或完整 CRM。
+- 客戶模組已完成 MVP 與交易紀錄；尚未串接合約或完整 CRM。
 - 尚未做完整會計分錄、退款流程、發票、報表 / PDF / Excel。
 - 尚未做毛利 payload（profit / gross_profit / gross_margin）。
-- 尚未做收款流程。
 - 尚未做圖片上傳。
 - 尚未做報表。
 - 尚未做 PDF / Excel。
@@ -186,8 +200,7 @@ Audit 資料原則：
 ### B. 業務模組
 
 - 租賃流程。
-- 客戶資料。
-- 收款 / 應收款。
+- 合約與完整 CRM 延伸。
 - 退車 / 退款 / 作廢流程。
 
 ### C. 管理與報表

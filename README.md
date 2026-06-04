@@ -17,15 +17,15 @@
 
 # System Status
 
-目前開發中（Early Development），Vehicle Module MVP completed，Customer Management foundation completed。
+目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed。
 
-目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛銷售、銷售收款 / 應收 foundation、客戶管理 foundation、系統稽核紀錄與登入紀錄。
+目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、客戶管理 MVP、客戶交易紀錄、Audit log display localization、系統稽核紀錄與登入紀錄。
 
 目前穩定節點：
 
 ```txt
 main / origin main
-Vehicle Module MVP completed
+Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed
 ```
 
 最近分段驗證結果：
@@ -197,6 +197,18 @@ archived   已封存
 - Customer Show 支援「客戶交易紀錄」：只顯示 `vehicle_sales.customer_id = customers.id` 的關聯交易，不以 `customer_name` / `customer_phone` snapshot 模糊比對。
 - 客戶交易紀錄受 tenant scope 與權限隔離：`module.vehicles.sales.view` 才回傳銷售資料，`module.receivables.view` 才回傳由 `ReceivableSummaryService` 計算的收款摘要。
 - 此功能不做客戶總消費、報表、lifetime value、毛利 / 利潤、退款、發票、PDF 或 Excel。
+
+## Current Business Flow
+
+```txt
+Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Customer Transaction History → Audit Logs
+```
+
+- Customer 主檔可被 Vehicle Sale 關聯，並保留交易當下 customer snapshot。
+- Receivables / Payments 管理應收、已收、未收、收款狀態與收款紀錄。
+- Mark Sold 動作銜接收款 / 應收流程與車輛售出狀態。
+- Customer Transaction History 顯示客戶關聯銷售與收款摘要。
+- Audit Logs 顯示主要業務事件，並已完成顯示標籤在地化。
 
 ## Audit Foundation
 
@@ -395,16 +407,17 @@ refactor: 不改行為的重構
 
 短期優先事項：
 
-1. 先封版 Vehicle Module MVP。
+1. 維持 Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP 穩定。
 2. 維持 RBAC / tenant scope / audit foundation 穩定。
-3. 後續再選擇租賃 / 客戶 / 收款 / 報表 / 圖片等模組。
+3. 後續再選擇租賃 / 合約 / 完整 CRM / 報表 / 圖片等模組。
 4. 完整資安 hardening 之後再做。
 
 暫緩事項：
 
 - Leasing module
-- Customer module
-- Payment / receivables flow
+- Refund / return / void flow
+- Full accounting
+- Invoice flow
 - Image upload
 - Reports / exports
 - Global audit middleware
@@ -436,6 +449,7 @@ refactor: 不改行為的重構
 - 尚未做報表 / export / PDF / Excel。
 - 尚未新增 profit / gross_profit / gross_margin payload。
 - Minimal vehicle detail payload
+- 完整 security hardening 尚未執行。
 
 完整資安審查與 production hardening 尚未執行，會在功能與架構更完整後集中處理。
 
