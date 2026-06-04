@@ -17,15 +17,16 @@
 
 # System Status
 
-目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed。
+目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 1 completed。
 
-目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、客戶管理 MVP、客戶交易紀錄、Audit log display localization、系統稽核紀錄與登入紀錄。
+目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 1 獨立入口、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、客戶管理 MVP、客戶交易紀錄、Audit log display localization、系統稽核紀錄與登入紀錄。
 
 目前穩定節點：
 
 ```txt
 main / origin main
 Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed
+Vehicle Cost Management Phase 1 completed
 ```
 
 最近分段驗證結果：
@@ -165,6 +166,7 @@ module.vehicles.sales.payments.void
 
 - Vehicle Pricing：`asking_price` / `floor_price` 依權限輸出與更新。
 - Vehicle Costs：成本新增、更新、摘要與 audit logging。
+- Vehicle Cost Management Phase 1：獨立入口 `/employee-system/vehicle-costs`，使用既有 `vehicle_costs`，提供 tenant scoped 成本列表、篩選、摘要與連回車輛。
 - Vehicle Sales：銷售新增、更新、active sale guard 與 lifecycle sync。
 - Vehicle Sales customer linking foundation：可關聯 Customer 主檔並保留交易 snapshot，銷售 payload 不暴露 Customer sensitive 欄位。
 - Vehicle Payment / Receivable Foundation：每筆銷售可記錄多筆收款，收款編號 `PAY-YYYYMM-0001` 依公司月份遞增，已作廢收款不計入已收金額。
@@ -172,6 +174,7 @@ module.vehicles.sales.payments.void
 - Staff Permission matrix 支援 `vehicles.pricing`、`vehicles.costs`、`vehicles.sales` nested permissions。
 - 後端 payload 必須依權限控制；前端隱藏不等於安全；無權限者不能取得價格、成本、銷售、佣金等敏感資料。
 - 無 `module.vehicles.sales.payments.view` 時，不回傳 payment summary / payment records；無 `module.vehicles.sales.view` 時，即使有 payments.view 也不回傳 sales / payments payload。
+- 車輛成本管理 Phase 1 不是完整會計；不做應付帳款、付款沖帳、成本報表、PDF / Excel 或 profit / gross margin payload。
 
 車輛庫存編號格式：
 

@@ -9,6 +9,7 @@ use App\Http\Controllers\ReceivableController;
 use App\Http\Controllers\StaffPermissionController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleCostController;
+use App\Http\Controllers\VehicleCostManagementController;
 use App\Http\Controllers\VehicleSaleController;
 use App\Http\Controllers\VehicleSalePaymentController;
 use App\Services\CompanyBrandService;
@@ -95,6 +96,11 @@ Route::get('/employee-system/vehicles/{vehicle}/edit', [VehicleController::class
     ->middleware(['auth', 'module.access:vehicles'])
     ->whereNumber('vehicle')
     ->name('employee-system.vehicles.edit');
+
+Route::get('/employee-system/vehicle-costs', [VehicleCostManagementController::class, 'index'])
+    // 技術註解：獨立成本入口使用 vehicle-costs module key；實際權限仍由 module registry 對應到既有 costs.view，避免新增權限命名造成 RBAC 漂移。
+    ->middleware(['auth', 'module.access:vehicle-costs'])
+    ->name('employee-system.vehicle-costs.index');
 
 Route::patch('/employee-system/vehicles/{vehicle}', [VehicleController::class, 'update'])
     // 技術註解：更新路由不使用 implicit model binding，避免未 scoped 查詢造成跨租戶 IDOR。

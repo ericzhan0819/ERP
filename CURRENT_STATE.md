@@ -2,8 +2,8 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed。
-- 穩定節點：Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 1 completed。
+- 穩定節點：Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 1 completed。
 - 最新驗證狀態：最近分段驗證包含 `CustomerTest + ReceivableTest：27 passed / 359 assertions`、`VehicleSaleTest + VehicleSalePaymentTest：30 passed / 407 assertions`、`npm run build` 通過；最新完整測試待重新執行 full test。
 - 本文件為目前穩定節點同步整理；目前不實作新功能、不做退款、不做完整會計、不做發票、不做報表、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
 
@@ -28,6 +28,7 @@
 - Vehicle foundation
 - Vehicle pricing
 - Vehicle costs
+- Vehicle Cost Management Phase 1 independent index
 - Vehicle sales
 - Vehicle payment / receivable foundation
 - Customer management foundation
@@ -58,6 +59,7 @@
 - `stock_number` 自動產生：格式為 `VH-YYYYMM-0001`，依 company 與月份遞增。
 - `lifecycle_status` 白名單：目前包含 `draft`、`in_stock`、`reserved`、`sold`、`archived`。
 - Pricing / Costs / Sales 權限隔離：價格、成本、銷售 payload 依後端權限輸出，前端隱藏不作為安全依據。
+- Vehicle Cost Management Phase 1：新增獨立入口 `/employee-system/vehicle-costs`，使用既有 `vehicle_costs`、既有 `module.vehicles.costs.view` 權限與 tenant scope，提供成本列表、篩選、摘要與連回車輛。
 - Sales lifecycle sync：銷售狀態會同步車輛 lifecycle。
 - Active sale guard：每台車只允許一筆 active sale。
 - Vehicle Sales customer linking：銷售可 nullable 關聯 `customer_id`，`customer_name` / `customer_phone` 保留為交易當下 snapshot。
@@ -180,6 +182,7 @@ Audit 資料原則：
 ## 已知限制
 
 - 尚未做完整會計。
+- 車輛成本管理目前僅為 Phase 1 獨立列表，不是完整會計；不做應付帳款、付款沖帳、成本報表、PDF / Excel 或 profit payload。
 - 尚未做租賃模組。
 - 客戶模組已完成 MVP 與交易紀錄；尚未串接合約或完整 CRM。
 - 尚未做完整會計分錄、退款流程、發票、報表 / PDF / Excel。
