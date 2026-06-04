@@ -120,7 +120,10 @@ Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Customer 
 ### 權限狀態
 
 - `admin` 預設取得車輛、價格、成本、銷售與銷售收款完整權限。
-- `staff` / `viewer` 不預設取得價格、成本、銷售等敏感權限。
+- `sales` 預設可維護客戶與車輛、建立 / 查看銷售、查看收款狀態；不預設新增 / 作廢收款、mark sold、敏感個資、價格、成本或稽核權限。
+- `accounting` 預設可查看客戶、車輛、銷售與收款，並可建立 / 作廢收款與執行 receivables mark-sold；不預設建立銷售、敏感個資、成本或稽核權限。
+- `inventory` 預設可建立 / 更新車輛並查看成本；不預設銷售、收款、客戶或稽核權限。
+- `viewer` 預設僅有 dashboard、車輛與客戶最小只讀，不預設價格、成本、銷售、收款或敏感個資權限。
 - `pricing` / `costs` / `sales` 為 `module.vehicles.*` 下的 nested permissions。
 - Staff Permission matrix 已支援 `vehicles.pricing`、`vehicles.costs`、`vehicles.sales` 與 `vehicles.sales.payments` 權限分組。
 

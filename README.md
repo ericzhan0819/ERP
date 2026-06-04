@@ -130,6 +130,14 @@ module.vehicles.sales.payments.void
 - 角色建立 / 刪除基礎流程
 - Staff Permission feature tests
 
+預設角色模板重點：
+
+- `admin`：保留完整 dashboard、車輛、價格、成本、銷售、收款、客戶、稽核、公司設定與 deprecated compatibility 權限。
+- `sales`：可維護客戶與車輛、建立 / 查看銷售、查看收款狀態；不預設操作收款、成交確認、敏感個資、價格、成本或稽核。
+- `accounting`：可查看客戶、車輛、銷售與收款，並可建立 / 作廢收款與執行 receivables mark-sold；不預設建立銷售、查看敏感個資、成本或稽核。
+- `inventory`：可建立 / 更新車輛並查看成本；不預設接觸銷售、收款、客戶或稽核。
+- `viewer`：僅保留 dashboard、車輛與客戶最小只讀，不預設查看銷售、收款、敏感個資或成本。
+
 ## Vehicle Foundation
 
 已完成車輛管理基礎模組：

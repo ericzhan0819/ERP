@@ -245,3 +245,68 @@ it('updateRolePermissions 可同步 module.vehicles.costs.view 到指定角色',
 
     expect($role->fresh()->hasPermissionTo('module.vehicles.costs.view'))->toBeTrue();
 });
+
+it('default sales role aligns with current ERP sales workflow', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    $role = Role::findByName('sales', 'web');
+
+    expect($role->hasPermissionTo('module.customers.view'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.customers.create'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.vehicles.sales.create'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.receivables.view'))->toBeTrue()
+        // 技術註解：業務不可操作收款或敏感個資，避免金流竄改與個資過度揭露。
+        ->and($role->hasPermissionTo('module.receivables.create'))->toBeFalse()
+        ->and($role->hasPermissionTo('module.receivables.void'))->toBeFalse()
+        ->and($role->hasPermissionTo('module.receivables.mark-sold'))->toBeFalse()
+        ->and($role->hasPermissionTo('module.customers.sensitive.view'))->toBeFalse()
+        ->and($role->hasPermissionTo('module.vehicles.costs.view'))->toBeFalse();
+});
+
+it('default accounting role aligns with receivables confirmation workflow', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    $role = Role::findByName('accounting', 'web');
+
+    expect($role->hasPermissionTo('module.receivables.view'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.receivables.create'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.receivables.void'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.receivables.mark-sold'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.vehicles.sales.view'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.customers.view'))->toBeTrue()
+        // 技術註解：會計只處理收款確認，不預設建立銷售或讀取成本/稽核資料，避免職責外資料外洩。
+        ->and($role->hasPermissionTo('module.customers.sensitive.view'))->toBeFalse()
+        ->and($role->hasPermissionTo('module.vehicles.sales.create'))->toBeFalse()
+        ->and($role->hasPermissionTo('module.vehicles.costs.view'))->toBeFalse()
+        ->and($role->hasPermissionTo('module.audit.view'))->toBeFalse();
+});
+
+it('default inventory role is limited to vehicle inventory maintenance', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    $role = Role::findByName('inventory', 'web');
+
+    expect($role->hasPermissionTo('module.vehicles.view'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.vehicles.create'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.vehicles.update'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.vehicles.costs.view'))->toBeTrue()
+        // 技術註解：庫存不預設接觸銷售、收款或客戶資料，避免跨職能資料暴露。
+        ->and($role->hasPermissionTo('module.vehicles.sales.view'))->toBeFalse()
+        ->and($role->hasPermissionTo('module.receivables.view'))->toBeFalse()
+        ->and($role->hasPermissionTo('module.customers.view'))->toBeFalse();
+});
+
+it('default viewer role remains minimal read only without sensitive business data', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    $role = Role::findByName('viewer', 'web');
+
+    expect($role->hasPermissionTo('module.dashboard.view'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.vehicles.view'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.customers.view'))->toBeTrue()
+        // 技術註解：檢視者不預設查看銷售、收款、敏感個資或成本，避免只讀角色推斷敏感商業資訊。
+        ->and($role->hasPermissionTo('module.vehicles.sales.view'))->toBeFalse()
+        ->and($role->hasPermissionTo('module.receivables.view'))->toBeFalse()
+        ->and($role->hasPermissionTo('module.customers.sensitive.view'))->toBeFalse()
+        ->and($role->hasPermissionTo('module.vehicles.costs.view'))->toBeFalse();
+});

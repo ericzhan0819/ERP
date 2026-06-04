@@ -347,28 +347,41 @@ class RolePermissionSeeder extends Seeder
             ],
             'sales' => [
                 'module.dashboard.view',
+                'module.customers.view',
+                'module.customers.create',
+                'module.customers.update',
                 'module.vehicles.view',
                 'module.vehicles.create',
                 'module.vehicles.update',
-                // 技術註解：業務角色僅預設可查看收款管理，不給新增/作廢，避免非會計角色操作現金紀錄。
+                'module.vehicles.sales.view',
+                'module.vehicles.sales.create',
+                'module.vehicles.sales.update',
+                // 技術註解：業務角色可建立銷售並查看收款狀態，但不給收款新增/作廢/成交確認，降低現金紀錄遭誤改的風險。
                 'module.receivables.view',
             ],
             'accounting' => [
                 'module.dashboard.view',
+                'module.customers.view',
                 'module.vehicles.view',
-                'module.vehicles.export',
+                'module.vehicles.sales.view',
                 'module.receivables.view',
                 'module.receivables.create',
                 'module.receivables.void',
+                // 技術註解：目前成交確認屬收清後的收款管理節點，預設交由會計角色執行以維持金流與車況同步責任一致。
+                'module.receivables.mark-sold',
             ],
             'inventory' => [
                 'module.dashboard.view',
                 'module.vehicles.view',
+                'module.vehicles.create',
                 'module.vehicles.update',
+                // 技術註解：庫存需檢視成本以維護車況與整備資訊，但不預設建立/修改成本，避免非財務流程更動金額紀錄。
+                'module.vehicles.costs.view',
             ],
             'viewer' => [
                 'module.dashboard.view',
                 'module.vehicles.view',
+                'module.customers.view',
             ],
         ];
 
