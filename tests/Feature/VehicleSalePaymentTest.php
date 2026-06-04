@@ -138,7 +138,6 @@ it('Staff Permission matrix 可看到 vehicles.sales.payments', function (): voi
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('permissionMatrix', function ($matrix): bool {
             $matrix = is_array($matrix) ? $matrix : $matrix->all();
-
             return isset($matrix['vehicles.sales.payments'])
                 && ($matrix['vehicles.sales.payments']['label'] ?? null) === '車輛銷售收款'
                 && ($matrix['vehicles.sales.payments']['actions']['view']['permission'] ?? null) === 'module.vehicles.sales.payments.view'
