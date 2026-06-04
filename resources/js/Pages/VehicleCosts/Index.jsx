@@ -17,7 +17,36 @@ export default function VehicleCostsIndex({ auth, costs, filters = {}, periodOpt
     const paginationLabel = (label) => label.replace('&laquo;', '‹').replace('&raquo;', '›');
     const periodLabel = periodOptions[filters.period] ?? '本月';
     const periodRangeLabel = filters.period === 'all' ? '全期間' : `${filters.date_from || '未設定'} ～ ${filters.date_to || '未設定'}`;
-    const sanitizeQuery = (query) => Object.fromEntries(Object.entries(query).filter(([, value]) => value !== '' && value !== null && value !== undefined && value !== 'all'));
+    const buildQuery = (nextFilters) => {
+        const period = nextFilters.period || filters.period || 'current_month';
+        const query = { period };
+
+        // 技術註解：period=all 是有效期間，不可沿用成本類型的 all 清理規則，否則後端會回到預設本月。
+        if ((nextFilters.q ?? '').trim() !== '') {
+            query.q = nextFilters.q;
+        }
+
+        if (nextFilters.cost_type && nextFilters.cost_type !== 'all') {
+            query.cost_type = nextFilters.cost_type;
+        }
+
+        if (nextFilters.payment_status && nextFilters.payment_status !== 'all') {
+            query.payment_status = nextFilters.payment_status;
+        }
+
+        // 技術註解：後端回填的 date_from/date_to 只代表期間顯示；非 custom 時若送回會被後端判定為手動日期。
+        if (period === 'custom') {
+            if (nextFilters.date_from) {
+                query.date_from = nextFilters.date_from;
+            }
+
+            if (nextFilters.date_to) {
+                query.date_to = nextFilters.date_to;
+            }
+        }
+
+        return query;
+    };
     const updateFilter = (key, value) => {
         const nextFilters = { ...filters, [key]: value };
 
@@ -25,7 +54,7 @@ export default function VehicleCostsIndex({ auth, costs, filters = {}, periodOpt
             nextFilters.period = 'custom';
         }
 
-        router.get(route('employee-system.vehicle-costs.index'), sanitizeQuery(nextFilters), { preserveState: true, replace: true });
+        router.get(route('employee-system.vehicle-costs.index'), buildQuery(nextFilters), { preserveState: true, replace: true });
     };
     const updatePeriod = (period) => {
         const nextFilters = { ...filters, period };
@@ -35,7 +64,7 @@ export default function VehicleCostsIndex({ auth, costs, filters = {}, periodOpt
             delete nextFilters.date_to;
         }
 
-        router.get(route('employee-system.vehicle-costs.index'), sanitizeQuery(nextFilters), { preserveState: true, replace: true });
+        router.get(route('employee-system.vehicle-costs.index'), buildQuery(nextFilters), { preserveState: true, replace: true });
     };
 
     return (
