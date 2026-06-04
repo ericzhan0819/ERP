@@ -6,7 +6,7 @@ import { formatDate } from '@/utils/formatDateTime';
 /**
  * 技術註解：車輛成本管理 Phase 1 僅集中查詢既有 vehicle_costs，不提供新增/編輯成本與任何利潤或會計推導。
  */
-export default function VehicleCostsIndex({ auth, costs, filters = {}, costTypes = {}, paymentStatuses = {}, summary = {}, can = {} }) {
+export default function VehicleCostsIndex({ auth, costs, filters = {}, periodOptions = {}, costTypes = {}, paymentStatuses = {}, summary = {}, can = {} }) {
     const rows = costs?.data ?? [];
     const links = costs?.links ?? [];
     const displayValue = (value) => (value === null || value === undefined || value === '' ? '—' : value);
@@ -15,7 +15,28 @@ export default function VehicleCostsIndex({ auth, costs, filters = {}, costTypes
         return Number.isNaN(parsed) ? '—' : parsed.toLocaleString('zh-TW', { maximumFractionDigits: 0 });
     };
     const paginationLabel = (label) => label.replace('&laquo;', '‹').replace('&raquo;', '›');
-    const updateFilter = (key, value) => router.get(route('employee-system.vehicle-costs.index'), { ...filters, [key]: value }, { preserveState: true, replace: true });
+    const periodLabel = periodOptions[filters.period] ?? '本月';
+    const periodRangeLabel = filters.period === 'all' ? '全期間' : `${filters.date_from || '未設定'} ～ ${filters.date_to || '未設定'}`;
+    const sanitizeQuery = (query) => Object.fromEntries(Object.entries(query).filter(([, value]) => value !== '' && value !== null && value !== undefined && value !== 'all'));
+    const updateFilter = (key, value) => {
+        const nextFilters = { ...filters, [key]: value };
+
+        if (key === 'date_from' || key === 'date_to') {
+            nextFilters.period = 'custom';
+        }
+
+        router.get(route('employee-system.vehicle-costs.index'), sanitizeQuery(nextFilters), { preserveState: true, replace: true });
+    };
+    const updatePeriod = (period) => {
+        const nextFilters = { ...filters, period };
+
+        if (period !== 'custom') {
+            delete nextFilters.date_from;
+            delete nextFilters.date_to;
+        }
+
+        router.get(route('employee-system.vehicle-costs.index'), sanitizeQuery(nextFilters), { preserveState: true, replace: true });
+    };
 
     return (
         <DashboardLayout user={auth.user}>
@@ -26,12 +47,29 @@ export default function VehicleCostsIndex({ auth, costs, filters = {}, costTypes
                     <p className="mt-1 text-sm text-secondary">集中查看車輛整備、維修、採購等成本紀錄。</p>
                 </div>
 
+                <section className="rounded-2xl border border-default bg-surface p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">查詢期間</p>
+                            <p className="mt-1 text-lg font-semibold text-primary">{periodLabel}｜{periodRangeLabel}</p>
+                            <p className="mt-1 text-sm text-secondary">摘要依目前期間與篩選條件計算；如需查歷史資料，請切換為全部或自訂日期。</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {Object.entries(periodOptions).map(([value, label]) => (
+                                <button key={value} type="button" onClick={() => updatePeriod(value)} className={`rounded-full border px-3 py-1.5 text-sm transition ${filters.period === value ? 'border-primary bg-primary text-white' : 'border-default bg-transparent text-secondary hover:border-primary hover:text-primary'}`}>
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
                 <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
                     {[
-                        ['成本總額', summary.total_amount],
-                        ['已付款', summary.paid_amount],
-                        ['未付款', summary.unpaid_amount],
-                        ['筆數', summary.count, false],
+                        ['查詢期間成本總額', summary.total_amount],
+                        ['查詢期間已付款', summary.paid_amount],
+                        ['查詢期間未付款', summary.unpaid_amount],
+                        ['查詢期間筆數', summary.count, false],
                     ].map(([label, value, money = true]) => (
                         <div key={label} className="rounded-2xl border border-default bg-surface p-4">
                             <p className="text-xs font-medium text-muted">{label}</p>

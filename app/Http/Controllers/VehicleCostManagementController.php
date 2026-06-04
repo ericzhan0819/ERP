@@ -7,6 +7,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -24,6 +25,7 @@ class VehicleCostManagementController extends Controller
 
         $costTypes = config('vehicles.vehicle_cost_types', []);
         $paymentStatuses = config('vehicles.vehicle_cost_payment_statuses', []);
+        $periodOptions = $this->periodOptions();
 
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:120'],
@@ -31,7 +33,9 @@ class VehicleCostManagementController extends Controller
             'payment_status' => ['nullable', 'string', Rule::in(array_keys($paymentStatuses))],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'period' => ['nullable', 'string', Rule::in(array_keys($periodOptions))],
         ]);
+        $filters = $this->normalizePeriodFilters($filters, $request);
 
         $baseQuery = $this->scopedCostQuery($user);
         $this->applyFilters($baseQuery, $filters);
@@ -64,7 +68,9 @@ class VehicleCostManagementController extends Controller
                 'payment_status' => $filters['payment_status'] ?? 'all',
                 'date_from' => $filters['date_from'] ?? '',
                 'date_to' => $filters['date_to'] ?? '',
+                'period' => $filters['period'],
             ],
+            'periodOptions' => $periodOptions,
             'costTypes' => $costTypes,
             'paymentStatuses' => $paymentStatuses,
             'summary' => [
@@ -77,6 +83,58 @@ class VehicleCostManagementController extends Controller
                 'edit_vehicle' => $user->can('module.vehicles.update'),
             ],
         ]);
+    }
+
+    /**
+     * 技術註解：期間選項集中在後端輸出，避免前端複製查詢口徑並造成 summary 與列表期間不一致。
+     *
+     * @return array<string, string>
+     */
+    private function periodOptions(): array
+    {
+        return [
+            'current_month' => '本月',
+            'previous_month' => '上月',
+            'last_90_days' => '近 90 天',
+            'year_to_date' => '今年',
+            'all' => '全部',
+            'custom' => '自訂',
+        ];
+    }
+
+    /**
+     * 技術註解：預設本月查詢可避免日常管理摘要誤用全期間累計；使用者手動輸入日期時一律視為自訂期間。
+     *
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     */
+    private function normalizePeriodFilters(array $filters, Request $request): array
+    {
+        $hasManualDate = $request->filled('date_from') || $request->filled('date_to');
+        $period = $hasManualDate ? 'custom' : (string) ($filters['period'] ?? 'current_month');
+        $today = Carbon::now();
+
+        if ($period === 'current_month') {
+            $filters['date_from'] = $today->copy()->startOfMonth()->toDateString();
+            $filters['date_to'] = $today->toDateString();
+        } elseif ($period === 'previous_month') {
+            $previousMonth = $today->copy()->subMonthNoOverflow();
+            $filters['date_from'] = $previousMonth->copy()->startOfMonth()->toDateString();
+            $filters['date_to'] = $previousMonth->copy()->endOfMonth()->toDateString();
+        } elseif ($period === 'last_90_days') {
+            $filters['date_from'] = $today->copy()->subDays(89)->toDateString();
+            $filters['date_to'] = $today->toDateString();
+        } elseif ($period === 'year_to_date') {
+            $filters['date_from'] = $today->copy()->startOfYear()->toDateString();
+            $filters['date_to'] = $today->toDateString();
+        } elseif ($period === 'all') {
+            $filters['date_from'] = null;
+            $filters['date_to'] = null;
+        }
+
+        $filters['period'] = $period;
+
+        return $filters;
     }
 
     /**

@@ -59,7 +59,8 @@
 - `stock_number` 自動產生：格式為 `VH-YYYYMM-0001`，依 company 與月份遞增。
 - `lifecycle_status` 白名單：目前包含 `draft`、`in_stock`、`reserved`、`sold`、`archived`。
 - Pricing / Costs / Sales 權限隔離：價格、成本、銷售 payload 依後端權限輸出，前端隱藏不作為安全依據。
-- Vehicle Cost Management Phase 1：新增獨立入口 `/employee-system/vehicle-costs`，使用既有 `vehicle_costs`、既有 `module.vehicles.costs.view` 權限與 tenant scope，提供成本列表、篩選、摘要與連回車輛。
+- Vehicle Cost Management Phase 1：新增獨立入口 `/employee-system/vehicle-costs`，使用既有 `vehicle_costs`、既有 `module.vehicles.costs.view` 權限與 tenant scope，提供成本列表、篩選、摘要與連回車輛；Vehicle Costs Index 預設顯示本月資料，並可切換上月、近 90 天、今年、全部或自訂期間。
+- Vehicle Costs Summary 不是正式報表，只是目前期間與篩選條件下的查詢摘要。
 - Sales lifecycle sync：銷售狀態會同步車輛 lifecycle。
 - Active sale guard：每台車只允許一筆 active sale。
 - Vehicle Sales customer linking：銷售可 nullable 關聯 `customer_id`，`customer_name` / `customer_phone` 保留為交易當下 snapshot。

@@ -166,7 +166,8 @@ module.vehicles.sales.payments.void
 
 - Vehicle Pricing：`asking_price` / `floor_price` 依權限輸出與更新。
 - Vehicle Costs：成本新增、更新、摘要與 audit logging。
-- Vehicle Cost Management Phase 1：獨立入口 `/employee-system/vehicle-costs`，使用既有 `vehicle_costs`，提供 tenant scoped 成本列表、篩選、摘要與連回車輛。
+- Vehicle Cost Management Phase 1：獨立入口 `/employee-system/vehicle-costs`，使用既有 `vehicle_costs`，提供 tenant scoped 成本列表、篩選、摘要與連回車輛；Vehicle Costs Index 預設顯示本月資料，並可切換上月、近 90 天、今年、全部或自訂期間。
+- Vehicle Costs Summary 不是正式報表，只是目前期間與篩選條件下的查詢摘要。
 - Vehicle Sales：銷售新增、更新、active sale guard 與 lifecycle sync。
 - Vehicle Sales customer linking foundation：可關聯 Customer 主檔並保留交易 snapshot，銷售 payload 不暴露 Customer sensitive 欄位。
 - Vehicle Payment / Receivable Foundation：每筆銷售可記錄多筆收款，收款編號 `PAY-YYYYMM-0001` 依公司月份遞增，已作廢收款不計入已收金額。

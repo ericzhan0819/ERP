@@ -5,12 +5,14 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleCost;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(function (): void {
+    Carbon::setTestNow('2026-06-05 09:00:00');
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
     Module::updateOrCreate(['key' => 'vehicle-costs'], [
@@ -26,6 +28,10 @@ beforeEach(function (): void {
     foreach (['module.vehicles.costs.view', 'module.vehicles.update'] as $permission) {
         Permission::findOrCreate($permission, 'web');
     }
+});
+
+afterEach(function (): void {
+    Carbon::setTestNow();
 });
 
 function vcmTenant(int $companyId = 1, int $branchId = 10): void
@@ -75,6 +81,116 @@ it('admin 或有成本檢視權限者可以進入 vehicle costs index', function
             ->component('VehicleCosts/Index')
             ->where('costs.data.0.id', $cost->id)
             ->where('costs.data.0.vehicle.stock_number', 'VCM-OK')
+        );
+});
+
+it('沒有 date_from date_to period 時預設只回傳本月成本資料', function (): void {
+    $user = vcmUser('vcm-default-period@example.com');
+    $user->givePermissionTo('module.vehicles.costs.view');
+    $currentMonth = vcmCost(vcmVehicle($user, 'VCM-CURRENT'), $user, ['cost_date' => '2026-06-02', 'amount' => 120]);
+    vcmCost(vcmVehicle($user, 'VCM-OLD'), $user, ['cost_date' => '2026-05-31', 'amount' => 880]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('filters.period', 'current_month')
+            ->where('filters.date_from', '2026-06-01')
+            ->where('filters.date_to', '2026-06-05')
+            ->where('costs.data.0.id', $currentMonth->id)
+            ->missing('costs.data.1')
+        );
+});
+
+it('預設 summary 只計算本月成本不包含上月或更早資料', function (): void {
+    $user = vcmUser('vcm-default-summary@example.com');
+    $user->givePermissionTo('module.vehicles.costs.view');
+    vcmCost(vcmVehicle($user, 'VCM-M1'), $user, ['cost_date' => '2026-06-01', 'payment_status' => 'paid', 'amount' => 100]);
+    vcmCost(vcmVehicle($user, 'VCM-M2'), $user, ['cost_date' => '2026-06-05', 'payment_status' => 'unpaid', 'amount' => 200]);
+    vcmCost(vcmVehicle($user, 'VCM-M-OLD'), $user, ['cost_date' => '2026-05-20', 'payment_status' => 'paid', 'amount' => 900]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('summary.total_amount', '300')
+            ->where('summary.paid_amount', '100')
+            ->where('summary.unpaid_amount', '200')
+            ->where('summary.count', 2)
+        );
+});
+
+it('period all 時列表與 summary 包含全期間 tenant scoped 成本', function (): void {
+    $user = vcmUser('vcm-all-period@example.com');
+    $user->givePermissionTo('module.vehicles.costs.view');
+    vcmCost(vcmVehicle($user, 'VCM-ALL-OLD'), $user, ['cost_date' => '2025-01-10', 'payment_status' => 'paid', 'amount' => 400]);
+    vcmCost(vcmVehicle($user, 'VCM-ALL-NEW'), $user, ['cost_date' => '2026-06-03', 'payment_status' => 'unpaid', 'amount' => 600]);
+    $crossUser = vcmUser('vcm-all-cross@example.com', 2, 20);
+    vcmCost(vcmVehicle($crossUser, 'VCM-ALL-CROSS'), $crossUser, ['cost_date' => '2026-06-03', 'amount' => 999]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.index', ['period' => 'all']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('filters.period', 'all')
+            ->where('filters.date_from', '')
+            ->where('filters.date_to', '')
+            ->where('summary.total_amount', '1000')
+            ->where('summary.count', 2)
+            ->has('costs.data', 2)
+        );
+});
+
+it('period previous_month 時只包含上月成本', function (): void {
+    $user = vcmUser('vcm-prev-period@example.com');
+    $user->givePermissionTo('module.vehicles.costs.view');
+    $previous = vcmCost(vcmVehicle($user, 'VCM-PREV'), $user, ['cost_date' => '2026-05-15', 'amount' => 510]);
+    vcmCost(vcmVehicle($user, 'VCM-PREV-NO'), $user, ['cost_date' => '2026-06-01', 'amount' => 610]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.index', ['period' => 'previous_month']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('filters.date_from', '2026-05-01')
+            ->where('filters.date_to', '2026-05-31')
+            ->where('costs.data.0.id', $previous->id)
+            ->where('summary.total_amount', '510')
+            ->missing('costs.data.1')
+        );
+});
+
+it('period last_90_days 時只包含近 90 天成本', function (): void {
+    $user = vcmUser('vcm-90-period@example.com');
+    $user->givePermissionTo('module.vehicles.costs.view');
+    $inside = vcmCost(vcmVehicle($user, 'VCM-90-IN'), $user, ['cost_date' => '2026-03-08', 'amount' => 90]);
+    vcmCost(vcmVehicle($user, 'VCM-90-OUT'), $user, ['cost_date' => '2026-03-07', 'amount' => 900]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.index', ['period' => 'last_90_days']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('filters.date_from', '2026-03-08')
+            ->where('filters.date_to', '2026-06-05')
+            ->where('costs.data.0.id', $inside->id)
+            ->where('summary.total_amount', '90')
+            ->missing('costs.data.1')
+        );
+});
+
+it('手動 date_from date_to 時 period 視為 custom 且 summary 只計算自訂期間', function (): void {
+    $user = vcmUser('vcm-custom-period@example.com');
+    $user->givePermissionTo('module.vehicles.costs.view');
+    $inside = vcmCost(vcmVehicle($user, 'VCM-CUSTOM-IN'), $user, ['cost_date' => '2026-04-10', 'amount' => 410]);
+    vcmCost(vcmVehicle($user, 'VCM-CUSTOM-OUT'), $user, ['cost_date' => '2026-04-21', 'amount' => 421]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.vehicle-costs.index', ['period' => 'current_month', 'date_from' => '2026-04-01', 'date_to' => '2026-04-20']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('filters.period', 'custom')
+            ->where('costs.data.0.id', $inside->id)
+            ->where('summary.total_amount', '410')
+            ->missing('costs.data.1')
         );
 });
 
