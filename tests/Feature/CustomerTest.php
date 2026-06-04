@@ -4,6 +4,9 @@ use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\Module;
 use App\Models\User;
+use App\Models\Vehicle;
+use App\Models\VehicleSale;
+use App\Models\VehicleSalePayment;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +41,8 @@ beforeEach(function (): void {
         'module.customers.update',
         'module.customers.sensitive.view',
         'module.customers.sensitive.update',
+        'module.vehicles.sales.view',
+        'module.receivables.view',
         'staff-permission.view',
         'staff-permission.update-permission',
         'module.permissions.view',
@@ -59,6 +64,58 @@ function ensureCustomerTenantRows(int $companyId, ?int $branchId): void
             ['company_id' => $companyId, 'name' => 'Branch '.$branchId, 'code' => 'B'.$companyId.'-'.$branchId, 'created_at' => now(), 'updated_at' => now()]
         );
     }
+}
+
+function makeCustomerVehicle(User $user, string $stockNumber = 'CUS-TXN-001'): Vehicle
+{
+    return Vehicle::create([
+        'company_id' => (int) $user->company_id,
+        'branch_id' => (int) $user->branch_id,
+        'stock_number' => $stockNumber,
+        'vin' => $stockNumber.'VIN',
+        'license_plate' => 'TXN-001',
+        'brand' => 'Toyota',
+        'model' => 'RAV4',
+        'model_year' => 2024,
+        'lifecycle_status' => 'sold',
+    ]);
+}
+
+function makeCustomerSale(Customer $customer, Vehicle $vehicle, User $user, array $overrides = []): VehicleSale
+{
+    return VehicleSale::create(array_merge([
+        'company_id' => (int) $customer->company_id,
+        'branch_id' => (int) $customer->branch_id,
+        'vehicle_id' => $vehicle->id,
+        'customer_id' => $customer->id,
+        'customer_name' => $customer->name,
+        'customer_phone' => $customer->phone,
+        'sale_price' => 100000,
+        'sale_status' => 'sold',
+        'sold_at' => now()->toDateString(),
+        'salesperson_name' => '業務甲',
+        'created_by' => $user->id,
+        'updated_by' => $user->id,
+    ], $overrides));
+}
+
+function makeCustomerPayment(VehicleSale $sale, User $user, float $amount, string $status = 'received'): VehicleSalePayment
+{
+    return VehicleSalePayment::create([
+        'company_id' => (int) $sale->company_id,
+        'branch_id' => (int) $sale->branch_id,
+        'vehicle_id' => (int) $sale->vehicle_id,
+        'vehicle_sale_id' => (int) $sale->id,
+        'customer_id' => $sale->customer_id,
+        'payment_number' => 'CUS-PAY-'.uniqid(),
+        'payment_type' => 'deposit',
+        'payment_method' => 'cash',
+        'amount' => $amount,
+        'paid_at' => now()->toDateString(),
+        'status' => $status,
+        'created_by' => $user->id,
+        'updated_by' => $user->id,
+    ]);
 }
 
 function makeCustomerUser(string $email, int $companyId = 1, ?int $branchId = 10): User
@@ -236,6 +293,96 @@ it('有 sensitive.view 時 show edit payload 可回傳敏感欄位', function ()
         ->get(route('employee-system.customers.edit', $customer))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('customer.id_number', 'A123456789'));
+});
+
+it('有 vehicles.sales.view 時 Customer Show 回傳 customer_id 關聯交易並排除 snapshot-only 與跨 tenant', function (): void {
+    $user = makeCustomerUser('customer-transaction-view@example.com');
+    $user->givePermissionTo('module.customers.view', 'module.vehicles.sales.view');
+    $customer = makeCustomerRecord();
+    $sale = makeCustomerSale($customer, makeCustomerVehicle($user), $user);
+
+    makeCustomerSale($customer, makeCustomerVehicle($user, 'CUS-SNAPSHOT'), $user, ['customer_id' => null, 'customer_name' => $customer->name, 'customer_phone' => $customer->phone]);
+
+    $crossUser = makeCustomerUser('customer-transaction-cross@example.com', 2, 20);
+    $crossCustomer = makeCustomerRecord(2, 20, ['name' => $customer->name, 'phone' => $customer->phone]);
+    makeCustomerSale($crossCustomer, makeCustomerVehicle($crossUser, 'CUS-CROSS'), $crossUser, ['customer_id' => $customer->id]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.customers.show', $customer))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('customerTransactions', 1)
+            ->where('customerTransactions.0.id', $sale->id)
+            ->where('customerTransactions.0.vehicle.stock_number', 'CUS-TXN-001')
+            ->where('customerTransactions.0.sale_price', '100000.00')
+            ->where('can.view_customer_transactions', true)
+            ->missing('customerTransactions.0.company_id')
+            ->missing('customerTransactions.0.branch_id')
+            ->missing('customerTransactions.0.vehicle_id')
+            ->missing('customerTransactions.0.customer_id')
+            ->missing('customerTransactions.0.vehicle.id')
+        );
+});
+
+it('沒有 vehicles.sales.view 時 Customer Show 不回傳 customerTransactions', function (): void {
+    $user = makeCustomerUser('customer-transaction-deny@example.com');
+    $user->givePermissionTo('module.customers.view');
+    $customer = makeCustomerRecord();
+    makeCustomerSale($customer, makeCustomerVehicle($user), $user);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.customers.show', $customer))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('customerTransactions', null)
+            ->where('can.view_customer_transactions', false)
+        );
+});
+
+it('有 receivables.view 時回傳 ReceivableSummaryService 摘要且 voided 不計入已收', function (): void {
+    $user = makeCustomerUser('customer-transaction-receivable@example.com');
+    $user->givePermissionTo('module.customers.view', 'module.vehicles.sales.view', 'module.receivables.view');
+    $customer = makeCustomerRecord();
+    $sale = makeCustomerSale($customer, makeCustomerVehicle($user), $user, ['sale_price' => 1000]);
+    makeCustomerPayment($sale, $user, 400, 'received');
+    makeCustomerPayment($sale, $user, 600, 'voided');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.customers.show', $customer))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('customerTransactions.0.receivable_summary.receivable_amount', '1000.00')
+            ->where('customerTransactions.0.receivable_summary.received_amount', '400.00')
+            ->where('customerTransactions.0.receivable_summary.receivable_balance', '600.00')
+            ->where('customerTransactions.0.receivable_summary.receivable_status', 'partial')
+            ->where('customerTransactions.0.receivable_summary.received_payment_count', 1)
+            ->where('customerTransactions.0.receivable_summary.payment_record_count', 2)
+            ->where('can.view_customer_transaction_receivables', true)
+            ->has('customerTransactions.0.links.receivable_show_url')
+        );
+});
+
+it('無 receivables.view 時不回傳 receivable_summary 且不暴露財務衍生或成本毛利欄位', function (): void {
+    $user = makeCustomerUser('customer-transaction-receivable-deny@example.com');
+    $user->givePermissionTo('module.customers.view', 'module.vehicles.sales.view');
+    $customer = makeCustomerRecord();
+    $sale = makeCustomerSale($customer, makeCustomerVehicle($user), $user);
+    makeCustomerPayment($sale, $user, 100, 'received');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.customers.show', $customer))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->missing('customerTransactions.0.receivable_summary')
+            ->missing('customerTransactions.0.links.receivable_show_url')
+            ->missing('customerTransactions.0.profit')
+            ->missing('customerTransactions.0.gross_profit')
+            ->missing('customerTransactions.0.gross_margin')
+            ->missing('customerTransactions.0.margin')
+            ->missing('customerTransactions.0.cost')
+            ->missing('customerTransactions.0.payments')
+            ->where('can.view_customer_transaction_receivables', false)
+        );
 });
 
 it('沒有 sensitive.update 時建立或更新敏感欄位回 403', function (): void {

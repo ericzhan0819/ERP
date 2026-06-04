@@ -189,6 +189,9 @@ archived   已封存
 - Customer audit events：`customer.created` / `customer.updated`
 - Vehicle sale payment audit events：`vehicle_sale_payment.created` / `vehicle_sale_payment.voided`
 - Staff Permission matrix 支援 `customers.sensitive` nested permissions
+- Customer Show 支援「客戶交易紀錄」：只顯示 `vehicle_sales.customer_id = customers.id` 的關聯交易，不以 `customer_name` / `customer_phone` snapshot 模糊比對。
+- 客戶交易紀錄受 tenant scope 與權限隔離：`module.vehicles.sales.view` 才回傳銷售資料，`module.receivables.view` 才回傳由 `ReceivableSummaryService` 計算的收款摘要。
+- 此功能不做客戶總消費、報表、lifetime value、毛利 / 利潤、退款、發票、PDF 或 Excel。
 
 ## Audit Foundation
 

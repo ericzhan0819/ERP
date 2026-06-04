@@ -3,7 +3,7 @@
 ## 狀態摘要
 
 - 專案狀態：Early Development，Vehicle Module 第一代 MVP 已完成，Customer Module MVP foundation 已加入。
-- 穩定節點：Vehicle Payment / Receivable Foundation MVP 已完成。
+- 穩定節點：Customer Transaction History MVP 已完成，Vehicle Payment / Receivable Foundation MVP 已完成。
 - 最新驗證狀態：`157 passed / 1020 assertions`，`npm run build` 通過。
 - 本文件為 Vehicle Module MVP Final Review 封版整理；目前不實作新功能、不做完整會計、不做報表、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload。
 
@@ -41,6 +41,10 @@
 - Sensitive data isolation：`id_number`、`birthday`、`address` 僅在 `module.customers.sensitive.view` 下輸出，建立 / 更新需 `module.customers.sensitive.update`。
 - 基本搜尋篩選：`q` 搜尋 `name`、`phone`、`secondary_phone`、`customer_number`；`status` 篩選 `lead`、`active`、`archived`。
 - Customer audit events：`customer.created`、`customer.updated`；audit snapshot 不記敏感個資與 tenant / actor 欄位。
+- Customer Show 已支援「客戶交易紀錄」：僅顯示 `vehicle_sales.customer_id = customers.id` 的購車 / 銷售紀錄，不使用 `customer_name` / `customer_phone` snapshot 模糊歸戶。
+- 客戶交易紀錄使用 customer / sale / vehicle / payment 的 company / branch tenant scope；跨 tenant sale 與 snapshot-only sale 不會顯示。
+- 交易紀錄權限隔離：`module.vehicles.sales.view` 才回傳銷售摘要；`module.receivables.view` 才回傳應收 / 已收 / 未收與收款狀態，摘要計算沿用 `ReceivableSummaryService`。
+- 限制：Customer Show 不做客戶總消費、報表、lifetime value、毛利 / 利潤、發票、退款、PDF 或 Excel。
 
 ## Vehicle Module MVP 能力
 

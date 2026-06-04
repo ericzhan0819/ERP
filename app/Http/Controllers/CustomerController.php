@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
+use App\Models\VehicleSale;
 use App\Services\AuditLogService;
 use App\Services\CustomerNumberService;
+use App\Services\ReceivableSummaryService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -19,6 +21,7 @@ class CustomerController extends Controller
     public function __construct(
         private readonly CustomerNumberService $customerNumberService,
         private readonly AuditLogService $auditLogService,
+        private readonly ReceivableSummaryService $receivableSummaryService,
     ) {}
 
     /**
@@ -140,6 +143,7 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Show', [
             'customer' => $this->customerPayload($request, $foundCustomer),
+            'customerTransactions' => $this->customerTransactionsPayload($request, $foundCustomer),
             'customerStatuses' => config('customers.statuses'),
             'can' => $this->customerCapabilities($request->user(), $foundCustomer),
         ]);
@@ -226,6 +230,18 @@ class CustomerController extends Controller
         return $query;
     }
 
+    private function scopedVehicleSaleQuery(?Authenticatable $user): Builder
+    {
+        /** @var \App\Models\User $user */
+        $query = VehicleSale::query()->where('company_id', (int) ($user?->company_id ?? 0));
+
+        if ($user?->branch_id !== null) {
+            $query->where('branch_id', (int) $user->branch_id);
+        }
+
+        return $query;
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -259,6 +275,81 @@ class CustomerController extends Controller
     }
 
     /**
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function customerTransactionsPayload(Request $request, Customer $customer): ?array
+    {
+        $user = $request->user();
+
+        if (! ($user?->can('module.vehicles.sales.view') ?? false)) {
+            return null;
+        }
+
+        $canViewReceivables = $user?->can('module.receivables.view') ?? false;
+
+        return $this->scopedVehicleSaleQuery($user)
+            // 技術註解：客戶交易紀錄僅接受正式 customer_id 關聯，刻意不使用 snapshot 姓名/電話模糊比對，避免錯誤歸戶與個資外洩。
+            ->where('customer_id', $customer->id)
+            ->where('company_id', (int) $customer->company_id)
+            ->where('branch_id', (int) $customer->branch_id)
+            // 技術註解：vehicle/payments 仍額外套 tenant 條件，避免關聯資料被錯誤 FK 指到跨租戶紀錄時形成 IDOR 洩漏。
+            ->with([
+                'vehicle' => fn ($query) => $query
+                    ->where('company_id', (int) $customer->company_id)
+                    ->where('branch_id', (int) $customer->branch_id)
+                    ->select('id', 'company_id', 'branch_id', 'stock_number', 'brand', 'model', 'license_plate'),
+                'payments' => fn ($query) => $query
+                    ->where('company_id', (int) $customer->company_id)
+                    ->where('branch_id', (int) $customer->branch_id),
+            ])
+            ->orderByDesc('sold_at')
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get()
+            ->map(fn (VehicleSale $sale): array => $this->transactionPayload($sale, $canViewReceivables))
+            ->values()
+            ->all();
+    }
+
+    /** @return array<string, mixed> */
+    private function transactionPayload(VehicleSale $sale, bool $canViewReceivables): array
+    {
+        $payload = [
+            'id' => $sale->id,
+            'sale_status' => $sale->sale_status,
+            'sale_status_label' => config('vehicle_sales.sale_statuses.'.$sale->sale_status, $sale->sale_status),
+            'sale_price' => $sale->sale_price,
+            'sold_at' => optional($sale->sold_at)->format('Y-m-d'),
+            'salesperson_name' => $sale->salesperson_name,
+            'vehicle' => $sale->vehicle ? [
+                'stock_number' => $sale->vehicle->stock_number,
+                'brand' => $sale->vehicle->brand,
+                'model' => $sale->vehicle->model,
+                'license_plate' => $sale->vehicle->license_plate,
+            ] : null,
+            'links' => [
+                'vehicle_show_url' => $sale->vehicle ? route('employee-system.vehicles.show', $sale->vehicle->id) : null,
+            ],
+        ];
+
+        if ($canViewReceivables) {
+            $summary = $this->receivableSummaryService->summarize($sale);
+            $payload['receivable_summary'] = collect($summary)->only([
+                'receivable_amount',
+                'received_amount',
+                'receivable_balance',
+                'receivable_status',
+                'receivable_status_label',
+                'received_payment_count',
+                'payment_record_count',
+            ])->all();
+            $payload['links']['receivable_show_url'] = route('employee-system.receivables.show', $sale->id);
+        }
+
+        return $payload;
+    }
+
+    /**
      * @return array<string, bool>
      */
     private function customerCapabilities(?Authenticatable $user, ?Customer $customer = null): array
@@ -268,6 +359,8 @@ class CustomerController extends Controller
             'update_customers' => $customer ? ($user?->can('update', $customer) ?? false) : ($user?->can('module.customers.update') ?? false),
             'view_customer_sensitive' => $customer ? ($user?->can('viewSensitive', $customer) ?? false) : ($user?->can('module.customers.sensitive.view') ?? false),
             'update_customer_sensitive' => $customer ? ($user?->can('updateSensitive', $customer) ?? false) : ($user?->can('module.customers.sensitive.update') ?? false),
+            'view_customer_transactions' => $user?->can('module.vehicles.sales.view') ?? false,
+            'view_customer_transaction_receivables' => $user?->can('module.receivables.view') ?? false,
         ];
     }
 
