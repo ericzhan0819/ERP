@@ -4,7 +4,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import AccountingAccountForm from './Form';
 
 /**
- * 技術註解：編輯頁沿用建立頁白名單，只允許更新 code、name、type、opening_balance、is_active、notes，不暴露 tenant/actor 欄位。
+ * 技術註解：編輯頁沿用建立頁白名單，只允許更新科目主檔欄位，不暴露 tenant/actor 欄位。
  */
 export default function AccountingAccountsEdit({ auth, account, accountTypes = {} }) {
     const { data, setData, patch, processing, errors } = useForm({
@@ -33,7 +33,7 @@ export default function AccountingAccountsEdit({ auth, account, accountTypes = {
                                 {account.is_active ? '啟用' : '停用'}
                             </span>
                         </div>
-                        <p className="mt-2 text-sm text-secondary">維護公司層級科目表主檔、科目類型、啟用狀態與期初餘額。</p>
+                        <p className="mt-2 text-sm text-secondary">維護公司層級科目表主檔、科目類型與啟用狀態。</p>
                     </div>
                     <Link href={route('employee-system.accounting.accounts.index')} className="rounded-lg border border-default px-4 py-2 text-sm font-semibold text-secondary transition hover:border-primary hover:text-primary">返回列表</Link>
                 </div>

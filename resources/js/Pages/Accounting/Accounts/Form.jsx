@@ -24,7 +24,6 @@ export default function AccountingAccountForm({ data, setData, errors = {}, acco
                     </select>
                     {errors.type && <p className="mt-1 text-sm text-accent">{errors.type}</p>}
                 </div>
-                <Field label="期初餘額" type="number" value={data.opening_balance} error={errors.opening_balance} inputClass={inputClass} onChange={(value) => setData('opening_balance', value)} />
                 <div className="md:col-span-2">
                     <label className="inline-flex items-center gap-3 rounded-lg border border-default bg-surface px-3 py-2 text-sm text-secondary">
                         <input type="checkbox" checked={data.is_active} onChange={(event) => setData('is_active', event.target.checked)} />
@@ -44,7 +43,7 @@ export default function AccountingAccountForm({ data, setData, errors = {}, acco
 
             <section className="rounded-xl border border-default bg-surface p-4">
                 <h2 className="text-sm font-semibold text-primary">設定注意事項</h2>
-                <p className="mt-2 text-sm leading-6 text-secondary">會計科目屬於公司層級設定。已被傳票使用的科目未來應避免刪除，建議改為停用。</p>
+                <p className="mt-2 text-sm leading-6 text-secondary">會計科目屬於公司層級設定。已被傳票使用的科目未來應避免刪除，建議改為停用。期初餘額未來會在年度開帳或總帳導入流程中處理，目前不在一般科目設定頁維護。</p>
             </section>
         </div>
     );

@@ -8,10 +8,6 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 export default function AccountingAccountsIndex({ auth, accounts, filters = {}, accountTypes = {}, can = {} }) {
     const rows = accounts?.data ?? [];
     const links = accounts?.links ?? [];
-    const formatMoney = (value) => {
-        const parsed = Number(value ?? 0);
-        return Number.isNaN(parsed) ? '—' : parsed.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    };
     const statusText = (value) => (value ? '啟用' : '停用');
     const paginationLabel = (label) => label.replace('&laquo;', '‹').replace('&raquo;', '›');
     const updateFilter = (key, value) => {
@@ -35,7 +31,7 @@ export default function AccountingAccountsIndex({ auth, accounts, filters = {}, 
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Accounting</p>
                         <h1 className="mt-2 text-2xl font-semibold text-primary">會計科目</h1>
-                        <p className="mt-2 max-w-2xl text-sm text-secondary">維護公司層級科目表、科目類型、啟用狀態與期初餘額。</p>
+                        <p className="mt-2 max-w-2xl text-sm text-secondary">維護公司層級科目表、科目類型與啟用狀態。</p>
                     </div>
                     <div className="flex flex-wrap gap-2 md:justify-end">
                         <Link href={route('employee-system.accounting.journal-entries.index')} className="inline-flex items-center justify-center rounded-lg border border-default bg-transparent px-4 py-2 text-sm font-semibold text-secondary transition hover:border-primary hover:text-primary">
@@ -105,7 +101,6 @@ export default function AccountingAccountsIndex({ auth, accounts, filters = {}, 
                                     <th className="px-4 py-3 font-semibold">科目編號</th>
                                     <th className="px-4 py-3 font-semibold">科目名稱</th>
                                     <th className="px-4 py-3 font-semibold">科目類型</th>
-                                    <th className="px-4 py-3 text-right font-semibold">期初餘額</th>
                                     <th className="px-4 py-3 font-semibold">狀態</th>
                                     <th className="px-4 py-3 font-semibold">操作人員</th>
                                     <th className="px-4 py-3 text-right font-semibold">操作</th>
@@ -121,7 +116,6 @@ export default function AccountingAccountsIndex({ auth, accounts, filters = {}, 
                                                 {accountTypes[account.type] ?? account.type}
                                             </span>
                                         </td>
-                                        <td className="whitespace-nowrap px-4 py-3 text-right font-mono text-xs text-primary">$ {formatMoney(account.opening_balance)}</td>
                                         <td className="whitespace-nowrap px-4 py-3">
                                             <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${account.is_active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'}`}>
                                                 {statusText(account.is_active)}
