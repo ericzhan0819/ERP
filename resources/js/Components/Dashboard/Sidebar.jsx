@@ -52,7 +52,8 @@ const isItemActive = (item) => {
 
 const SidebarNode = ({ item, collapsed = false, level = 0 }) => {
     const active = isItemActive(item);
-    const icon = iconMap[item.icon] ?? iconMap[SIDEBAR_DEFAULT_ICON_KEY];
+    const iconKey = item.icon_key ?? item.icon;
+    const icon = iconMap[iconKey] ?? iconMap[SIDEBAR_DEFAULT_ICON_KEY];
     const hasChildren = (item.children ?? []).length > 0;
 
     const paddingLeftClass = level > 0 && !collapsed ? 'pl-9' : '';

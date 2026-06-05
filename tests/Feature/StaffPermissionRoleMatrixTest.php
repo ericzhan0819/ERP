@@ -289,14 +289,26 @@ it('accounting module boundaries are split into accounts and journals registry e
     $compat = Module::query()->where('key', 'accounting')->firstOrFail();
 
     expect($accounts->base_permission)->toBe('module.accounting.accounts.view')
+        ->and($accounts->label)->toBe('會計科目')
+        ->and($accounts->section)->toBe('accounting')
         ->and($accounts->route_name)->toBe('employee-system.accounting.accounts.index')
         ->and($accounts->permission_prefix)->toBe('module.accounting.accounts')
+        ->and($accounts->is_enabled)->toBeTrue()
+        ->and($accounts->is_active)->toBeTrue()
         ->and($journals->base_permission)->toBe('module.accounting.journals.view')
+        ->and($journals->label)->toBe('會計傳票')
+        ->and($journals->section)->toBe('accounting')
         ->and($journals->route_name)->toBe('employee-system.accounting.journal-entries.index')
         ->and($journals->permission_prefix)->toBe('module.accounting.journals')
+        ->and($journals->is_enabled)->toBeTrue()
+        ->and($journals->is_active)->toBeTrue()
         ->and($accounts->sort_order)->toBeLessThan($journals->sort_order)
         // 技術註解：舊 accounting module 僅作相容分類，不再作為 accounts/journals 的共同安全入口。
-        ->and($compat->base_permission)->toBe('module.accounting.view');
+        ->and($compat->base_permission)->toBe('module.accounting.view')
+        ->and($compat->route_name === null || $compat->route_name === '')->toBeTrue()
+        ->and($compat->is_enabled)->toBeFalse()
+        ->and($compat->is_active)->toBeTrue()
+        ->and($compat->active_patterns)->toBe([]);
 });
 
 it('visibleModules follows split accounting base permissions', function (): void {
@@ -339,13 +351,22 @@ it('visibleModules follows split accounting base permissions', function (): void
     $accountsKeys = $flattenKeys(app(App\Services\PermissionService::class)->getVisibleModules($accountsOnly));
     $journalsKeys = $flattenKeys(app(App\Services\PermissionService::class)->getVisibleModules($journalsOnly));
     $accountingKeys = $flattenKeys(app(App\Services\PermissionService::class)->getVisibleModules($accountingRole));
+    $accountingSections = app(App\Services\PermissionService::class)->getVisibleModules($accountingRole);
+    $accountingSectionKeys = collect($accountingSections)
+        ->firstWhere('section', 'accounting')['items'] ?? [];
+    $accountingSectionKeys = collect($accountingSectionKeys)->pluck('key')->all();
 
     expect($accountsKeys)->toContain('accounting-accounts')
+        ->and($accountsKeys)->not->toContain('accounting')
         ->and($accountsKeys)->not->toContain('accounting-journals')
         ->and($journalsKeys)->toContain('accounting-journals')
+        ->and($journalsKeys)->not->toContain('accounting')
         ->and($journalsKeys)->not->toContain('accounting-accounts')
+        ->and($accountingKeys)->not->toContain('accounting')
         ->and($accountingKeys)->toContain('accounting-accounts')
-        ->and($accountingKeys)->toContain('accounting-journals');
+        ->and($accountingKeys)->toContain('accounting-journals')
+        ->and($accountingSectionKeys)->toContain('accounting-accounts')
+        ->and($accountingSectionKeys)->toContain('accounting-journals');
 });
 
 it('default non accounting roles do not receive accounts or journals permissions', function (): void {

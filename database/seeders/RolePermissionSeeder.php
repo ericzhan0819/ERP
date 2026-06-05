@@ -175,22 +175,22 @@ class RolePermissionSeeder extends Seeder
             ],
             'accounting' => [
                 'label' => '會計管理',
-                'section' => 'operations',
+                'section' => 'accounting',
                 'parent_id' => null,
                 'parent_key' => null,
-                'route_name' => 'employee-system.accounting.accounts.index',
+                'route_name' => null,
                 'permission_prefix' => 'module.accounting',
                 'base_permission' => 'module.accounting.view',
                 'icon_key' => 'Receipt',
                 'icon' => 'Receipt',
                 'sort_order' => 38,
-                'is_enabled' => true,
+                'is_enabled' => false,
                 'is_active' => true,
                 'active_patterns' => [],
             ],
             'accounting-accounts' => [
                 'label' => '會計科目',
-                'section' => 'operations',
+                'section' => 'accounting',
                 'parent_id' => null,
                 'parent_key' => null,
                 'route_name' => 'employee-system.accounting.accounts.index',
@@ -205,7 +205,7 @@ class RolePermissionSeeder extends Seeder
             ],
             'accounting-journals' => [
                 'label' => '會計傳票',
-                'section' => 'operations',
+                'section' => 'accounting',
                 'parent_id' => null,
                 'parent_key' => null,
                 'route_name' => 'employee-system.accounting.journal-entries.index',
@@ -250,7 +250,15 @@ class RolePermissionSeeder extends Seeder
             ],
         ];
 
+        $routeNameIsNullable = collect(Schema::getColumns('modules'))
+            ->firstWhere('name', 'route_name')['nullable'] ?? false;
+
         foreach ($modules as $key => $module) {
+            if (! $routeNameIsNullable && $module['route_name'] === null) {
+                // 技術註解：目前既有 modules.route_name schema 仍為 NOT NULL；disabled 相容模組以空字串保存，避免新增 migration 仍不產生可點擊 Sidebar 入口。
+                $module['route_name'] = '';
+            }
+
             // 技術註解：updateOrCreate 讓模組註冊可重跑，並保持 seed 結果單一真實來源。
             Module::updateOrCreate(['key' => $key], $module);
         }

@@ -56,6 +56,8 @@ const isItemActive = (item) => {
  */
 const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
     const active = isItemActive(item);
+    const iconKey = item.icon_key ?? item.icon;
+    const icon = iconMap[iconKey] ?? iconMap[SIDEBAR_DEFAULT_ICON_KEY];
     const hasChildren = (item.children ?? []).length > 0;
     const paddingLeftClass = level > 0 ? 'pl-9' : '';
 
@@ -71,7 +73,7 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
                             : 'text-muted hover:bg-hover hover:text-primary'
                     }`}
                 >
-                    <span className={active ? 'text-accent' : 'text-muted group-hover:text-accent'}>{iconMap[item.icon] ?? iconMap[SIDEBAR_DEFAULT_ICON_KEY]}</span>
+                    <span className={active ? 'text-accent' : 'text-muted group-hover:text-accent'}>{icon}</span>
                     <span>{item.label}</span>
                 </Link>
 
@@ -93,7 +95,7 @@ const MobileSidebarNode = ({ item, onClose, level = 0 }) => {
                     active ? 'bg-active text-accent border-l-2 border-active' : 'text-muted'
                 }`}
             >
-                <span className={active ? 'text-accent' : 'text-muted'}>{iconMap[item.icon] ?? iconMap[SIDEBAR_DEFAULT_ICON_KEY]}</span>
+                <span className={active ? 'text-accent' : 'text-muted'}>{icon}</span>
                 <span>{item.label}</span>
             </div>
 
