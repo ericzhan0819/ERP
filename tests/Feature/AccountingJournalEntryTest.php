@@ -81,11 +81,20 @@ function validJournalPayload(AccountingAccount $debitAccount, AccountingAccount 
 
 it('有 journals.view 可進 index', function (): void {
     $user = makeJournalUser('journal-index-allow@example.com');
-    $user->givePermissionTo('module.accounting.view', 'module.accounting.journals.view');
+    $user->givePermissionTo('module.accounting.journals.view');
 
     $this->actingAs($user)
         ->get(route('employee-system.accounting.journal-entries.index'))
         ->assertOk();
+});
+
+it('只有 journals.view 不可進 accounts index', function (): void {
+    $user = makeJournalUser('journal-only-deny-accounts@example.com');
+    $user->givePermissionTo('module.accounting.journals.view');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.accounting.accounts.index'))
+        ->assertForbidden();
 });
 
 it('無 journals.view 403', function (): void {
@@ -95,6 +104,30 @@ it('無 journals.view 403', function (): void {
     $this->actingAs($user)
         ->get(route('employee-system.accounting.journal-entries.index'))
         ->assertForbidden();
+});
+
+it('只有 module.accounting.view 不可進 journal entries index', function (): void {
+    $user = makeJournalUser('journal-compat-only-deny@example.com');
+    $user->givePermissionTo('module.accounting.view');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.accounting.journal-entries.index'))
+        ->assertForbidden();
+});
+
+it('journals.create 可讀取 active account options 且不需要 accounts.view', function (): void {
+    $user = makeJournalUser('journal-create-account-options@example.com');
+    $user->givePermissionTo('module.accounting.journals.view', 'module.accounting.journals.create');
+    makeJournalAccount($user, ['code' => '1999', 'name' => '可選科目', 'is_active' => true]);
+    makeJournalAccount($user, ['code' => '2999', 'name' => '停用科目', 'is_active' => false]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.accounting.journal-entries.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('accounts', fn ($accounts): bool => collect($accounts)->contains('code', '1999')
+                && ! collect($accounts)->contains('code', '2999'))
+        );
 });
 
 it('create 頁需要 journals.create', function (): void {
@@ -125,7 +158,7 @@ it('store balanced draft journal 成功', function (): void {
 
 it('unbalanced journal 建立失敗', function (): void {
     $user = makeJournalUser('journal-unbalanced@example.com');
-    $user->givePermissionTo('module.accounting.view', 'module.accounting.journals.create');
+    $user->givePermissionTo('module.accounting.journals.view', 'module.accounting.journals.create');
     $debitAccount = makeJournalAccount($user);
     $creditAccount = makeJournalAccount($user, ['type' => 'liability']);
 
@@ -142,7 +175,7 @@ it('unbalanced journal 建立失敗', function (): void {
 
 it('journal 至少兩列', function (): void {
     $user = makeJournalUser('journal-min-lines@example.com');
-    $user->givePermissionTo('module.accounting.view', 'module.accounting.journals.create');
+    $user->givePermissionTo('module.accounting.journals.view', 'module.accounting.journals.create');
     $debitAccount = makeJournalAccount($user);
     $creditAccount = makeJournalAccount($user, ['type' => 'liability']);
 
@@ -158,7 +191,7 @@ it('journal 至少兩列', function (): void {
 
 it('單列不可 debit credit 同時大於 0', function (): void {
     $user = makeJournalUser('journal-line-both-positive@example.com');
-    $user->givePermissionTo('module.accounting.view', 'module.accounting.journals.create');
+    $user->givePermissionTo('module.accounting.journals.view', 'module.accounting.journals.create');
     $debitAccount = makeJournalAccount($user);
     $creditAccount = makeJournalAccount($user, ['type' => 'liability']);
 
@@ -175,7 +208,7 @@ it('單列不可 debit credit 同時大於 0', function (): void {
 
 it('單列不可 debit credit 同時為 0', function (): void {
     $user = makeJournalUser('journal-line-both-zero@example.com');
-    $user->givePermissionTo('module.accounting.view', 'module.accounting.journals.create');
+    $user->givePermissionTo('module.accounting.journals.view', 'module.accounting.journals.create');
     $debitAccount = makeJournalAccount($user);
     $creditAccount = makeJournalAccount($user, ['type' => 'liability']);
 
@@ -400,7 +433,7 @@ it('跨 tenant 不可 post void', function (): void {
 
 it('journal_number 自動產生 JE-YYYYMM-0001', function (): void {
     $user = makeJournalUser('journal-number-format@example.com');
-    $user->givePermissionTo('module.accounting.view', 'module.accounting.journals.create');
+    $user->givePermissionTo('module.accounting.journals.view', 'module.accounting.journals.create');
     $debitAccount = makeJournalAccount($user);
     $creditAccount = makeJournalAccount($user, ['type' => 'liability']);
 
@@ -412,7 +445,7 @@ it('journal_number 自動產生 JE-YYYYMM-0001', function (): void {
 it('journal lines account 必須同 company', function (): void {
     $user = makeJournalUser('journal-cross-company-account@example.com', 1, 10);
     $otherUser = makeJournalUser('journal-cross-company-owner@example.com', 2, 20);
-    $user->givePermissionTo('module.accounting.view', 'module.accounting.journals.create');
+    $user->givePermissionTo('module.accounting.journals.view', 'module.accounting.journals.create');
     $debitAccount = makeJournalAccount($user);
     $foreignAccount = makeJournalAccount($otherUser, ['type' => 'liability']);
 
@@ -509,14 +542,19 @@ it('accounting role 有 journals view create update post void', function (): voi
 it('sales inventory viewer 不預設 journals 權限', function (): void {
     foreach (['sales', 'inventory', 'viewer'] as $roleName) {
         $role = Role::findByName($roleName, 'web');
-        expect($role->hasPermissionTo('module.accounting.journals.view'))->toBeFalse();
+        expect($role->hasPermissionTo('module.accounting.journals.view'))->toBeFalse()
+            ->and($role->hasPermissionTo('module.accounting.journals.create'))->toBeFalse()
+            ->and($role->hasPermissionTo('module.accounting.journals.update'))->toBeFalse()
+            ->and($role->hasPermissionTo('module.accounting.journals.post'))->toBeFalse()
+            ->and($role->hasPermissionTo('module.accounting.journals.void'))->toBeFalse();
     }
 });
 
-it('module registry accounting route 仍維持 accounts 入口且可涵蓋 journals active pattern', function (): void {
-    $module = Module::query()->where('key', 'accounting')->firstOrFail();
+it('module registry 有 accounting-journals module', function (): void {
+    $module = Module::query()->where('key', 'accounting-journals')->firstOrFail();
 
-    expect($module->route_name)->toBe('employee-system.accounting.accounts.index')
-        ->and($module->base_permission)->toBe('module.accounting.view')
+    expect($module->route_name)->toBe('employee-system.accounting.journal-entries.index')
+        ->and($module->base_permission)->toBe('module.accounting.journals.view')
+        ->and($module->permission_prefix)->toBe('module.accounting.journals')
         ->and($module->active_patterns)->toContain('employee-system.accounting.journal-entries.*');
 });

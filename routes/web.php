@@ -226,61 +226,61 @@ Route::patch('/employee-system/receivables/{vehicleSale}/payments/{vehicleSalePa
     ->name('employee-system.receivables.payments.void');
 
 Route::get('/employee-system/accounting/accounts', [AccountingAccountController::class, 'index'])
-    ->middleware(['auth', 'module.access:accounting'])
+    ->middleware(['auth', 'module.access:accounting-accounts'])
     ->name('employee-system.accounting.accounts.index');
 
 Route::get('/employee-system/accounting/accounts/create', [AccountingAccountController::class, 'create'])
-    ->middleware(['auth', 'module.access:accounting'])
+    ->middleware(['auth', 'module.access:accounting-accounts'])
     ->name('employee-system.accounting.accounts.create');
 
 Route::post('/employee-system/accounting/accounts', [AccountingAccountController::class, 'store'])
-    ->middleware(['auth', 'module.access:accounting'])
+    ->middleware(['auth', 'module.access:accounting-accounts'])
     ->name('employee-system.accounting.accounts.store');
 
 Route::get('/employee-system/accounting/accounts/{account}/edit', [AccountingAccountController::class, 'edit'])
-    ->middleware(['auth', 'module.access:accounting'])
+    ->middleware(['auth', 'module.access:accounting-accounts'])
     ->whereNumber('account')
     ->name('employee-system.accounting.accounts.edit');
 
 Route::patch('/employee-system/accounting/accounts/{account}', [AccountingAccountController::class, 'update'])
-    ->middleware(['auth', 'module.access:accounting'])
+    ->middleware(['auth', 'module.access:accounting-accounts'])
     ->whereNumber('account')
     ->name('employee-system.accounting.accounts.update');
 
 Route::get('/employee-system/accounting/journal-entries', [AccountingJournalEntryController::class, 'index'])
-    ->middleware(['auth', 'module.access:accounting'])
+    ->middleware(['auth', 'module.access:accounting-journals'])
     ->name('employee-system.accounting.journal-entries.index');
 
 Route::get('/employee-system/accounting/journal-entries/create', [AccountingJournalEntryController::class, 'create'])
-    ->middleware(['auth', 'module.access:accounting'])
+    ->middleware(['auth', 'module.access:accounting-journals'])
     ->name('employee-system.accounting.journal-entries.create');
 
 Route::post('/employee-system/accounting/journal-entries', [AccountingJournalEntryController::class, 'store'])
-    ->middleware(['auth', 'module.access:accounting'])
+    ->middleware(['auth', 'module.access:accounting-journals'])
     ->name('employee-system.accounting.journal-entries.store');
 
 Route::get('/employee-system/accounting/journal-entries/{journalEntry}', [AccountingJournalEntryController::class, 'show'])
-    ->middleware(['auth', 'module.access:accounting'])
+    ->middleware(['auth', 'module.access:accounting-journals'])
     ->whereNumber('journalEntry')
     ->name('employee-system.accounting.journal-entries.show');
 
 Route::get('/employee-system/accounting/journal-entries/{journalEntry}/edit', [AccountingJournalEntryController::class, 'edit'])
-    ->middleware(['auth', 'module.access:accounting'])
+    ->middleware(['auth', 'module.access:accounting-journals'])
     ->whereNumber('journalEntry')
     ->name('employee-system.accounting.journal-entries.edit');
 
 Route::patch('/employee-system/accounting/journal-entries/{journalEntry}', [AccountingJournalEntryController::class, 'update'])
-    ->middleware(['auth', 'module.access:accounting'])
+    ->middleware(['auth', 'module.access:accounting-journals'])
     ->whereNumber('journalEntry')
     ->name('employee-system.accounting.journal-entries.update');
 
 Route::patch('/employee-system/accounting/journal-entries/{journalEntry}/post', [AccountingJournalEntryController::class, 'post'])
-    ->middleware(['auth', 'module.access:accounting'])
+    ->middleware(['auth', 'module.access:accounting-journals'])
     ->whereNumber('journalEntry')
     ->name('employee-system.accounting.journal-entries.post');
 
 Route::patch('/employee-system/accounting/journal-entries/{journalEntry}/void', [AccountingJournalEntryController::class, 'void'])
-    ->middleware(['auth', 'module.access:accounting'])
+    ->middleware(['auth', 'module.access:accounting-journals'])
     ->whereNumber('journalEntry')
     ->name('employee-system.accounting.journal-entries.void');
 

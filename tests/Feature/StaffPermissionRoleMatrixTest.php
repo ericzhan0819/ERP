@@ -281,6 +281,109 @@ it('default accounting role aligns with receivables confirmation workflow', func
         ->and($role->hasPermissionTo('module.audit.view'))->toBeFalse();
 });
 
+it('accounting module boundaries are split into accounts and journals registry entries', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    $accounts = Module::query()->where('key', 'accounting-accounts')->firstOrFail();
+    $journals = Module::query()->where('key', 'accounting-journals')->firstOrFail();
+    $compat = Module::query()->where('key', 'accounting')->firstOrFail();
+
+    expect($accounts->base_permission)->toBe('module.accounting.accounts.view')
+        ->and($accounts->route_name)->toBe('employee-system.accounting.accounts.index')
+        ->and($accounts->permission_prefix)->toBe('module.accounting.accounts')
+        ->and($journals->base_permission)->toBe('module.accounting.journals.view')
+        ->and($journals->route_name)->toBe('employee-system.accounting.journal-entries.index')
+        ->and($journals->permission_prefix)->toBe('module.accounting.journals')
+        ->and($accounts->sort_order)->toBeLessThan($journals->sort_order)
+        // 技術註解：舊 accounting module 僅作相容分類，不再作為 accounts/journals 的共同安全入口。
+        ->and($compat->base_permission)->toBe('module.accounting.view');
+});
+
+it('visibleModules follows split accounting base permissions', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    $accountsOnly = User::create([
+        'name' => 'Accounts Only Visible',
+        'email' => 'accounts-only-visible@example.com',
+        'password' => 'password',
+        'account_status' => 'active',
+        'is_active' => true,
+    ]);
+    $accountsOnly->givePermissionTo('module.accounting.accounts.view');
+
+    $journalsOnly = User::create([
+        'name' => 'Journals Only Visible',
+        'email' => 'journals-only-visible@example.com',
+        'password' => 'password',
+        'account_status' => 'active',
+        'is_active' => true,
+    ]);
+    $journalsOnly->givePermissionTo('module.accounting.journals.view');
+
+    $accountingRole = User::create([
+        'name' => 'Accounting Role Visible',
+        'email' => 'accounting-role-visible@example.com',
+        'password' => 'password',
+        'account_status' => 'active',
+        'is_active' => true,
+    ]);
+    $accountingRole->assignRole('accounting');
+
+    $flattenKeys = function (array $sections): array {
+        return collect($sections)
+            ->flatMap(fn (array $section): array => $section['items'] ?? [])
+            ->pluck('key')
+            ->all();
+    };
+
+    $accountsKeys = $flattenKeys(app(App\Services\PermissionService::class)->getVisibleModules($accountsOnly));
+    $journalsKeys = $flattenKeys(app(App\Services\PermissionService::class)->getVisibleModules($journalsOnly));
+    $accountingKeys = $flattenKeys(app(App\Services\PermissionService::class)->getVisibleModules($accountingRole));
+
+    expect($accountsKeys)->toContain('accounting-accounts')
+        ->and($accountsKeys)->not->toContain('accounting-journals')
+        ->and($journalsKeys)->toContain('accounting-journals')
+        ->and($journalsKeys)->not->toContain('accounting-accounts')
+        ->and($accountingKeys)->toContain('accounting-accounts')
+        ->and($accountingKeys)->toContain('accounting-journals');
+});
+
+it('default non accounting roles do not receive accounts or journals permissions', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    foreach (['sales', 'inventory', 'viewer'] as $roleName) {
+        $role = Role::findByName($roleName, 'web');
+
+        expect($role->hasPermissionTo('module.accounting.accounts.view'))->toBeFalse()
+            ->and($role->hasPermissionTo('module.accounting.accounts.create'))->toBeFalse()
+            ->and($role->hasPermissionTo('module.accounting.accounts.update'))->toBeFalse()
+            ->and($role->hasPermissionTo('module.accounting.journals.view'))->toBeFalse()
+            ->and($role->hasPermissionTo('module.accounting.journals.create'))->toBeFalse()
+            ->and($role->hasPermissionTo('module.accounting.journals.update'))->toBeFalse()
+            ->and($role->hasPermissionTo('module.accounting.journals.post'))->toBeFalse()
+            ->and($role->hasPermissionTo('module.accounting.journals.void'))->toBeFalse();
+    }
+});
+
+it('admin and accounting templates keep split accounting permissions', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    $admin = Role::findByName('admin', 'web');
+    $accounting = Role::findByName('accounting', 'web');
+
+    foreach ([$admin, $accounting] as $role) {
+        expect($role->hasPermissionTo('module.accounting.view'))->toBeTrue()
+            ->and($role->hasPermissionTo('module.accounting.accounts.view'))->toBeTrue()
+            ->and($role->hasPermissionTo('module.accounting.accounts.create'))->toBeTrue()
+            ->and($role->hasPermissionTo('module.accounting.accounts.update'))->toBeTrue()
+            ->and($role->hasPermissionTo('module.accounting.journals.view'))->toBeTrue()
+            ->and($role->hasPermissionTo('module.accounting.journals.create'))->toBeTrue()
+            ->and($role->hasPermissionTo('module.accounting.journals.update'))->toBeTrue()
+            ->and($role->hasPermissionTo('module.accounting.journals.post'))->toBeTrue()
+            ->and($role->hasPermissionTo('module.accounting.journals.void'))->toBeTrue();
+    }
+});
+
 it('default inventory role is limited to vehicle inventory maintenance', function (): void {
     $this->seed(RolePermissionSeeder::class);
 

@@ -39,10 +39,12 @@
 - Accounting Phase 1：Chart of Accounts
 - Accounting Phase 2：Journal Draft Foundation
 - Accounting Phase 3：Journal Posting / Voiding
+- Accounting Module Boundary Polish：會計科目與會計傳票已拆成獨立 module entries
 
 ## Accounting Phase 1
 
 - Chart of Accounts completed。
+- Module Registry entry：`accounting-accounts`，base permission 為 `module.accounting.accounts.view`。
 - Account types aligned with reference project：資產、負債、權益、收入、成本、費用。
 - Opening balance stored in `accounting_accounts.opening_balance`，但尚未作為正式餘額來源。
 - 正式餘額後續應由 journal lines 計算。
@@ -52,6 +54,7 @@
 ## Accounting Phase 2
 
 - Manual draft journal entries completed。
+- Module Registry entry：`accounting-journals`，base permission 為 `module.accounting.journals.view`。
 - Debit / credit balance validation completed。
 - JE number generation completed：`JE-YYYYMM-0001`，依 `company_id + YYYYMM` 遞增。
 - Journal Draft pages completed：Index / Create / Show / Edit。
@@ -75,6 +78,17 @@
 - No AR/AP/cash/invoice/report integration yet。
 - No automatic journals from sales/costs yet。
 - No profit / gross margin payload added。
+
+## Accounting Module Boundaries
+
+- Accounting is now split by functional module boundaries。
+- `accounting` 只保留為相容 / 分類概念；`module.accounting.view` 不作為會計科目或會計傳票功能入口的唯一安全依據。
+- 會計科目 module key：`accounting-accounts`，route：`employee-system.accounting.accounts.index`，base permission：`module.accounting.accounts.view`。
+- 會計傳票 module key：`accounting-journals`，route：`employee-system.accounting.journal-entries.index`，base permission：`module.accounting.journals.view`。
+- Sidebar visibility 由後端 `visibleModules` 依各 module `base_permission` 輸出；只有 accounts.view 只看得到會計科目，只有 journals.view 只看得到會計傳票。
+- Journal create 讀取 active account options 是傳票建立必要資料，不代表取得會計科目管理入口權限。
+- 未來 `accounting-receivables`、`accounting-payables`、`accounting-cash`、`accounting-invoices`、`accounting-reports` 也應獨立成 module。
+- 本次未新增 AR / AP / cash / invoice / report，未串接 Receivables / Vehicle Costs，未新增 profit / gross margin payload。
 
 ## Customer Module MVP 能力
 
@@ -275,4 +289,3 @@ Audit 資料原則：
 - 限制：不是完整會計；不做退款、發票、報表、PDF、Excel；不產生 profit / gross margin payload。
 - Vehicle 頁面保留舊 `module.vehicles.sales.payments.*` 相容入口，但主要操作導向收款管理頁。
 - `vehicle_sales.deposit_amount` 僅作「訂金快照」語意；真正已收金額只由 `vehicle_sale_payments.status = received` 計算。
-

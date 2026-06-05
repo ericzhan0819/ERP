@@ -21,6 +21,8 @@
 
 目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 2 獨立入口與 create / edit 工作台、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、客戶管理 MVP、客戶交易紀錄、Audit log display localization、Accounting Phase 1 Chart of Accounts、Accounting Phase 2 Journal Draft Foundation、Accounting Phase 3 Journal Posting / Voiding、系統稽核紀錄與登入紀錄。
 
+Accounting is now split by functional module boundaries：會計科目與會計傳票已拆成 `accounting-accounts`、`accounting-journals` 兩個獨立 module entries；`module.accounting.view` 僅保留為相容 / 分類概念，不作為功能入口唯一安全依據。
+
 目前穩定節點：
 
 ```txt
@@ -217,10 +219,13 @@ archived   已封存
 ## Accounting Phase 1
 
 - Chart of Accounts（會計科目）
+- Module Registry entry：`accounting-accounts`
+- Module access gate：`module.access:accounting-accounts`
 - Account types aligned with reference project：asset / liability / equity / revenue / cost / expense
 - 獨立 Inertia 頁面：Index / Create / Edit
 - Tenant scope：以 `company_id` / `branch_id` 作為資料邊界
-- 後端權限：`module.accounting.view`、`module.accounting.accounts.view`、`module.accounting.accounts.create`、`module.accounting.accounts.update`
+- 後端權限：`module.accounting.accounts.view`、`module.accounting.accounts.create`、`module.accounting.accounts.update`
+- `module.accounting.view` 僅保留相容 / 分類概念，不可單獨進入會計科目入口。
 - Opening balance stored but not used as official balance yet
 - Audit events：`accounting_account.created`、`accounting_account.updated`
 - Chart of Accounts 已可作為 Journal Draft 科目來源
@@ -229,12 +234,15 @@ archived   已封存
 ## Accounting Phase 2
 
 - Journal Draft Foundation
+- Module Registry entry：`accounting-journals`
+- Module access gate：`module.access:accounting-journals`
 - 資料表：`accounting_journal_entries`
 - 資料表：`accounting_journal_entry_lines`
 - 資料表：`accounting_journal_number_sequences`
 - JE 編號規則：`JE-YYYYMM-0001`
 - 獨立 Inertia 頁面：Index / Create / Show / Edit
 - 後端權限：`module.accounting.journals.view`、`module.accounting.journals.create`、`module.accounting.journals.update`
+- Journal create 讀取 active account options 是傳票建立必要資料，不要求 `module.accounting.accounts.view`。
 - 借貸平衡驗證：
   - 至少兩列
   - total debit = total credit
@@ -249,6 +257,15 @@ archived   已封存
 - No AR/AP/cash/invoice/report integration yet
 - No automatic Receivables / Vehicle Costs integration yet
 - No profit / gross margin payload added
+
+## Accounting Module Boundaries
+
+- Accounting is now split by functional module boundaries.
+- 會計科目 module：`accounting-accounts`，route：`employee-system.accounting.accounts.index`，base permission：`module.accounting.accounts.view`。
+- 會計傳票 module：`accounting-journals`，route：`employee-system.accounting.journal-entries.index`，base permission：`module.accounting.journals.view`。
+- `module.accounting.view` 只保留為相容 / 分類概念，不作為功能入口唯一安全依據。
+- Sidebar visibility 由後端 `visibleModules` 依 module base permission 輸出；可只顯示會計科目或只顯示會計傳票。
+- 未來 `accounting-receivables`、`accounting-payables`、`accounting-cash`、`accounting-invoices`、`accounting-reports` 也應獨立成 module。
 
 ## Accounting Phase 3
 
@@ -531,4 +548,3 @@ refactor: 不改行為的重構
 - 限制：不是完整會計；不做退款、發票、報表、PDF、Excel；不產生 profit / gross margin payload。
 - Vehicle 頁面保留舊 `module.vehicles.sales.payments.*` 相容入口，但主要操作導向收款管理頁。
 - `vehicle_sales.deposit_amount` 僅作「訂金快照」語意；真正已收金額只由 `vehicle_sale_payments.status = received` 計算。
-

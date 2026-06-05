@@ -79,7 +79,7 @@ function validAccountingAccountPayload(array $overrides = []): array
 
 it('有 accounts.view 可進 index', function (): void {
     $user = makeAccountingUser('accounting-index-allow@example.com');
-    $user->givePermissionTo('module.accounting.view', 'module.accounting.accounts.view');
+    $user->givePermissionTo('module.accounting.accounts.view');
     makeAccountingAccount($user);
 
     $this->actingAs($user)
@@ -87,8 +87,26 @@ it('有 accounts.view 可進 index', function (): void {
         ->assertOk();
 });
 
+it('只有 accounts.view 不可進 journal entries index', function (): void {
+    $user = makeAccountingUser('accounting-accounts-only-deny-journals@example.com');
+    $user->givePermissionTo('module.accounting.accounts.view');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.accounting.journal-entries.index'))
+        ->assertForbidden();
+});
+
 it('無 accounts.view 回 403', function (): void {
     $user = makeAccountingUser('accounting-index-deny@example.com');
+    $user->givePermissionTo('module.accounting.view');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.accounting.accounts.index'))
+        ->assertForbidden();
+});
+
+it('只有 module.accounting.view 不可進 accounts index', function (): void {
+    $user = makeAccountingUser('accounting-compat-only-accounts-deny@example.com');
     $user->givePermissionTo('module.accounting.view');
 
     $this->actingAs($user)
@@ -275,14 +293,18 @@ it('accounting role 有 accounts 權限', function (): void {
 it('sales inventory viewer 不預設 accounting 權限', function (): void {
     foreach (['sales', 'inventory', 'viewer'] as $roleName) {
         $role = Role::findByName($roleName, 'web');
-        expect($role->hasPermissionTo('module.accounting.view'))->toBeFalse();
+        expect($role->hasPermissionTo('module.accounting.accounts.view'))->toBeFalse()
+            ->and($role->hasPermissionTo('module.accounting.accounts.create'))->toBeFalse()
+            ->and($role->hasPermissionTo('module.accounting.accounts.update'))->toBeFalse();
     }
 });
 
-it('module registry 有 accounting module', function (): void {
-    $module = Module::query()->where('key', 'accounting')->first();
+it('module registry 有 accounting-accounts module', function (): void {
+    $module = Module::query()->where('key', 'accounting-accounts')->first();
 
     expect($module)->not->toBeNull()
         ->and($module->route_name)->toBe('employee-system.accounting.accounts.index')
-        ->and($module->base_permission)->toBe('module.accounting.view');
+        ->and($module->base_permission)->toBe('module.accounting.accounts.view')
+        ->and($module->permission_prefix)->toBe('module.accounting.accounts')
+        ->and($module->active_patterns)->toContain('employee-system.accounting.accounts.*');
 });
