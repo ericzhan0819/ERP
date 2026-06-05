@@ -8,9 +8,6 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 export default function AccountingAccountsIndex({ auth, accounts, filters = {}, accountTypes = {}, can = {} }) {
     const rows = accounts?.data ?? [];
     const links = accounts?.links ?? [];
-    const activeRows = rows.filter((account) => account.is_active).length;
-    const inactiveRows = rows.length - activeRows;
-    const currentTypeLabel = filters.type ? (accountTypes[filters.type] ?? filters.type) : '全部類型';
     const formatMoney = (value) => {
         const parsed = Number(value ?? 0);
         return Number.isNaN(parsed) ? '—' : parsed.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -51,13 +48,6 @@ export default function AccountingAccountsIndex({ auth, accounts, filters = {}, 
                         )}
                     </div>
                 </div>
-
-                <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                    <SummaryCard label="本頁科目數" value={rows.length} tone="text-primary" />
-                    <SummaryCard label="啟用科目數" value={activeRows} tone="text-emerald-700 dark:text-emerald-200" />
-                    <SummaryCard label="停用科目數" value={inactiveRows} tone="text-slate-500 dark:text-slate-300" />
-                    <SummaryCard label="目前篩選類型" value={currentTypeLabel} tone="text-primary" />
-                </section>
 
                 <section className="rounded-2xl border border-default bg-surface p-4">
                     <div className="mb-4 flex flex-col gap-1">
@@ -168,14 +158,5 @@ export default function AccountingAccountsIndex({ auth, accounts, filters = {}, 
                 )}
             </div>
         </DashboardLayout>
-    );
-}
-
-function SummaryCard({ label, value, tone }) {
-    return (
-        <div className="rounded-2xl border border-default bg-surface p-4">
-            <p className="text-xs font-medium text-muted">{label}</p>
-            <p className={`mt-2 truncate text-2xl font-semibold ${tone}`}>{value}</p>
-        </div>
     );
 }
