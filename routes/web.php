@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\AccountingAccountController;
 use App\Http\Controllers\CompanySettingController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProfileController;
@@ -222,6 +223,28 @@ Route::patch('/employee-system/receivables/{vehicleSale}/payments/{vehicleSalePa
     ->whereNumber('vehicleSale')
     ->whereNumber('vehicleSalePayment')
     ->name('employee-system.receivables.payments.void');
+
+Route::get('/employee-system/accounting/accounts', [AccountingAccountController::class, 'index'])
+    ->middleware(['auth', 'module.access:accounting'])
+    ->name('employee-system.accounting.accounts.index');
+
+Route::get('/employee-system/accounting/accounts/create', [AccountingAccountController::class, 'create'])
+    ->middleware(['auth', 'module.access:accounting'])
+    ->name('employee-system.accounting.accounts.create');
+
+Route::post('/employee-system/accounting/accounts', [AccountingAccountController::class, 'store'])
+    ->middleware(['auth', 'module.access:accounting'])
+    ->name('employee-system.accounting.accounts.store');
+
+Route::get('/employee-system/accounting/accounts/{account}/edit', [AccountingAccountController::class, 'edit'])
+    ->middleware(['auth', 'module.access:accounting'])
+    ->whereNumber('account')
+    ->name('employee-system.accounting.accounts.edit');
+
+Route::patch('/employee-system/accounting/accounts/{account}', [AccountingAccountController::class, 'update'])
+    ->middleware(['auth', 'module.access:accounting'])
+    ->whereNumber('account')
+    ->name('employee-system.accounting.accounts.update');
 
 Route::get('/employee-system/audit/activity-logs', [AuditLogController::class, 'activityLogs'])
     ->middleware(['auth', 'module.access:audit'])

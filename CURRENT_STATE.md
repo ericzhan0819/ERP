@@ -2,10 +2,10 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed。
-- 穩定節點：Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 completed。
+- 穩定節點：Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 completed。
 - 最新驗證狀態：最近分段驗證包含 `CustomerTest + ReceivableTest：27 passed / 359 assertions`、`VehicleSaleTest + VehicleSalePaymentTest：30 passed / 407 assertions`、`npm run build` 通過；最新完整測試待重新執行 full test。
-- 本文件為目前穩定節點同步整理；目前不實作新功能、不做退款、不做完整會計、不做發票、不做報表、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
+- 本文件為目前穩定節點同步整理；目前不實作新功能、不做退款、不做完整會計傳票、不做發票、不做報表、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
 
 ## 技術棧
 
@@ -36,6 +36,16 @@
 - Customer transaction history
 - Receivables mark-sold action
 - Audit log display localization
+- Accounting Phase 1：Chart of Accounts
+
+## Accounting Phase 1
+
+- Chart of Accounts completed。
+- Account types aligned with reference project：資產、負債、權益、收入、成本、費用。
+- Opening balance stored in `accounting_accounts.opening_balance`，但尚未作為正式餘額來源。
+- 正式餘額後續應由 journal lines 計算。
+- No journals yet。
+- No AR/AP/cash/invoice/report integration yet。
 
 ## Customer Module MVP 能力
 

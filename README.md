@@ -17,9 +17,9 @@
 
 # System Status
 
-目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed。
+目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 completed。
 
-目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 2 獨立入口與 create / edit 工作台、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、客戶管理 MVP、客戶交易紀錄、Audit log display localization、系統稽核紀錄與登入紀錄。
+目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 2 獨立入口與 create / edit 工作台、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、客戶管理 MVP、客戶交易紀錄、Audit log display localization、Accounting Phase 1 Chart of Accounts、系統稽核紀錄與登入紀錄。
 
 目前穩定節點：
 
@@ -27,6 +27,7 @@
 main / origin main
 Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed
 Vehicle Cost Management Phase 2 completed
+Accounting Phase 1 completed
 ```
 
 最近分段驗證結果：
@@ -210,6 +211,18 @@ archived   已封存
 - Customer Show 支援「客戶交易紀錄」：只顯示 `vehicle_sales.customer_id = customers.id` 的關聯交易，不以 `customer_name` / `customer_phone` snapshot 模糊比對。
 - 客戶交易紀錄受 tenant scope 與權限隔離：`module.vehicles.sales.view` 才回傳銷售資料，`module.receivables.view` 才回傳由 `ReceivableSummaryService` 計算的收款摘要。
 - 此功能不做客戶總消費、報表、lifetime value、毛利 / 利潤、退款、發票、PDF 或 Excel。
+
+## Accounting Phase 1
+
+- Chart of Accounts（會計科目）
+- Account types aligned with reference project：asset / liability / equity / revenue / cost / expense
+- 獨立 Inertia 頁面：Index / Create / Edit
+- Tenant scope：以 `company_id` / `branch_id` 作為資料邊界
+- 後端權限：`module.accounting.view`、`module.accounting.accounts.view`、`module.accounting.accounts.create`、`module.accounting.accounts.update`
+- Opening balance stored but not used as official balance yet
+- Audit events：`accounting_account.created`、`accounting_account.updated`
+- No journals yet
+- No AR/AP/cash/invoice/report integration yet
 
 ## Current Business Flow
 

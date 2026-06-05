@@ -3,11 +3,13 @@
 namespace App\Providers;
 
 use App\Models\Customer;
+use App\Models\AccountingAccount;
 use App\Models\Vehicle;
 use App\Models\VehicleCost;
 use App\Models\VehicleSale;
 use App\Models\VehicleSalePayment;
 use App\Policies\CustomerPolicy;
+use App\Policies\AccountingAccountPolicy;
 use App\Policies\VehicleCostPolicy;
 use App\Policies\VehiclePolicy;
 use App\Policies\VehicleSalePolicy;
@@ -31,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // 技術註解：會計科目屬財務主檔，需顯式註冊 Policy 以確保所有敏感操作皆由後端授權層管控。
+        Gate::policy(AccountingAccount::class, AccountingAccountPolicy::class);
         // 技術註解：顯式註冊 CustomerPolicy，確保客戶主檔與敏感個資皆由後端授權層控管。
         Gate::policy(Customer::class, CustomerPolicy::class);
         // 技術註解：明確註冊 VehiclePolicy，確保後端授權為唯一真實來源，避免遺漏造成 IDOR 風險。
