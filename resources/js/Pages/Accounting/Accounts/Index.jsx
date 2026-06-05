@@ -8,6 +8,9 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 export default function AccountingAccountsIndex({ auth, accounts, filters = {}, accountTypes = {}, can = {} }) {
     const rows = accounts?.data ?? [];
     const links = accounts?.links ?? [];
+    const activeRows = rows.filter((account) => account.is_active).length;
+    const inactiveRows = rows.length - activeRows;
+    const currentTypeLabel = filters.type ? (accountTypes[filters.type] ?? filters.type) : '全部類型';
     const formatMoney = (value) => {
         const parsed = Number(value ?? 0);
         return Number.isNaN(parsed) ? '—' : parsed.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -31,88 +34,113 @@ export default function AccountingAccountsIndex({ auth, accounts, filters = {}, 
     return (
         <DashboardLayout user={auth.user}>
             <div className="space-y-5 p-4 md:p-6">
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="flex flex-col gap-4 rounded-2xl border border-default bg-surface p-5 md:flex-row md:items-start md:justify-between">
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Accounting</p>
-                        <h1 className="mt-1 text-2xl font-semibold text-primary">會計科目</h1>
-                        <p className="mt-1 text-sm text-secondary">維護科目表、科目類型與期初餘額</p>
+                        <h1 className="mt-2 text-2xl font-semibold text-primary">會計科目</h1>
+                        <p className="mt-2 max-w-2xl text-sm text-secondary">維護公司層級科目表、科目類型、啟用狀態與期初餘額。</p>
                     </div>
-                    {can.create && (
-                        <div className="flex flex-wrap gap-2">
-                            <Link href={route('employee-system.accounting.journal-entries.index')} className="inline-flex items-center justify-center rounded-lg border border-default px-4 py-2 text-sm font-semibold text-secondary transition hover:opacity-90">
-                                傳票管理
-                            </Link>
+                    <div className="flex flex-wrap gap-2 md:justify-end">
+                        <Link href={route('employee-system.accounting.journal-entries.index')} className="inline-flex items-center justify-center rounded-lg border border-default bg-transparent px-4 py-2 text-sm font-semibold text-secondary transition hover:border-primary hover:text-primary">
+                            傳票管理
+                        </Link>
+                        {can.create && (
                             <Link href={route('employee-system.accounting.accounts.create')} className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
                                 新增科目
                             </Link>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
 
-                <section className="grid grid-cols-1 gap-3 rounded-2xl border border-default bg-surface p-4 md:grid-cols-3">
-                    <input
-                        value={filters.q ?? ''}
-                        onChange={(event) => updateFilter('q', event.target.value)}
-                        placeholder="搜尋科目編號 / 名稱"
-                        className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm md:col-span-1"
-                    />
-                    <select
-                        value={filters.type ?? ''}
-                        onChange={(event) => updateFilter('type', event.target.value)}
-                        className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
-                    >
-                        <option value="">全部科目類型</option>
-                        {Object.entries(accountTypes).map(([value, label]) => (
-                            <option key={value} value={value}>{label}</option>
-                        ))}
-                    </select>
-                    <select
-                        value={filters.is_active ?? ''}
-                        onChange={(event) => updateFilter('is_active', event.target.value)}
-                        className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm"
-                    >
-                        <option value="">全部狀態</option>
-                        <option value="1">啟用</option>
-                        <option value="0">停用</option>
-                    </select>
+                <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                    <SummaryCard label="本頁科目數" value={rows.length} tone="text-primary" />
+                    <SummaryCard label="啟用科目數" value={activeRows} tone="text-emerald-700 dark:text-emerald-200" />
+                    <SummaryCard label="停用科目數" value={inactiveRows} tone="text-slate-500 dark:text-slate-300" />
+                    <SummaryCard label="目前篩選類型" value={currentTypeLabel} tone="text-primary" />
+                </section>
+
+                <section className="rounded-2xl border border-default bg-surface p-4">
+                    <div className="mb-4 flex flex-col gap-1">
+                        <h2 className="text-sm font-semibold text-primary">科目篩選</h2>
+                        <p className="text-xs text-muted">依科目編號、名稱、類型與啟用狀態縮小目前科目表範圍。</p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        <label className="space-y-1">
+                            <span className="text-xs font-medium text-secondary">搜尋</span>
+                            <input
+                                value={filters.q ?? ''}
+                                onChange={(event) => updateFilter('q', event.target.value)}
+                                placeholder="搜尋科目編號、名稱"
+                                className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                            />
+                        </label>
+                        <label className="space-y-1">
+                            <span className="text-xs font-medium text-secondary">科目類型</span>
+                            <select
+                                value={filters.type ?? ''}
+                                onChange={(event) => updateFilter('type', event.target.value)}
+                                className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                            >
+                                <option value="">全部科目類型</option>
+                                {Object.entries(accountTypes).map(([value, label]) => (
+                                    <option key={value} value={value}>{label}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <label className="space-y-1">
+                            <span className="text-xs font-medium text-secondary">啟用狀態</span>
+                            <select
+                                value={filters.is_active ?? ''}
+                                onChange={(event) => updateFilter('is_active', event.target.value)}
+                                className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                            >
+                                <option value="">全部狀態</option>
+                                <option value="1">啟用</option>
+                                <option value="0">停用</option>
+                            </select>
+                        </label>
+                    </div>
                 </section>
 
                 <section className="overflow-x-auto rounded-2xl border border-default bg-surface">
                     {rows.length === 0 ? (
-                        <div className="p-8 text-center text-sm text-muted">目前沒有符合條件的會計科目。</div>
+                        <div className="p-10 text-center">
+                            <p className="text-sm font-medium text-primary">目前沒有符合條件的會計科目。</p>
+                            {can.create && <p className="mt-2 text-sm text-muted">可新增科目，或執行預設會計科目 Seeder。</p>}
+                        </div>
                     ) : (
                         <table className="min-w-full text-sm">
-                            <thead className="bg-slate-50 text-left text-xs text-muted dark:bg-slate-900/40">
+                            <thead className="bg-slate-50 text-left text-[11px] uppercase tracking-[0.12em] text-muted dark:bg-slate-900/40">
                                 <tr>
-                                    <th className="px-3 py-3 font-medium">科目編號</th>
-                                    <th className="px-3 py-3 font-medium">科目名稱</th>
-                                    <th className="px-3 py-3 font-medium">科目類型</th>
-                                    <th className="px-3 py-3 font-medium">期初餘額</th>
-                                    <th className="px-3 py-3 font-medium">狀態</th>
-                                    <th className="px-3 py-3 font-medium">操作人員</th>
-                                    <th className="px-3 py-3 font-medium">操作</th>
+                                    <th className="px-4 py-3 font-semibold">科目編號</th>
+                                    <th className="px-4 py-3 font-semibold">科目名稱</th>
+                                    <th className="px-4 py-3 font-semibold">科目類型</th>
+                                    <th className="px-4 py-3 text-right font-semibold">期初餘額</th>
+                                    <th className="px-4 py-3 font-semibold">狀態</th>
+                                    <th className="px-4 py-3 font-semibold">操作人員</th>
+                                    <th className="px-4 py-3 text-right font-semibold">操作</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {rows.map((account) => (
-                                    <tr key={account.id} className="border-t border-default">
-                                        <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{account.code}</td>
-                                        <td className="px-3 py-3 whitespace-nowrap">{account.name}</td>
-                                        <td className="px-3 py-3 whitespace-nowrap">
-                                            <span className="inline-flex rounded-full border border-default px-2 py-1 text-xs text-secondary">
+                                    <tr key={account.id} className="border-t border-default transition hover:bg-slate-50/70 dark:hover:bg-slate-900/30">
+                                        <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold tracking-[0.08em] text-primary">{account.code}</td>
+                                        <td className="whitespace-nowrap px-4 py-3 font-medium text-primary">{account.name}</td>
+                                        <td className="whitespace-nowrap px-4 py-3">
+                                            <span className="inline-flex rounded-full border border-default bg-slate-50 px-2.5 py-1 text-xs font-medium text-secondary dark:bg-slate-900/40">
                                                 {accountTypes[account.type] ?? account.type}
                                             </span>
                                         </td>
-                                        <td className="px-3 py-3 whitespace-nowrap">$ {formatMoney(account.opening_balance)}</td>
-                                        <td className="px-3 py-3 whitespace-nowrap">
-                                            <span className={`inline-flex rounded-full px-2 py-1 text-xs ${account.is_active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'}`}>
+                                        <td className="whitespace-nowrap px-4 py-3 text-right font-mono text-xs text-primary">$ {formatMoney(account.opening_balance)}</td>
+                                        <td className="whitespace-nowrap px-4 py-3">
+                                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${account.is_active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'}`}>
                                                 {statusText(account.is_active)}
                                             </span>
                                         </td>
-                                        <td className="px-3 py-3 whitespace-nowrap">{account.operator_name ?? '—'}</td>
-                                        <td className="px-3 py-3 whitespace-nowrap">
+                                        <td className="whitespace-nowrap px-4 py-3 text-secondary">{account.operator_name ?? '—'}</td>
+                                        <td className="whitespace-nowrap px-4 py-3 text-right">
                                             {can.update && (
-                                                <Link href={route('employee-system.accounting.accounts.edit', account.id)} className="text-primary underline underline-offset-2">
+                                                <Link href={route('employee-system.accounting.accounts.edit', account.id)} className="inline-flex rounded-lg border border-default px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary">
                                                     編輯
                                                 </Link>
                                             )}
@@ -125,13 +153,13 @@ export default function AccountingAccountsIndex({ auth, accounts, filters = {}, 
                 </section>
 
                 {links.length > 0 && (
-                    <nav className="flex flex-wrap gap-2">
+                    <nav className="flex flex-wrap gap-2 rounded-2xl border border-default bg-surface p-3">
                         {links.map((link, index) => (
                             <Link
                                 key={`${link.label}-${index}`}
                                 href={link.url ?? '#'}
                                 preserveScroll
-                                className={`rounded-lg border border-default px-3 py-2 text-sm ${link.active ? 'bg-primary text-white' : 'bg-surface text-secondary'} ${!link.url ? 'pointer-events-none opacity-40' : ''}`}
+                                className={`rounded-lg border border-default px-3 py-2 text-sm font-medium ${link.active ? 'bg-primary text-white' : 'bg-surface text-secondary hover:border-primary hover:text-primary'} ${!link.url ? 'pointer-events-none opacity-40' : ''}`}
                             >
                                 {paginationLabel(link.label)}
                             </Link>
@@ -140,5 +168,14 @@ export default function AccountingAccountsIndex({ auth, accounts, filters = {}, 
                 )}
             </div>
         </DashboardLayout>
+    );
+}
+
+function SummaryCard({ label, value, tone }) {
+    return (
+        <div className="rounded-2xl border border-default bg-surface p-4">
+            <p className="text-xs font-medium text-muted">{label}</p>
+            <p className={`mt-2 truncate text-2xl font-semibold ${tone}`}>{value}</p>
+        </div>
     );
 }

@@ -23,20 +23,22 @@ export default function AccountingAccountsCreate({ auth, accountTypes = {} }) {
 
     return (
         <DashboardLayout user={auth.user}>
-            <div className="space-y-4 p-6">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-5 p-4 md:p-6">
+                <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-default bg-surface p-5">
                     <div>
-                        <h1 className="text-xl font-semibold text-primary">新增會計科目</h1>
-                        <p className="mt-1 text-sm text-secondary">維護科目表、科目類型與期初餘額</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">會計科目設定</p>
+                        <h1 className="mt-2 text-2xl font-semibold text-primary">新增科目</h1>
+                        <p className="mt-2 text-sm text-secondary">建立公司層級科目表主檔，供會計傳票分錄選用。</p>
                     </div>
-                    <Link href={route('employee-system.accounting.accounts.index')} className="rounded-lg border border-default px-3 py-2 text-sm font-medium text-secondary">返回列表</Link>
+                    <Link href={route('employee-system.accounting.accounts.index')} className="rounded-lg border border-default px-4 py-2 text-sm font-semibold text-secondary transition hover:border-primary hover:text-primary">返回列表</Link>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-default bg-surface p-4">
+                <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-default bg-surface p-4 md:p-5">
                     <AccountingAccountForm data={data} setData={setData} errors={errors} accountTypes={accountTypes} />
 
-                    <div className="flex items-center gap-3">
-                        <button type="submit" disabled={processing} className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                    <div className="flex items-center justify-end gap-3 border-t border-default pt-4">
+                        <Link href={route('employee-system.accounting.accounts.index')} className="rounded-lg border border-default px-4 py-2 text-sm font-semibold text-secondary transition hover:border-primary hover:text-primary">返回</Link>
+                        <button type="submit" disabled={processing} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">
                             {processing ? '儲存中...' : '儲存'}
                         </button>
                     </div>
