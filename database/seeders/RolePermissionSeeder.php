@@ -17,7 +17,7 @@ class RolePermissionSeeder extends Seeder
     /**
      * 權限 action 白名單（僅允許統一命名的固定動作）。
      */
-    private const ACTION_WHITELIST = ['view', 'create', 'update', 'delete', 'export', 'approve', 'void', 'mark-sold', 'manage'];
+    private const ACTION_WHITELIST = ['view', 'create', 'update', 'delete', 'export', 'approve', 'post', 'void', 'mark-sold', 'manage'];
 
     /**
      * Seed the application's RBAC foundation.
@@ -186,7 +186,7 @@ class RolePermissionSeeder extends Seeder
                 'sort_order' => 38,
                 'is_enabled' => true,
                 'is_active' => true,
-                'active_patterns' => ['employee-system.accounting.accounts.*'],
+                'active_patterns' => ['employee-system.accounting.accounts.*', 'employee-system.accounting.journal-entries.*'],
             ],
             'audit' => [
                 'label' => '稽核紀錄',
@@ -255,6 +255,11 @@ class RolePermissionSeeder extends Seeder
             'module.accounting.accounts.view' => ['label' => '查看會計科目', 'group' => '會計科目'],
             'module.accounting.accounts.create' => ['label' => '建立會計科目', 'group' => '會計科目'],
             'module.accounting.accounts.update' => ['label' => '更新會計科目', 'group' => '會計科目'],
+            'module.accounting.journals.view' => ['label' => '查看會計傳票', 'group' => '會計傳票'],
+            'module.accounting.journals.create' => ['label' => '建立會計傳票', 'group' => '會計傳票'],
+            'module.accounting.journals.update' => ['label' => '更新會計傳票', 'group' => '會計傳票'],
+            'module.accounting.journals.post' => ['label' => '過帳會計傳票', 'group' => '會計傳票'],
+            'module.accounting.journals.void' => ['label' => '作廢會計傳票', 'group' => '會計傳票'],
             'module.customers.view' => ['label' => '查看客戶', 'group' => '客戶管理'],
             'module.customers.create' => ['label' => '建立客戶', 'group' => '客戶管理'],
             'module.customers.update' => ['label' => '更新客戶', 'group' => '客戶管理'],
@@ -360,6 +365,11 @@ class RolePermissionSeeder extends Seeder
                 'module.accounting.accounts.view',
                 'module.accounting.accounts.create',
                 'module.accounting.accounts.update',
+                'module.accounting.journals.view',
+                'module.accounting.journals.create',
+                'module.accounting.journals.update',
+                'module.accounting.journals.post',
+                'module.accounting.journals.void',
                 'module.customers.view',
                 'module.customers.create',
                 'module.customers.update',
@@ -403,6 +413,11 @@ class RolePermissionSeeder extends Seeder
                 'module.accounting.accounts.view',
                 'module.accounting.accounts.create',
                 'module.accounting.accounts.update',
+                'module.accounting.journals.view',
+                'module.accounting.journals.create',
+                'module.accounting.journals.update',
+                'module.accounting.journals.post',
+                'module.accounting.journals.void',
                 'module.customers.view',
                 'module.vehicles.view',
                 'module.vehicles.sales.view',

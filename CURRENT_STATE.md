@@ -2,10 +2,10 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 completed。
-- 穩定節點：Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 completed。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 completed；Accounting Phase 2 completed；Accounting Phase 3 completed。
+- 穩定節點：Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 completed；Accounting Phase 2 completed；Accounting Phase 3 completed。
 - 最新驗證狀態：最近分段驗證包含 `CustomerTest + ReceivableTest：27 passed / 359 assertions`、`VehicleSaleTest + VehicleSalePaymentTest：30 passed / 407 assertions`、`npm run build` 通過；最新完整測試待重新執行 full test。
-- 本文件為目前穩定節點同步整理；目前不實作新功能、不做退款、不做完整會計傳票、不做發票、不做報表、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
+- 本文件為目前穩定節點同步整理；目前不實作退款、不做 AR / AP / cash / invoice / reports 整合、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
 
 ## 技術棧
 
@@ -37,6 +37,8 @@
 - Receivables mark-sold action
 - Audit log display localization
 - Accounting Phase 1：Chart of Accounts
+- Accounting Phase 2：Journal Draft Foundation
+- Accounting Phase 3：Journal Posting / Voiding
 
 ## Accounting Phase 1
 
@@ -46,6 +48,33 @@
 - 正式餘額後續應由 journal lines 計算。
 - No journals yet。
 - No AR/AP/cash/invoice/report integration yet。
+
+## Accounting Phase 2
+
+- Manual draft journal entries completed。
+- Debit / credit balance validation completed。
+- JE number generation completed：`JE-YYYYMM-0001`，依 `company_id + YYYYMM` 遞增。
+- Journal Draft pages completed：Index / Create / Show / Edit。
+- Journal Draft backend completed：migration / model / policy / request / validator / number service / controller。
+- Audit events completed：`accounting_journal.created`、`accounting_journal.updated`。
+- 目前僅支援 draft 建立與編輯。
+- Journal posting / voiding completed。
+- Posted / voided lock rules completed。
+- No AR/AP/cash/invoice/report integration yet。
+- No automatic Receivables / Vehicle Costs integration yet。
+- No profit / gross margin payload added。
+
+## Accounting Phase 3
+
+- Journal posting completed。
+- Journal voiding completed。
+- Posted journals cannot be updated。
+- Voided journals cannot be updated。
+- Draft journals cannot be voided。
+- Voided journals cannot be posted。
+- No AR/AP/cash/invoice/report integration yet。
+- No automatic journals from sales/costs yet。
+- No profit / gross margin payload added。
 
 ## Customer Module MVP 能力
 

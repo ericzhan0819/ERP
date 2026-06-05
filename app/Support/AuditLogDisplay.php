@@ -14,6 +14,8 @@ class AuditLogDisplay
     private const EVENT_LABELS = [
         'accounting_account.created' => '新增會計科目',
         'accounting_account.updated' => '更新會計科目',
+        'accounting_journal.created' => '新增會計傳票',
+        'accounting_journal.updated' => '更新會計傳票',
         'vehicle.created' => '新增車輛',
         'vehicle.updated' => '更新車輛資料',
         'vehicle_cost.created' => '新增車輛成本',
@@ -38,6 +40,7 @@ class AuditLogDisplay
      */
     private const MODULE_LABELS = [
         'accounting_accounts' => '會計科目',
+        'accounting_journals' => '會計傳票',
         'vehicles' => '車輛管理',
         'vehicle' => '車輛管理',
         'vehicle_sales' => '車輛銷售',
@@ -145,6 +148,7 @@ class AuditLogDisplay
         return match (true) {
             str_starts_with($eventKey, 'vehicle_sale_payment.') => '收款管理',
             str_starts_with($eventKey, 'accounting_account.') => '會計科目',
+            str_starts_with($eventKey, 'accounting_journal.') => '會計傳票',
             $eventKey === 'vehicle_sale.marked_sold_from_receivable' => '收款管理',
             str_starts_with($eventKey, 'vehicle_sale.') => '車輛銷售',
             str_starts_with($eventKey, 'vehicle_cost.') => '車輛成本',

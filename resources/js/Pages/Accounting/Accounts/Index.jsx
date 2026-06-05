@@ -38,9 +38,14 @@ export default function AccountingAccountsIndex({ auth, accounts, filters = {}, 
                         <p className="mt-1 text-sm text-secondary">維護科目表、科目類型與期初餘額</p>
                     </div>
                     {can.create && (
-                        <Link href={route('employee-system.accounting.accounts.create')} className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
-                            新增科目
-                        </Link>
+                        <div className="flex flex-wrap gap-2">
+                            <Link href={route('employee-system.accounting.journal-entries.index')} className="inline-flex items-center justify-center rounded-lg border border-default px-4 py-2 text-sm font-semibold text-secondary transition hover:opacity-90">
+                                傳票管理
+                            </Link>
+                            <Link href={route('employee-system.accounting.accounts.create')} className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+                                新增科目
+                            </Link>
+                        </div>
                     )}
                 </div>
 

@@ -17,9 +17,9 @@
 
 # System Status
 
-目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 completed。
+目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 completed；Accounting Phase 2 completed；Accounting Phase 3 completed。
 
-目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 2 獨立入口與 create / edit 工作台、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、客戶管理 MVP、客戶交易紀錄、Audit log display localization、Accounting Phase 1 Chart of Accounts、系統稽核紀錄與登入紀錄。
+目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 2 獨立入口與 create / edit 工作台、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、客戶管理 MVP、客戶交易紀錄、Audit log display localization、Accounting Phase 1 Chart of Accounts、Accounting Phase 2 Journal Draft Foundation、Accounting Phase 3 Journal Posting / Voiding、系統稽核紀錄與登入紀錄。
 
 目前穩定節點：
 
@@ -28,6 +28,8 @@ main / origin main
 Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed
 Vehicle Cost Management Phase 2 completed
 Accounting Phase 1 completed
+Accounting Phase 2 completed
+Accounting Phase 3 completed
 ```
 
 最近分段驗證結果：
@@ -221,8 +223,44 @@ archived   已封存
 - 後端權限：`module.accounting.view`、`module.accounting.accounts.view`、`module.accounting.accounts.create`、`module.accounting.accounts.update`
 - Opening balance stored but not used as official balance yet
 - Audit events：`accounting_account.created`、`accounting_account.updated`
-- No journals yet
+- Chart of Accounts 已可作為 Journal Draft 科目來源
 - No AR/AP/cash/invoice/report integration yet
+
+## Accounting Phase 2
+
+- Journal Draft Foundation
+- 資料表：`accounting_journal_entries`
+- 資料表：`accounting_journal_entry_lines`
+- 資料表：`accounting_journal_number_sequences`
+- JE 編號規則：`JE-YYYYMM-0001`
+- 獨立 Inertia 頁面：Index / Create / Show / Edit
+- 後端權限：`module.accounting.journals.view`、`module.accounting.journals.create`、`module.accounting.journals.update`
+- 借貸平衡驗證：
+  - 至少兩列
+  - total debit = total credit
+  - total debit > 0
+  - 單列 debit / credit 不可同時大於 0
+  - 單列 debit / credit 不可同時為 0
+  - account 必須屬於同 company 且為 active account
+- Audit events：`accounting_journal.created`、`accounting_journal.updated`
+- 目前僅支援 draft 建立與編輯
+- Journal posting / voiding completed。
+- Posted / voided lock rules completed。
+- No AR/AP/cash/invoice/report integration yet
+- No automatic Receivables / Vehicle Costs integration yet
+- No profit / gross margin payload added
+
+## Accounting Phase 3
+
+- Journal posting completed。
+- Journal voiding completed。
+- Posted journals cannot be updated。
+- Voided journals cannot be updated。
+- Draft journals cannot be voided。
+- Voided journals cannot be posted。
+- No AR/AP/cash/invoice/report integration yet。
+- No automatic journals from sales/costs yet。
+- No profit / gross margin payload added。
 
 ## Current Business Flow
 
