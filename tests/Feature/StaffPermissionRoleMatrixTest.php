@@ -220,7 +220,7 @@ it('permissionMatrix exposes transaction completion actions and action labels', 
         );
 });
 
-it('permissionMatrix exposes accounting events review action', function (): void {
+it('permissionMatrix exposes accounting events review and void actions', function (): void {
     $this->seed(RolePermissionSeeder::class);
 
     $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
@@ -236,10 +236,12 @@ it('permissionMatrix exposes accounting events review action', function (): void
                     && ($matrix['accounting.events']['label'] ?? null) === '會計事件'
                     && ($matrix['accounting.events']['actions']['view']['permission'] ?? null) === 'module.accounting.events.view'
                     && ($matrix['accounting.events']['actions']['review']['permission'] ?? null) === 'module.accounting.events.review'
+                    && ($matrix['accounting.events']['actions']['void']['permission'] ?? null) === 'module.accounting.events.void'
                     && ! isset($matrix['accounting.events']['actions']['convert'])
-                    && ! isset($matrix['accounting.events']['actions']['void']);
+                    && ! isset($matrix['accounting.events']['actions']['create']);
             })
             ->where('actionLabels.review', '覆核')
+            ->where('actionLabels.void', '作廢')
         );
 });
 
@@ -363,6 +365,7 @@ it('default accounting role aligns with receivables confirmation workflow', func
         ->and($role->hasPermissionTo('module.receivables.mark-sold'))->toBeTrue()
         ->and($role->hasPermissionTo('module.vehicles.sales.view'))->toBeTrue()
         ->and($role->hasPermissionTo('module.accounting.events.review'))->toBeTrue()
+        ->and($role->hasPermissionTo('module.accounting.events.void'))->toBeTrue()
         ->and($role->hasPermissionTo('module.customers.view'))->toBeTrue()
         // 技術註解：會計只處理收款確認，不預設建立銷售或讀取成本/稽核資料，避免職責外資料外洩。
         ->and($role->hasPermissionTo('module.customers.sensitive.view'))->toBeFalse()
@@ -492,7 +495,8 @@ it('admin and accounting templates keep split accounting permissions', function 
             ->and($role->hasPermissionTo('module.accounting.journals.update'))->toBeTrue()
             ->and($role->hasPermissionTo('module.accounting.journals.post'))->toBeTrue()
             ->and($role->hasPermissionTo('module.accounting.journals.void'))->toBeTrue()
-            ->and($role->hasPermissionTo('module.accounting.events.review'))->toBeTrue();
+            ->and($role->hasPermissionTo('module.accounting.events.review'))->toBeTrue()
+            ->and($role->hasPermissionTo('module.accounting.events.void'))->toBeTrue();
     }
 });
 

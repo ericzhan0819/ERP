@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ReviewAccountingEventRequest;
+use App\Http\Requests\VoidAccountingEventRequest;
 use App\Models\AccountingEvent;
 use App\Services\AuditLogService;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -117,6 +118,7 @@ class AccountingEventController extends Controller
             'can' => [
                 'view' => $request->user()?->can('module.accounting.events.view') ?? false,
                 'review' => $request->user()?->can('review', $event) ?? false,
+                'void' => $request->user()?->can('void', $event) ?? false,
             ],
         ]);
     }
@@ -164,6 +166,53 @@ class AccountingEventController extends Controller
 
         return redirect()->route('employee-system.accounting.events.show', $event->id)
             ->with('success', '會計事件已覆核');
+    }
+
+    /**
+     * 技術註解：作廢只處理未轉傳票的候選事件；跨租戶先 404，再由 Policy 檢查 void 權限與狀態，避免 IDOR 與權限擴張。
+     */
+    public function void(VoidAccountingEventRequest $request, int $accountingEvent): RedirectResponse
+    {
+        $event = $this->scopedEventQuery($request->user())
+            ->with(['reviewer:id,name', 'voider:id,name'])
+            ->whereKey($accountingEvent)
+            ->firstOrFail();
+
+        $this->authorize('void', $event);
+        abort_unless(in_array($event->status, ['pending', 'reviewed'], true), 403);
+        abort_unless($event->converted_journal_entry_id === null, 403);
+        abort_unless($event->voided_at === null, 403);
+
+        $validated = $request->validated();
+        $oldValues = $this->voidAuditSnapshot($event, 'old_status');
+
+        DB::transaction(function () use ($request, $event, $validated, $oldValues): void {
+            // 技術註解：只更新作廢 allowlist 欄位，不清除 review 欄位、不接收 journal 或認列欄位，避免尚未設計的沖銷/退款流程被注入。
+            $event->forceFill([
+                'status' => 'voided',
+                'void_reason' => $validated['void_reason'],
+                'voided_by' => (int) $request->user()->id,
+                'voided_at' => now(),
+            ])->save();
+
+            $event->load(['reviewer:id,name', 'voider:id,name']);
+
+            $this->auditLogService->log(
+                $request->user(),
+                'accounting_event.voided',
+                'Accounting event voided',
+                null,
+                ['module' => 'accounting_events'],
+                $event,
+                $oldValues,
+                $this->voidAuditSnapshot($event, 'new_status'),
+                $request,
+                'accounting_event.voided',
+            );
+        });
+
+        return redirect()->route('employee-system.accounting.events.show', $event->id)
+            ->with('success', '會計事件已作廢');
     }
 
     private function scopedEventQuery(?Authenticatable $user): Builder
@@ -276,6 +325,26 @@ class AccountingEventController extends Controller
             'event_type' => $event->event_type,
             $statusKey => $event->status,
             'review_note' => $event->review_note,
+            'reviewed_by_name' => $event->reviewer?->name,
+            'reviewed_at' => optional($event->reviewed_at)->toISOString(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function voidAuditSnapshot(AccountingEvent $event, string $statusKey): array
+    {
+        return [
+            'id' => $event->id,
+            'source_type' => $event->source_type,
+            'source_id' => $event->source_id,
+            'source_number' => $event->source_number,
+            'event_type' => $event->event_type,
+            $statusKey => $event->status,
+            'void_reason' => $event->void_reason,
+            'voided_by_name' => $event->voider?->name,
+            'voided_at' => optional($event->voided_at)->toISOString(),
             'reviewed_by_name' => $event->reviewer?->name,
             'reviewed_at' => optional($event->reviewed_at)->toISOString(),
         ];

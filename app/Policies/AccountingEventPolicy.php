@@ -36,6 +36,18 @@ class AccountingEventPolicy
             && $event->converted_journal_entry_id === null;
     }
 
+    /**
+     * 技術註解：作廢僅限尚未轉傳票的 pending/reviewed 事件，避免未設計的 journal cancellation、reversal 或營收/成本認列被繞過。
+     */
+    public function void(User $user, AccountingEvent $event): bool
+    {
+        return $user->can('module.accounting.events.void')
+            && $this->isSameTenant($user, $event)
+            && in_array($event->status, ['pending', 'reviewed'], true)
+            && $event->voided_at === null
+            && $event->converted_journal_entry_id === null;
+    }
+
     private function isSameTenant(User $user, AccountingEvent $event): bool
     {
         $userCompanyId = (int) ($user->company_id ?? 0);

@@ -269,6 +269,11 @@ Route::patch('/employee-system/accounting/events/{accountingEvent}/review', [Acc
     ->whereNumber('accountingEvent')
     ->name('employee-system.accounting.events.review');
 
+Route::patch('/employee-system/accounting/events/{accountingEvent}/void', [AccountingEventController::class, 'void'])
+    ->middleware(['auth', 'module.access:accounting-events'])
+    ->whereNumber('accountingEvent')
+    ->name('employee-system.accounting.events.void');
+
 Route::get('/employee-system/accounting/journal-entries', [AccountingJournalEntryController::class, 'index'])
     ->middleware(['auth', 'module.access:accounting-journals'])
     ->name('employee-system.accounting.journal-entries.index');

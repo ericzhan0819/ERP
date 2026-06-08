@@ -330,7 +330,7 @@ it('RolePermissionSeeder registers accounting events review permission', functio
         ->and($accounting->hasPermissionTo('module.accounting.events.review'))->toBeTrue()
         ->and($viewer->hasPermissionTo('module.accounting.events.review'))->toBeFalse()
         ->and(Permission::query()->where('name', 'module.accounting.events.convert')->exists())->toBeFalse()
-        ->and(Permission::query()->where('name', 'module.accounting.events.void')->exists())->toBeFalse();
+        ->and(Permission::query()->where('name', 'module.accounting.events.void')->exists())->toBeTrue();
 });
 
 it('Staff permission matrix displays accounting events review action', function (): void {
@@ -347,9 +347,11 @@ it('Staff permission matrix displays accounting events review action', function 
                 return isset($matrix['accounting.events'])
                     && ($matrix['accounting.events']['label'] ?? null) === '會計事件'
                     && ($matrix['accounting.events']['actions']['view']['permission'] ?? null) === 'module.accounting.events.view'
-                    && ($matrix['accounting.events']['actions']['review']['permission'] ?? null) === 'module.accounting.events.review';
+                    && ($matrix['accounting.events']['actions']['review']['permission'] ?? null) === 'module.accounting.events.review'
+                    && ($matrix['accounting.events']['actions']['void']['permission'] ?? null) === 'module.accounting.events.void';
             })
             ->where('actionLabels.review', '覆核')
+            ->where('actionLabels.void', '作廢')
         );
 });
 
