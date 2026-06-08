@@ -25,6 +25,11 @@ export default function ReceivablesIndex({ auth, sales, filters = {}, receivable
                     <p className="mt-1 text-sm text-secondary">以銷售交易為來源，集中查看應收、已收與收款紀錄。</p>
                 </div>
 
+                <section className="rounded-2xl border border-default bg-surface p-4 text-sm text-secondary">
+                    <p className="font-semibold text-primary">收款語意提示</p>
+                    <p className="mt-2 text-xs leading-6 text-muted">本頁處理應收、已收、未收與收款紀錄；paid / overpaid 只代表收款面已完成或超收，不等於收入認列，也不等於交車完成。mark sold 只銜接銷售與車輛售出狀態，不會自動入帳。</p>
+                </section>
+
                 <section className="grid grid-cols-1 gap-3 rounded-2xl border border-default bg-surface p-4 md:grid-cols-3">
                     <input value={filters.q ?? ''} onChange={(event) => updateFilter('q', event.target.value)} placeholder="搜尋車輛 / VIN / 客戶 / 電話" className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm" />
                     <select value={filters.receivable_status ?? 'all'} onChange={(event) => updateFilter('receivable_status', event.target.value)} className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm">

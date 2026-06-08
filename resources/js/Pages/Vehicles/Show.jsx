@@ -157,7 +157,10 @@ export default function VehiclesShow({
 
                 {canViewVehicleSales && (
                     <section className="space-y-4 rounded-2xl border border-default bg-surface p-4 text-secondary">
-                        <h2 className="text-sm font-semibold text-primary">銷售紀錄</h2>
+                        <div>
+                            <h2 className="text-sm font-semibold text-primary">銷售紀錄</h2>
+                            <p className="mt-1 text-xs text-muted">sold 只代表銷售流程已進入售出狀態，不等於交車完成、收入認列或 COGS 認列；完整交易完成將在後續獨立處理。</p>
+                        </div>
 
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <div className="rounded-xl border border-default p-3">
@@ -234,6 +237,7 @@ export default function VehiclesShow({
                                                                 <span>收款紀錄：{formatNumber(sale.payment_summary.payment_record_count)} 筆（含作廢）</span>
                                                             </div>
                                                             {sale.payment_summary.receivable_status === 'overpaid' && <p className="mt-2 text-xs text-amber-700">提醒：此筆銷售目前為超收狀態，請確認收款紀錄。</p>}
+                                                            <p className="mt-2 text-xs text-muted">收款狀態只反映款項紀錄，不代表正式會計分錄或收入認列。</p>
                                                             <Link href={route('employee-system.receivables.show', sale.id)} className="mt-2 inline-flex text-xs text-accent underline">前往收款管理</Link>
                                                             <div className="mt-2 space-y-1 text-xs text-secondary">
                                                                 {(sale.payments || []).length === 0 ? <p className="text-muted">尚無收款紀錄。</p> : sale.payments.map((payment) => (
@@ -254,7 +258,10 @@ export default function VehiclesShow({
 
                 {canViewVehicleCosts && (
                     <section className="space-y-4 rounded-2xl border border-default bg-surface p-4 text-secondary">
-                        <h2 className="text-sm font-semibold text-primary">成本管理</h2>
+                        <div>
+                            <h2 className="text-sm font-semibold text-primary">成本管理</h2>
+                            <p className="mt-1 text-xs text-muted">成本資料是營運成本紀錄，不代表已轉入 COGS；本頁目前不顯示 profit / gross margin，也不做 revenue / COGS recognition。</p>
+                        </div>
 
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <div className="rounded-xl border border-default p-3">

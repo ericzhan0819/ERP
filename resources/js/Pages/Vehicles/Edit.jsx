@@ -326,7 +326,10 @@ export default function VehiclesEdit({
 
                 {canViewVehicleSales && (
                     <section className="space-y-4 rounded-2xl border border-default bg-surface p-4 text-secondary">
-                        <h2 className="text-sm font-semibold text-primary">銷售紀錄</h2>
+                        <div>
+                            <h2 className="text-sm font-semibold text-primary">銷售紀錄</h2>
+                            <p className="mt-1 text-xs text-muted">reserved / sold / cancelled 是銷售流程狀態；mark sold 不等於收入認列，Confirm Delivery / Complete Transaction 尚未實作，未來會獨立於 mark sold 處理。</p>
+                        </div>
 
                         <div className="space-y-2 text-sm">
                             {vehicle.lifecycle_status === 'sold' && (
@@ -386,7 +389,7 @@ export default function VehiclesEdit({
                                     </label>
                                     <label className="text-sm"><span className="mb-1 block text-muted">客戶名稱快照</span><input type="text" value={saleForm.data.customer_name} onChange={(event) => saleForm.setData('customer_name', event.target.value)} readOnly={saleForm.data.customer_id !== ''} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm read-only:bg-slate-50 read-only:text-muted dark:read-only:bg-slate-900/40" /></label>
                                     <label className="text-sm"><span className="mb-1 block text-muted">客戶電話快照</span><input type="text" value={saleForm.data.customer_phone} onChange={(event) => saleForm.setData('customer_phone', event.target.value)} readOnly={saleForm.data.customer_id !== ''} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm read-only:bg-slate-50 read-only:text-muted dark:read-only:bg-slate-900/40" /></label>
-                                    <label className="text-sm"><span className="mb-1 block text-muted">銷售狀態</span><select value={saleForm.data.sale_status} onChange={(event) => saleForm.setData('sale_status', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm">{Object.entries(vehicleSaleStatuses || {}).map(([value, label]) => (<option key={value} value={value}>{label}</option>))}</select>{saleStatusHelpText[saleForm.data.sale_status] && <span className="mt-1 block text-xs text-muted">{saleStatusHelpText[saleForm.data.sale_status]}</span>}</label>
+                                    <label className="text-sm"><span className="mb-1 block text-muted">銷售狀態</span><select value={saleForm.data.sale_status} onChange={(event) => saleForm.setData('sale_status', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm">{Object.entries(vehicleSaleStatuses || {}).map(([value, label]) => (<option key={value} value={value}>{label}</option>))}</select>{saleStatusHelpText[saleForm.data.sale_status] && <span className="mt-1 block text-xs text-muted">{saleStatusHelpText[saleForm.data.sale_status]} 此狀態不代表交車完成或收入認列。</span>}</label>
                                     <label className="text-sm"><span className="mb-1 block text-muted">銷售價格</span><input type="number" step="0.01" min="0" value={saleForm.data.sale_price} onChange={(event) => saleForm.setData('sale_price', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
                                     <label className="text-sm"><span className="mb-1 block text-muted">訂金快照（不列入收款計算）</span><input type="number" step="0.01" min="0" value={saleForm.data.deposit_amount} onChange={(event) => saleForm.setData('deposit_amount', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /><span className="mt-1 block text-xs text-muted">實際收款請使用下方收款紀錄；此欄位僅保留舊資料備註。</span></label>
                                     <label className="text-sm"><span className="mb-1 block text-muted">成交日</span><input type="date" value={saleForm.data.sold_at} onChange={(event) => saleForm.setData('sold_at', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" /></label>
@@ -459,6 +462,7 @@ export default function VehiclesEdit({
                                                             <span>應收：{formatNumber(sale.payment_summary.receivable_amount)}</span><span>已收：{formatNumber(sale.payment_summary.received_amount)}</span><span>未收：{formatNumber(sale.payment_summary.receivable_balance)}</span><span>狀態：{displayValue(sale.payment_summary.receivable_status_label)}</span><span>有效收款：{formatNumber(sale.payment_summary.received_payment_count)} 筆</span><span>收款紀錄：{formatNumber(sale.payment_summary.payment_record_count)} 筆（含作廢）</span>
                                                         </div>
                                                         {sale.payment_summary.receivable_status === 'overpaid' && <p className="mt-2 text-xs text-amber-700">提醒：此筆銷售目前為超收狀態，請確認收款紀錄。</p>}
+                                                        <p className="mt-2 text-xs text-muted">收款紀錄只代表付款資料，不代表收入認列或正式會計分錄。</p>
                                                         <Link href={route('employee-system.receivables.show', sale.id)} className="mt-2 inline-flex text-xs text-accent underline">前往收款管理</Link>
                                                         {canCreateVehicleSalePayments && <button type="button" onClick={() => setPaymentSaleId(paymentSaleId === sale.id ? null : sale.id)} className="ml-3 mt-2 text-xs text-secondary underline">舊入口新增收款</button>}
                                                         {paymentSaleId === sale.id && (
@@ -500,7 +504,10 @@ export default function VehiclesEdit({
 
                 {canViewVehicleCosts && (
                     <section className="space-y-4 rounded-2xl border border-default bg-surface p-4 text-secondary">
-                        <h2 className="text-sm font-semibold text-primary">成本管理</h2>
+                        <div>
+                            <h2 className="text-sm font-semibold text-primary">成本管理</h2>
+                            <p className="mt-1 text-xs text-muted">成本資料建立只是營運成本紀錄，不代表已轉入 COGS；未來收入與 COGS 認列需由交易完成與會計覆核流程觸發。</p>
+                        </div>
 
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <div className="rounded-xl border border-default p-3">
@@ -523,7 +530,10 @@ export default function VehiclesEdit({
 
                         {canCreateVehicleCosts && (
                             <form onSubmit={submitCostForm} className="space-y-3 rounded-xl border border-default p-4">
-                                <h3 className="text-sm font-semibold text-primary">新增成本</h3>
+                                <div>
+                                    <h3 className="text-sm font-semibold text-primary">新增成本</h3>
+                                    <p className="mt-1 text-xs text-muted">新增成本不會產生 COGS、AP 或 journal entry。</p>
+                                </div>
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                     <label className="text-sm">
                                         <span className="mb-1 block text-muted">成本類型</span>
