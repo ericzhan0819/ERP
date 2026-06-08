@@ -1,8 +1,8 @@
 # Accounting Event Foundation Spec
 
-> Status: Spec completed + Phase 1 foundation completed.
+> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed.
 > Scope: define Accounting Event product semantics, current foundation state, future data direction, status flow, source documents, tenant / permission / audit principles, and future Journal Draft / Revenue / COGS integration direction.
-> Phase 1 has implemented the minimal table, model, config, and tests only. It does not implement controllers, routes, policies, React pages, permissions, or runtime behavior.
+> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. It does not implement mutation routes, create / review / convert / void workflows, completion integration, journal draft generation, or accounting recognition runtime behavior.
 
 ## 1. Purpose
 
@@ -67,6 +67,19 @@ AccountingEventTest
 
 `AccountingEventTest` covers schema, casts, relationships, config, tenant scoped query, and completion regression. The completion regression confirms a successful completion action leaves `AccountingEvent::count()` at `0`.
 
+The current Accounting Event readonly workspace includes:
+
+```txt
+accounting-events module exists
+module.accounting.events.view exists
+Accounting Event readonly index/show routes exist
+AccountingEventController exists with index/show only
+AccountingEventPolicy exists with viewAny/view only
+React readonly Index / Show pages exist
+```
+
+`AccountingEventWorkspaceTest` covers route access, tenant scope, filters, payload sanitizer, module registry, staff permission matrix, no mutation routes, and completion regression.
+
 The following are not completed yet:
 
 ```txt
@@ -129,6 +142,7 @@ Important boundaries:
 
 - Phase 0 spec did not add migration.
 - Phase 1 has now added the minimal table / model / config / tests foundation.
+- Phase 2 has now added readonly index/show workspace routes, controller, policy, permission, module registry entry, React pages, and focused tests.
 - Future phases still must not assume runtime integration exists.
 - `payload` must not store sensitive personal data.
 - `payload` must not store profit / gross margin.
@@ -296,10 +310,15 @@ Vehicle Cost Management remains a business cost workflow until a future accounti
 
 ## 12. Permissions
 
-Future permission direction may include:
+Current implemented permission:
 
 ```txt
 module.accounting.events.view
+```
+
+Future permission direction may include:
+
+```txt
 module.accounting.events.create
 module.accounting.events.review
 module.accounting.events.convert
@@ -308,9 +327,9 @@ module.accounting.events.void
 
 Permission boundaries:
 
-- This is future direction only.
-- This document does not modify `RolePermissionSeeder.php`.
-- If an `accounting-events` module is added in the future, it should be independent from `accounting-accounts` and `accounting-journals`.
+- `module.accounting.events.view` is implemented.
+- `module.accounting.events.create/review/convert/void` remain future direction only and are not implemented.
+- `accounting-events` module is independent from `accounting-accounts` and `accounting-journals`.
 - `module.accounting.view` must not be used as the only permission for accounting events.
 
 ## 13. Tenant Scope
@@ -358,13 +377,13 @@ Audit payloads should use explicit allowlists and only include fields needed to 
 This phase does not do:
 
 ```txt
-No controller.
 No request.
-No policy.
-No route.
-No React page.
-No sidebar module.
-No permission seeding.
+No create route.
+No store route.
+No review route.
+No convert route.
+No void route.
+No mutation form.
 No automatic event creation from completion.
 No automatic journal draft generation.
 No automatic journal posting.
@@ -387,7 +406,7 @@ Suggested future small-step sequence:
 ```txt
 Phase 0: Spec completed.
 Phase 1: AccountingEvent table + model + config + tests completed.
-Phase 2: Accounting Event index/show readonly workspace.
+Phase 2: Accounting Event index/show readonly workspace completed.
 Phase 3: Completion -> pending accounting event, still no journal draft.
 Phase 4: Reviewed accounting event -> manual journal draft generation.
 Phase 5: Revenue / COGS draft mapping after account configuration exists.
@@ -400,9 +419,10 @@ Phase 1 did not directly connect completion to Accounting Event. The foundation 
 
 - This update changes documentation only.
 - Accounting Event Foundation Phase 1 exists.
-- No runtime integration exists.
+- Accounting Event Phase 2 readonly workspace exists.
+- No Accounting Event mutation workflow exists.
+- No runtime integration with completion exists.
 - Completion semantics remain unchanged.
 - Current accounting module boundaries remain unchanged.
-- This spec does not change permissions.
-- This spec does not change routes.
+- No journal draft / revenue / COGS / profit / gross margin runtime exists.
 - This spec can be used as the next Roo Code prompt reference for Accounting Event Foundation.

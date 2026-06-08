@@ -2,9 +2,9 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed。
 - 穩定節點：Transaction Completion MVP completed through UI，已涵蓋 RBAC foundation、Data model foundation、Backend completion action、Backend completion payload、React UI、Manual QA checklist documented。
-- 最新驗證狀態：`npm run build` passed；focused tests passed：`ReceivableTest：14 passed / 265 assertions`、`VehicleSaleTest：35 passed / 394 assertions`、`AccountingEventTest：5 passed / 32 assertions`；full test passed：`./vendor/bin/sail artisan test`，304 passed / 2646 assertions。
+- 最新驗證狀態：`npm run build` passed；focused tests passed：`ReceivableTest：14 passed / 265 assertions`、`VehicleSaleTest：35 passed / 394 assertions`、`AccountingEventWorkspaceTest：12 passed / 166 assertions`、`AccountingEventTest：5 passed / 32 assertions`；full test passed：`./vendor/bin/sail artisan test`，304 passed / 2646 assertions。
 - 本文件為目前穩定節點同步整理；目前不實作退款、不做 AR / AP / cash / invoice / reports 整合、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
 
 ## 技術棧
@@ -43,6 +43,7 @@
 - Accounting Journal Workbench UI Polish
 - Vehicle Cost Accounting Treatment Spec
 - Accounting Event Foundation Phase 1
+- Accounting Event Phase 2 readonly workspace
 - Confirm Delivery / Transaction Completion Spec
 - Sales / Payments / Delivery semantics UI hints
 - Transaction Completion / Confirm Delivery MVP：Completion RBAC、Completion data fields、Completion backend action、Completion payload、Completion UI、Completion audit event、Manual QA checklist
@@ -103,12 +104,31 @@
 - 已完成 `app/Models/AccountingEvent.php`。
 - 已完成 `config/accounting_events.php`。
 - 已完成 `tests/Feature/AccountingEventTest.php`。
-- `accounting_events` 目前只是後端 foundation domain object。
-- 目前沒有 route / controller / policy / permission / sidebar / React page。
+- `accounting_events` 目前已有 foundation domain object 與只讀 workspace。
 - 目前不會由 completion 自動建立 accounting event。
 - 目前不會轉 journal draft。
 - 目前不做 revenue / COGS / profit / gross margin。
 - Focused test：`./vendor/bin/sail artisan test tests/Feature/AccountingEventTest.php`，5 passed / 32 assertions。
+
+## Accounting Event Phase 2 Readonly Workspace
+
+- Accounting Event Phase 2 readonly workspace completed。
+- 已完成 `accounting-events` module entry。
+- 已完成 `module.accounting.events.view`。
+- 已完成 `AccountingEventController` index / show。
+- 已完成 `AccountingEventPolicy` viewAny / view。
+- 已完成 React readonly Index / Show。
+- 已完成 tenant-scoped query。
+- Show 不使用 implicit model binding，跨 tenant 優先 404。
+- Index 不輸出 payload JSON。
+- Show payload 會經 sanitizer 排除 sensitive / tenant raw ids / profit / gross margin / revenue / COGS recognition 相關 key。
+- `module.accounting.view` 不可單獨授權 accounting events。
+- `admin` 與 `accounting` 預設有 `module.accounting.events.view`。
+- `viewer` 預設沒有 `module.accounting.events.view`。
+- Focused test：`./vendor/bin/sail artisan test tests/Feature/AccountingEventWorkspaceTest.php`，12 passed / 166 assertions。
+- Focused test：`./vendor/bin/sail artisan test tests/Feature/AccountingEventTest.php`，5 passed / 32 assertions。
+- `npm run build` passed。
+- Accounting Event 目前只讀：index / show only；no create；no review；no convert；no void；no mutation route。
 
 ## Accounting Module Boundaries
 
@@ -183,7 +203,8 @@
 - Transaction Completion Backend Payload completed：Receivables Show 已提供完整 `sale.completion` object；Receivables Index 已提供 lightweight completion summary；Vehicle Show / Edit 已提供 readonly completion summary。
 - Transaction Completion React UI completed：Receivables Show 已有交易完成狀態、block reason、`completion_note` form、完成交易 action；Vehicle Show / Edit 只顯示唯讀 completion summary。
 - Receivables Show 是目前主要操作入口；Vehicle Show / Edit 只顯示唯讀 completion summary。
-- Accounting Event Foundation Phase 1 已存在，但目前沒有 completion runtime integration、journal draft generation、revenue recognition、COGS recognition、profit / gross margin payload、return / refund / reversal flow。
+- Accounting Event Foundation Phase 1 與 Phase 2 readonly workspace 已存在，但目前沒有 completion runtime integration、journal draft generation、revenue recognition、COGS recognition、profit / gross margin payload、return / refund / reversal flow。
+- Accounting Event review / convert / void 仍未實作。
 
 ## 車輛流程
 
@@ -217,8 +238,9 @@ Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Complete 
 Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Confirm Delivery / Complete Transaction → Accounting Event / Journal Draft → Revenue / COGS Recognition
 ```
 
-- Accounting Event Foundation Phase 1 已存在。
+- Accounting Event Foundation Phase 1 與 Phase 2 readonly workspace 已存在。
 - Completion → Accounting Event → Journal Draft → Revenue / COGS Recognition 仍是 future backlog，尚未接 runtime。
+- Accounting Event review / convert / void 仍未實作。
 - No automatic accounting event / journal draft generation yet。
 - No automatic revenue recognition。
 - No automatic COGS recognition。
@@ -330,8 +352,9 @@ Audit 資料原則：
 ## 已知限制
 
 - 尚未做完整會計。
-- 尚未實作 Accounting Event。
-- 尚未由 completion 自動產生 Journal Draft。
+- Accounting Event readonly workspace 已存在。
+- 尚未由 completion 自動產生 Accounting Event。
+- 尚未由 Accounting Event 產生 Journal Draft。
 - 尚未自動 revenue recognition。
 - 尚未自動 COGS recognition。
 - 尚未計算 profit / gross margin。
@@ -371,6 +394,7 @@ Audit 資料原則：
 - 後續可做：Accounting Event spec / implementation。
 - 後續可做：Completion → Accounting Event draft。
 - 後續可做：Accounting Event → Journal Draft。
+- 後續可做：Accounting Event review / convert / void workflow。
 - 後續可做：Revenue Recognition。
 - 後續可做：COGS Recognition。
 - 後續可做：Profit / Gross Margin reports。
