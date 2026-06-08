@@ -25,6 +25,9 @@ class VehicleSale extends Model
         'paid_amount',
         'sale_status',
         'sold_at',
+        'completed_at',
+        'completed_by',
+        'completion_note',
         'salesperson_name',
         'commission_amount',
         'notes',
@@ -47,6 +50,8 @@ class VehicleSale extends Model
             'paid_amount' => 'decimal:2',
             'commission_amount' => 'decimal:2',
             'sold_at' => 'datetime',
+            'completed_at' => 'datetime',
+            'completed_by' => 'integer',
             'created_by' => 'integer',
             'updated_by' => 'integer',
         ];
@@ -80,6 +85,12 @@ class VehicleSale extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function completer(): BelongsTo
+    {
+        // 技術註解：completed_by 是交易完成操作者，正式寫入必須由後端 action 控制，避免前端直接指定造成權限提升。
+        return $this->belongsTo(User::class, 'completed_by');
     }
 
     public function payments(): HasMany

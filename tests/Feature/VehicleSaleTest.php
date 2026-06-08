@@ -8,6 +8,7 @@ use App\Models\Vehicle;
 use App\Models\VehicleSale;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
@@ -158,6 +159,27 @@ function makeVehicleSaleRecord(Vehicle $vehicle, User $actor, array $overrides =
         'updated_by' => $actor->id,
     ], $overrides));
 }
+
+it('VehicleSale model 可儲存與讀取交易完成資料欄位', function (): void {
+    expect(Schema::hasColumns('vehicle_sales', ['completed_at', 'completed_by', 'completion_note']))->toBeTrue();
+
+    $user = makeVehicleSaleUser('vehicle-sale-completion-model@example.com');
+    $completer = makeVehicleSaleUser('vehicle-sale-completer@example.com');
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-COMPLETE-001', 'vin-sale-complete-001');
+    $completedAt = now()->setMicrosecond(0);
+
+    $sale = makeVehicleSaleRecord($vehicle, $user, [
+        'completed_at' => $completedAt,
+        'completed_by' => $completer->id,
+        'completion_note' => '交易資料已確認，保留給後續 completion action 使用。',
+    ])->fresh();
+
+    expect($sale->completed_at?->toDateTimeString())->toBe($completedAt->toDateTimeString())
+        ->and($sale->completed_by)->toBe($completer->id)
+        ->and($sale->completion_note)->toBe('交易資料已確認，保留給後續 completion action 使用。')
+        ->and($sale->completer)->not->toBeNull()
+        ->and($sale->completer?->id)->toBe($completer->id);
+});
 
 it('有 sales.view 權限者 Show/Edit payload 看得到 sales', function (): void {
     $user = makeVehicleSaleUser('vehicle-sale-view-allow@example.com');
