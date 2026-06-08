@@ -17,9 +17,11 @@
 
 # System Status
 
-目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Confirm Delivery / Transaction Completion Spec completed；Sales / Payments / Delivery semantics UI hints completed。
+目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI。
 
-目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 2 獨立入口與 create / edit 工作台、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、客戶管理 MVP、客戶交易紀錄、Audit log display localization、Accounting Phase 1 Chart of Accounts、Accounting Phase 2 Journal Draft Foundation、Accounting Phase 3 Journal Posting / Voiding、Accounting Journal Workbench UI Polish、Vehicle Cost Accounting Treatment Spec、Confirm Delivery / Transaction Completion Spec、Sales / Payments / Delivery semantics UI hints、系統稽核紀錄與登入紀錄。
+目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 2 獨立入口與 create / edit 工作台、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、Transaction Completion MVP through UI、客戶管理 MVP、客戶交易紀錄、Audit log display localization、Accounting Phase 1 Chart of Accounts、Accounting Phase 2 Journal Draft Foundation、Accounting Phase 3 Journal Posting / Voiding、Accounting Journal Workbench UI Polish、Vehicle Cost Accounting Treatment Spec、Sales / Payments / Delivery semantics UI hints、系統稽核紀錄與登入紀錄。
+
+Transaction Completion remains non-accounting。完成交易目前只記錄交易完成狀態與 audit event，不會自動產生 revenue / COGS / journal behavior。
 
 Accounting is now split by functional module boundaries：會計科目與會計傳票已拆成 `accounting-accounts`、`accounting-journals` 兩個獨立 module entries；`module.accounting.view` 僅保留為相容 / 分類概念，不作為功能入口唯一安全依據。
 
@@ -34,7 +36,7 @@ Accounting Phase 2 completed
 Accounting Phase 3 completed
 Accounting Journal Workbench UI Polish completed
 Vehicle Cost Accounting Treatment Spec completed
-Confirm Delivery / Transaction Completion Spec completed
+Transaction Completion MVP completed through UI
 Sales / Payments / Delivery semantics UI hints completed
 ```
 
@@ -182,6 +184,11 @@ module.vehicles.sales.payments.void
 - Vehicle Sales：銷售新增、更新、active sale guard 與 lifecycle sync。
 - Vehicle Sales customer linking foundation：可關聯 Customer 主檔並保留交易 snapshot，銷售 payload 不暴露 Customer sensitive 欄位。
 - Vehicle Payment / Receivable Foundation：每筆銷售可記錄多筆收款，收款編號 `PAY-YYYYMM-0001` 依公司月份遞增，已作廢收款不計入已收金額。
+- Complete Transaction / Confirm Delivery 已形成完整 MVP path。
+- Receivables Show 提供完成交易 action。
+- Vehicle Show / Edit 顯示唯讀交易完成狀態。
+- 完成交易會寫 `vehicle_sale.transaction_completed` audit event。
+- completion 不等於 accounting recognition。
 - 收款狀態：`unpaid`、`partial`、`paid`、`overpaid`；超收先允許並於 UI 提示。
 - Staff Permission matrix 支援 `vehicles.pricing`、`vehicles.costs`、`vehicles.sales` nested permissions。
 - 後端 payload 必須依權限控制；前端隱藏不等於安全；無權限者不能取得價格、成本、銷售、佣金等敏感資料。
@@ -295,8 +302,9 @@ archived   已封存
 ## Delivery / Accounting Specs
 
 - Vehicle Cost Accounting Treatment Spec completed：`docs/vehicle-cost-accounting-treatment-spec.md` 已文件化成本類型與會計處理方向。
-- Confirm Delivery / Transaction Completion Spec completed：`docs/confirm-delivery-transaction-completion-spec.md` 已文件化但尚未實作。
-- Confirm Delivery / Complete Transaction remains spec only, not implemented。
+- Transaction Completion MVP completed through UI：完成交易目前已有 RBAC、data fields、backend action、payload、React UI 與 audit event。
+- Receivables Show 是目前完成交易主要操作入口；Vehicle Show / Edit 只顯示唯讀交易完成狀態。
+- Transaction Completion remains non-accounting。
 - No automatic revenue recognition。
 - No automatic COGS recognition。
 - No accounting event / journal draft generation yet。
@@ -307,24 +315,27 @@ archived   已封存
 目前實際流程仍是：
 
 ```txt
-Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Customer Transaction History → Audit Logs
+Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Complete Transaction / Confirm Delivery → Customer Transaction History → Audit Logs
 ```
 
 - Customer 主檔可被 Vehicle Sale 關聯，並保留交易當下 customer snapshot。
 - Receivables / Payments 管理應收、已收、未收、收款狀態與收款紀錄。
 - Mark Sold 動作銜接收款 / 應收流程與車輛售出狀態。
+- Complete Transaction / Confirm Delivery 目前只代表交易完成狀態記錄，並寫入 audit event。
+- Complete Transaction / Confirm Delivery 不會自動產生 accounting event / journal draft。
+- Complete Transaction / Confirm Delivery 不會自動認列 revenue / COGS，也不計算 profit / gross margin。
 - Customer Transaction History 顯示客戶關聯銷售與收款摘要。
 - Audit Logs 顯示主要業務事件，並已完成顯示標籤在地化。
 
 未來規格方向是：
 
 ```txt
-Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Confirm Delivery / Complete Transaction → Accounting Event / Journal Draft → Revenue / COGS Recognition
+Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Complete Transaction / Confirm Delivery → Accounting Event / Journal Draft → Revenue / COGS Recognition
 ```
 
-- 後半段目前只是規格 / backlog，尚未實作。
+- `Accounting Event / Journal Draft → Revenue / COGS Recognition` 目前仍是 backlog，尚未實作。
 - 收款完成只代表款項已記錄，mark sold 只代表銷售與車輛售出狀態銜接。
-- 交車完成 / 完成交易未來會獨立處理；收入與 COGS 認列目前不會自動產生。
+- 交車完成 / 完成交易目前已作為 completion 狀態節點；收入與 COGS 認列目前不會自動產生。
 
 ## Audit Foundation
 
@@ -525,20 +536,22 @@ refactor: 不改行為的重構
 
 1. 維持 Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP 穩定。
 2. 維持 RBAC / tenant scope / audit foundation 穩定。
-3. 後續再選擇租賃 / 合約 / 完整 CRM / 報表 / 圖片等模組。
-4. 完整資安 hardening 之後再做。
+3. Accounting Event、Journal Draft generation、Revenue Recognition、COGS Recognition 仍待後續小步實作。
+4. 後續再選擇租賃 / 合約 / 完整 CRM / 報表 / 圖片等模組。
+5. 完整資安 hardening 待核心 workflows 更完整後再做。
 
 暫緩事項：
 
 - Leasing module
 - Refund / return / void flow
 - Full accounting
-- Confirm Delivery / Complete Transaction implementation is pending
-- Accounting Event / automatic journal draft is pending
+- Accounting Event pending
+- Journal Draft generation pending
 - Automatic revenue recognition is pending
 - Automatic COGS recognition is pending
 - Profit / gross margin payload is still excluded
 - AR / AP / Cash / Bank / Invoice / Reports are still deferred
+- Full security hardening still deferred until core workflows are more complete
 - Invoice flow
 - Image upload
 - Reports / exports
@@ -566,7 +579,6 @@ refactor: 不改行為的重構
 ## Current Vehicle Payment Limitations
 
 - 尚未做完整會計分錄。
-- 尚未實作 Confirm Delivery / Complete Transaction。
 - 尚未實作 Accounting Event / automatic journal draft。
 - 尚未自動 revenue recognition。
 - 尚未自動 COGS recognition。

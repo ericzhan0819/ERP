@@ -2,9 +2,9 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Confirm Delivery / Transaction Completion Spec completed；Sales / Payments / Delivery semantics UI hints completed。
-- 穩定節點：Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Confirm Delivery / Transaction Completion Spec completed；Sales / Payments / Delivery semantics UI hints completed。
-- 最新驗證狀態：最近分段驗證包含 `CustomerTest + ReceivableTest：27 passed / 359 assertions`、`VehicleSaleTest + VehicleSalePaymentTest：30 passed / 407 assertions`、`npm run build` 通過；最新完整測試曾通過 `./vendor/bin/sail artisan test`，full test passed without count。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI。
+- 穩定節點：Transaction Completion MVP completed through UI，已涵蓋 RBAC foundation、Data model foundation、Backend completion action、Backend completion payload、React UI、Manual QA checklist documented。
+- 最新驗證狀態：`npm run build` passed；focused tests passed：`ReceivableTest：14 passed / 265 assertions`、`VehicleSaleTest：35 passed / 394 assertions`；full test passed：`./vendor/bin/sail artisan test`，304 passed / 2646 assertions。
 - 本文件為目前穩定節點同步整理；目前不實作退款、不做 AR / AP / cash / invoice / reports 整合、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
 
 ## 技術棧
@@ -44,6 +44,7 @@
 - Vehicle Cost Accounting Treatment Spec
 - Confirm Delivery / Transaction Completion Spec
 - Sales / Payments / Delivery semantics UI hints
+- Transaction Completion / Confirm Delivery MVP：Completion RBAC、Completion data fields、Completion backend action、Completion payload、Completion UI、Completion audit event、Manual QA checklist
 
 ## Accounting Phase 1
 
@@ -150,16 +151,24 @@
 - 本階段沒有新增欄位、沒有自動分錄、沒有 COGS、沒有 profit / gross margin payload。
 - Vehicle Cost Management 仍不是 AR / AP、Cash / Bank、Invoice 或 Reports。
 
-## Confirm Delivery / Transaction Completion Spec
+## Transaction Completion / Confirm Delivery MVP
 
-- `docs/confirm-delivery-transaction-completion-spec.md` 已建立。
-- Confirm Delivery / Complete Transaction 目前只是規格，尚未實作。
-- `mark sold` 不等於收入認列。
-- `payment received` 不等於收入認列。
-- `vehicle cost created` 不等於 COGS。
-- `sold` lifecycle status 不等於完整交易完成。
-- 未來 Confirm Delivery / Complete Transaction 才可能成為 revenue / COGS recognition 的候選節點。
-- 未來可能產生 accounting event 或 journal draft，但目前不做。
+- Transaction Completion RBAC Foundation completed。
+- `module.vehicles.sales.completion.view` / `module.vehicles.sales.completion.confirm` 已建立。
+- Staff Permission Matrix 已支援 `post` / `confirm` / `complete` actions，`vehicles.sales.completion` label 為「交易完成」。
+- `admin` 有 completion view + confirm；`sales` / `accounting` / `inventory` 有 completion view only；`viewer` 沒有 completion permission。
+- Transaction Completion Data Model Foundation completed：`vehicle_sales` 已有 `completed_at`、`completed_by`、`completion_note`。
+- `VehicleSale` 已有 completion casts 與 `completer()` relationship。
+- Transaction Completion Backend Action completed：route `employee-system.vehicles.sales.complete`，method `PATCH /employee-system/vehicles/{vehicle}/sales/{vehicleSale}/complete`，request `CompleteVehicleSaleTransactionRequest`，policy `VehicleSalePolicy::complete`。
+- 完成交易必須由使用者明確觸發，並使用 `vehicle_sales.completed_at`、`completed_by`、`completion_note` 記錄交易完成。
+- 完成交易需通過後端 policy / request / tenant scope / state guard。
+- Completion action 條件：`sale_status = sold`、vehicle `lifecycle_status = sold`、receivable status = `paid` / `overpaid`、`sale_price` exists and > 0、not already completed、not cancelled、vehicle not archived、user has `module.vehicles.sales.completion.confirm`。
+- 完成後寫入 `vehicle_sale.transaction_completed` audit event。
+- Audit payload 不包含 tenant raw ids、敏感個資、profit / gross margin、accounting journal fields。
+- Transaction Completion Backend Payload completed：Receivables Show 已提供完整 `sale.completion` object；Receivables Index 已提供 lightweight completion summary；Vehicle Show / Edit 已提供 readonly completion summary。
+- Transaction Completion React UI completed：Receivables Show 已有交易完成狀態、block reason、`completion_note` form、完成交易 action；Vehicle Show / Edit 只顯示唯讀 completion summary。
+- Receivables Show 是目前主要操作入口；Vehicle Show / Edit 只顯示唯讀 completion summary。
+- 目前沒有 accounting event、journal draft generation、revenue recognition、COGS recognition、profit / gross margin payload、return / refund / reversal flow。
 
 ## 車輛流程
 
@@ -173,12 +182,17 @@
 ## 目前完整業務流
 
 ```txt
-Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Customer Transaction History → Audit Logs
+Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Complete Transaction / Confirm Delivery → Customer Transaction History → Audit Logs
 ```
 
 - Customer 主檔可被 Vehicle Sale 關聯，並保留交易當下 customer snapshot。
 - Vehicle Sale 建立後可透過 Receivables / Payments 管理應收、已收、未收與收款紀錄。
 - Receivables mark-sold action 可在收款 / 應收流程中完成售出狀態銜接。
+- Complete Transaction / Confirm Delivery 目前只代表交易完成狀態記錄。
+- Complete Transaction / Confirm Delivery 不會自動產生 accounting event。
+- Complete Transaction / Confirm Delivery 不會自動產生 journal draft。
+- Complete Transaction / Confirm Delivery 不會自動認列 revenue / COGS。
+- Complete Transaction / Confirm Delivery 不會計算 profit / gross margin。
 - Customer Transaction History 顯示客戶關聯銷售與收款摘要，並受 tenant scope 與後端權限控制。
 - Audit Logs 已支援主要業務事件與顯示標籤在地化，便於營運人員閱讀。
 
@@ -188,8 +202,7 @@ Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Customer 
 Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Confirm Delivery / Complete Transaction → Accounting Event / Journal Draft → Revenue / COGS Recognition
 ```
 
-- 後半段目前只是規格 / backlog，尚未實作。
-- Confirm Delivery / Complete Transaction remains spec only, not implemented。
+- Accounting Event / Journal Draft → Revenue / COGS Recognition 目前仍是 backlog，尚未實作。
 - No accounting event / journal draft generation yet。
 - No automatic revenue recognition。
 - No automatic COGS recognition。
@@ -197,10 +210,10 @@ Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Confirm D
 ## Receivables / Vehicle Sale / UI Hints
 
 - Receivables / Vehicle pages 已加入 sales / payments / delivery semantics UI hints。
-- 這些提示只作為 UX 說明，不改資料模型、不新增 action、不新增 permission。
+- Transaction Completion MVP 已補齊資料欄位、後端 action、payload 與 UI；語意提示仍只作為 UX 說明。
 - 收款完成只代表款項已記錄。
 - `mark sold` 只代表銷售與車輛售出狀態銜接。
-- 交車完成 / 完成交易未來會獨立處理。
+- 交車完成 / 完成交易目前只記錄 completion 狀態，不是會計認列。
 - 收入與 COGS 認列目前不會自動產生。
 - Sales / Payments / Delivery semantics hints are frontend UX only；正式權限、狀態、tenant scope、資料一致性仍由後端負責。
 
@@ -233,16 +246,18 @@ Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Confirm D
 - `module.vehicles.sales.payments.view`
 - `module.vehicles.sales.payments.create`
 - `module.vehicles.sales.payments.void`
+- `module.vehicles.sales.completion.view`
+- `module.vehicles.sales.completion.confirm`
 
 ### 權限狀態
 
-- `admin` 預設取得車輛、價格、成本、銷售與銷售收款完整權限。
-- `sales` 預設可維護客戶與車輛、建立 / 查看銷售、查看收款狀態；不預設新增 / 作廢收款、mark sold、敏感個資、價格、成本或稽核權限。
-- `accounting` 預設可查看客戶、車輛、銷售與收款，並可建立 / 作廢收款與執行 receivables mark-sold；不預設建立銷售、敏感個資、成本或稽核權限。
-- `inventory` 預設可建立 / 更新車輛並查看成本；不預設銷售、收款、客戶或稽核權限。
-- `viewer` 預設僅有 dashboard、車輛與客戶最小只讀，不預設價格、成本、銷售、收款或敏感個資權限。
+- `admin` 預設取得車輛、價格、成本、銷售、銷售收款與 completion view + confirm 完整權限。
+- `sales` 預設可維護客戶與車輛、建立 / 查看銷售、查看收款狀態與 completion view；不預設新增 / 作廢收款、mark sold、completion confirm、敏感個資、價格、成本或稽核權限。
+- `accounting` 預設可查看客戶、車輛、銷售、收款與 completion view，並可建立 / 作廢收款與執行 receivables mark-sold；不預設建立銷售、completion confirm、敏感個資、成本或稽核權限。
+- `inventory` 預設可建立 / 更新車輛、查看成本與 completion view；不預設銷售寫入、收款、客戶、completion confirm 或稽核權限。
+- `viewer` 預設僅有 dashboard、車輛與客戶最小只讀，不預設價格、成本、銷售、收款、completion 或敏感個資權限。
 - `pricing` / `costs` / `sales` 為 `module.vehicles.*` 下的 nested permissions。
-- Staff Permission matrix 已支援 `vehicles.pricing`、`vehicles.costs`、`vehicles.sales` 與 `vehicles.sales.payments` 權限分組。
+- Staff Permission matrix 已支援 `vehicles.pricing`、`vehicles.costs`、`vehicles.sales`、`vehicles.sales.payments` 與 `vehicles.sales.completion` 權限分組。
 
 ## Audit Events
 
@@ -254,6 +269,7 @@ Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Confirm D
 - `vehicle_cost.updated`
 - `vehicle_sale.created`
 - `vehicle_sale.updated`
+- `vehicle_sale.transaction_completed`
 - `vehicle_sale_payment.created`
 - `vehicle_sale_payment.voided`
 - `company_settings.updated`
@@ -265,6 +281,7 @@ Audit 資料原則：
 - Vehicle audit 僅記錄主要業務欄位，避免將內部備註等潛在敏感內容寫入快照。
 - Vehicle costs audit 只記錄白名單欄位，不記 `internal_notes`。
 - Vehicle sales audit 只記錄白名單欄位，不記 tenant / actor / internal-only sensitive 欄位。
+- Vehicle sale completion audit 只記錄 completion 白名單欄位，不記 tenant raw ids、敏感個資、profit / gross margin 或 accounting journal 欄位。
 - Vehicle sale payments audit 只記錄收款白名單欄位，不記 tenant / actor / vehicle / 毛利欄位。
 - Customer audit 只記錄一般白名單欄位，不記 `id_number`、`birthday`、`address`。
 - Audit snapshot 不記 `company_id`、`branch_id`、`vehicle_id`、`created_by`、`updated_by` 等系統欄位。
@@ -297,9 +314,8 @@ Audit 資料原則：
 ## 已知限制
 
 - 尚未做完整會計。
-- 尚未實作 Confirm Delivery / Complete Transaction。
 - 尚未實作 Accounting Event。
-- 尚未由 business document 自動產生 journal draft。
+- 尚未由 completion 自動產生 Journal Draft。
 - 尚未自動 revenue recognition。
 - 尚未自動 COGS recognition。
 - 尚未計算 profit / gross margin。
@@ -307,6 +323,8 @@ Audit 資料原則：
 - 尚未做 Cash / Bank。
 - 尚未做 Invoice。
 - 尚未做 Reports。
+- 尚未做 refund / return / reversal flow。
+- 尚未做 delivery checklist / 文件上傳 / 交車照片。
 - 尚未做 full accounting automation。
 - 尚未做 full security hardening。
 - 車輛成本管理目前為 Phase 2 獨立列表與 create / edit 工作台，不是完整會計；不做應付帳款、付款沖帳、成本報表、PDF / Excel 或 profit / gross margin payload。
@@ -333,13 +351,16 @@ Audit 資料原則：
 ### B. 業務模組
 
 - Phase B 已完成：Sales / Payments / Delivery semantics UI hints。
-- 後續可做：Confirm Delivery / Complete Transaction 權限命名與 UI 草圖。
-- 後續可做：Confirm Delivery / Complete Transaction 資料模型決策。
-- 後續可做：delivery / completion 欄位或獨立 event table。
-- 後續可做：Accounting Event draft。
-- 後續可做：由 accounting event 產生 journal draft。
-- 後續可做：Revenue / COGS recognition。
-- 後續可做：profit / gross margin reports。
+- Manual browser QA execution if not yet done。
+- 後續可做：Accounting Event spec / implementation。
+- 後續可做：Completion → Accounting Event draft。
+- 後續可做：Accounting Event → Journal Draft。
+- 後續可做：Revenue Recognition。
+- 後續可做：COGS Recognition。
+- 後續可做：Profit / Gross Margin reports。
+- 後續可做：Reversal / refund / return flow。
+- 後續可做：Delivery checklist / documents / photos。
+- 後續可做：Full security hardening。
 - 租賃流程。
 - 合約與完整 CRM 延伸。
 - 退車 / 退款 / 作廢流程。
