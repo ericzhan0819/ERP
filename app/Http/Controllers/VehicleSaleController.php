@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateVehicleSaleRequest;
 use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\VehicleSale;
+use App\Services\AccountingEventService;
 use App\Services\AuditLogService;
 use App\Services\ReceivableSummaryService;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -21,6 +22,7 @@ class VehicleSaleController extends Controller
     public function __construct(
         private readonly AuditLogService $auditLogService,
         private readonly ReceivableSummaryService $summaryService,
+        private readonly AccountingEventService $accountingEventService,
     ) {}
 
     /**
@@ -145,7 +147,7 @@ class VehicleSaleController extends Controller
     }
 
     /**
-     * 技術註解：完成交易只寫入 completion 欄位，不自動 mark sold、認列收入、產生 COGS 或建立會計事件。
+     * 技術註解：完成交易只寫入 completion 欄位並建立 pending Accounting Event 候選摘要，不自動 mark sold、認列收入、產生 COGS 或建立 journal draft。
      */
     public function complete(CompleteVehicleSaleTransactionRequest $request, int $vehicle, int $vehicleSale): RedirectResponse
     {
@@ -178,8 +180,9 @@ class VehicleSaleController extends Controller
                 'updated_by' => (int) $user->id,
             ]);
 
-            $foundVehicleSale->refresh()->load(['vehicle', 'payments', 'customer:id,customer_number,name,phone']);
+            $foundVehicleSale->refresh()->load(['vehicle', 'payments', 'customer:id,customer_number,name,phone', 'completer:id,name']);
             $newSummary = $this->summaryService->summarize($foundVehicleSale);
+            $this->accountingEventService->createVehicleSaleCompletedEvent($foundVehicleSale, $user);
 
             $this->auditLogService->log(
                 actor: $user,

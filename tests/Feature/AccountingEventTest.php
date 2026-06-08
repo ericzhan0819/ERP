@@ -273,7 +273,7 @@ it('AccountingEvent 可用 company 與 branch 條件安全 scoped 查詢', funct
         ->and($branchScoped)->toBe([$sameBranch->id]);
 });
 
-it('completion route 成功完成交易後不會自動建立 Accounting Event', function (): void {
+it('completion route 成功完成交易後會建立 pending Accounting Event', function (): void {
     registerAccountingEventVehiclesModule();
     $user = makeAccountingEventUser('accounting-event-completion-regression@example.com', 1, 10);
     $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.sales.completion.confirm']);
@@ -284,7 +284,7 @@ it('completion route 成功完成交易後不會自動建立 Accounting Event', 
 
     $this->actingAs($user)
         ->patch(route('employee-system.vehicles.sales.complete', [$vehicle->id, $sale->id]), [
-            'completion_note' => 'Completion should not create accounting event in foundation phase.',
+            'completion_note' => 'Completion creates pending accounting event in phase 3.',
         ])
         ->assertRedirect(route('employee-system.vehicles.show', $vehicle->id));
 
@@ -292,5 +292,6 @@ it('completion route 成功完成交易後不會自動建立 Accounting Event', 
 
     expect($sale->completed_at)->not->toBeNull()
         ->and($sale->completed_by)->toBe($user->id)
-        ->and(AccountingEvent::count())->toBe(0);
+        ->and(AccountingEvent::count())->toBe(1)
+        ->and(AccountingEvent::query()->first()?->status)->toBe('pending');
 });

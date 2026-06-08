@@ -431,7 +431,7 @@ it('不提供 accounting event mutation routes', function (): void {
         ->and(Route::has('employee-system.accounting.events.void'))->toBeFalse();
 });
 
-it('completion route 成功完成交易後仍不會自動建立 Accounting Event', function (): void {
+it('completion route 成功完成交易後會建立 readonly workspace 可讀的 Accounting Event', function (): void {
     registerAccountingEventWorkspaceVehiclesModule();
     $user = makeAccountingEventWorkspaceUser('aew-completion-regression@example.com', 1, 10);
     $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.sales.completion.confirm']);
@@ -442,7 +442,7 @@ it('completion route 成功完成交易後仍不會自動建立 Accounting Event
 
     $this->actingAs($user)
         ->patch(route('employee-system.vehicles.sales.complete', [$vehicle->id, $sale->id]), [
-            'completion_note' => 'Readonly workspace must not create accounting event.',
+            'completion_note' => 'Readonly workspace can consume completion event.',
         ])
         ->assertRedirect(route('employee-system.vehicles.show', $vehicle->id));
 
@@ -450,5 +450,6 @@ it('completion route 成功完成交易後仍不會自動建立 Accounting Event
 
     expect($sale->completed_at)->not->toBeNull()
         ->and($sale->completed_by)->toBe($user->id)
-        ->and(AccountingEvent::count())->toBe(0);
+        ->and(AccountingEvent::count())->toBe(1)
+        ->and(AccountingEvent::query()->first()?->source_number)->toBe('STK-AEW-COMP-001');
 });
