@@ -1,0 +1,139 @@
+<?php
+
+return [
+    /*
+    |--------------------------------------------------------------------------
+    | Accounting Event Mapping Foundation
+    |--------------------------------------------------------------------------
+    |
+    | This file defines mapping metadata for future Accounting Event -> Journal
+    | Draft conversion. It does not contain concrete account IDs and does not
+    | create runtime journal entries.
+    |
+    */
+
+    'event_types' => [
+        'vehicle_sale_completed' => [
+            'label' => '車輛交易完成',
+            'source_type' => 'vehicle_sale_completion',
+            'enabled' => false,
+            'description' => 'Future mapping metadata for reviewed vehicle sale completion accounting events.',
+            'required_status' => 'reviewed',
+            'creates_journal_status' => 'draft',
+            'required_mapping_keys' => [
+                'accounts_receivable_account',
+                'sales_revenue_account',
+            ],
+            'optional_mapping_keys' => [
+                'vehicle_inventory_account',
+                'cogs_account',
+                'tax_payable_account',
+                'overpayment_account',
+                'rounding_adjustment_account',
+            ],
+            'mapping_keys' => [
+                'accounts_receivable_account' => [
+                    'label' => '應收帳款／收款清算科目',
+                    'description' => 'Future debit-side account for receivable or payment clearing.',
+                    'required' => true,
+                    'intended_account_types' => ['asset'],
+                    'side' => 'debit',
+                    'runtime_account_id' => null,
+                ],
+                'sales_revenue_account' => [
+                    'label' => '銷貨收入科目',
+                    'description' => 'Future credit-side revenue account.',
+                    'required' => true,
+                    'intended_account_types' => ['revenue'],
+                    'side' => 'credit',
+                    'runtime_account_id' => null,
+                ],
+                'vehicle_inventory_account' => [
+                    'label' => '車輛庫存／資產科目',
+                    'description' => 'Future credit-side account for capitalized vehicle cost when COGS mapping is enabled.',
+                    'required' => false,
+                    'intended_account_types' => ['asset'],
+                    'side' => 'credit',
+                    'runtime_account_id' => null,
+                ],
+                'cogs_account' => [
+                    'label' => '銷貨成本科目',
+                    'description' => 'Future debit-side COGS account. Requires reliable vehicle cost basis before runtime use.',
+                    'required' => false,
+                    'intended_account_types' => ['expense'],
+                    'side' => 'debit',
+                    'runtime_account_id' => null,
+                ],
+                'tax_payable_account' => [
+                    'label' => '稅款負債科目',
+                    'description' => 'Future tax payable account. Tax handling is not implemented.',
+                    'required' => false,
+                    'intended_account_types' => ['liability'],
+                    'side' => 'credit',
+                    'runtime_account_id' => null,
+                ],
+                'overpayment_account' => [
+                    'label' => '超收／預收款科目',
+                    'description' => 'Future liability or clearing account for overpayment handling.',
+                    'required' => false,
+                    'intended_account_types' => ['liability'],
+                    'side' => 'credit',
+                    'runtime_account_id' => null,
+                ],
+                'rounding_adjustment_account' => [
+                    'label' => '尾差調整科目',
+                    'description' => 'Future account for rounding or small adjustments. Runtime behavior is not implemented.',
+                    'required' => false,
+                    'intended_account_types' => ['expense', 'revenue'],
+                    'side' => 'manual',
+                    'runtime_account_id' => null,
+                ],
+            ],
+            'journal_line_templates' => [
+                [
+                    'key' => 'receivable_debit',
+                    'mapping_key' => 'accounts_receivable_account',
+                    'side' => 'debit',
+                    'amount_source' => 'event.amount',
+                    'enabled' => false,
+                    'description' => 'Future receivable debit line. Disabled until convert workflow is implemented.',
+                ],
+                [
+                    'key' => 'sales_revenue_credit',
+                    'mapping_key' => 'sales_revenue_account',
+                    'side' => 'credit',
+                    'amount_source' => 'event.amount',
+                    'enabled' => false,
+                    'description' => 'Future sales revenue credit line. Disabled until convert workflow is implemented.',
+                ],
+                [
+                    'key' => 'cogs_debit',
+                    'mapping_key' => 'cogs_account',
+                    'side' => 'debit',
+                    'amount_source' => 'future.vehicle_cost_basis',
+                    'enabled' => false,
+                    'description' => 'Future COGS debit line. Requires reliable vehicle cost basis.',
+                ],
+                [
+                    'key' => 'vehicle_inventory_credit',
+                    'mapping_key' => 'vehicle_inventory_account',
+                    'side' => 'credit',
+                    'amount_source' => 'future.vehicle_cost_basis',
+                    'enabled' => false,
+                    'description' => 'Future inventory or capitalized vehicle cost credit line.',
+                ],
+            ],
+            'non_goals' => [
+                'no_runtime_account_ids',
+                'no_journal_draft_generation',
+                'no_journal_line_generation',
+                'no_automatic_posting',
+                'no_revenue_recognition_runtime',
+                'no_cogs_recognition_runtime',
+                'no_profit_or_gross_margin_payload',
+                'no_tax_runtime',
+                'no_refund_or_reversal_runtime',
+            ],
+        ],
+    ],
+];
