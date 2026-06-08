@@ -135,6 +135,47 @@ it('payment and receivable events prefer event semantic module over legacy raw m
         });
 });
 
+it('transaction completion and accounting journal audit labels are localized without changing raw event keys', function (): void {
+    $user = makeAuditDisplayUser();
+
+    createAuditDisplayLog('vehicle_sale.transaction_completed', ['module' => 'vehicle_sales'], 'Vehicle sale transaction completed');
+    createAuditDisplayLog('accounting_journal.posted', ['module' => 'accounting_journals'], '會計傳票已過帳');
+    createAuditDisplayLog('accounting_journal.voided', ['module' => 'accounting_journals'], '會計傳票已作廢');
+    createAuditDisplayLog('vehicle_sale.marked_sold_from_receivable', null, 'Vehicle sale marked sold from receivable');
+    createAuditDisplayLog('vehicle_sale_payment.created', ['module' => 'receivables'], 'Vehicle sale payment created');
+
+    $this->actingAs($user)
+        ->get(route('employee-system.audit.activity-logs'))
+        ->assertOk()
+        ->assertInertia(function (Assert $page): void {
+            $props = $page->toArray()['props'];
+
+            expect(findAuditDisplayRow($props, 'vehicle_sale.transaction_completed')['display'])
+                ->toMatchArray([
+                    'event_key' => 'vehicle_sale.transaction_completed',
+                    'module_label' => '車輛銷售',
+                    'event_label' => '完成交易',
+                    'description_label' => '完成交易',
+                ])
+                ->and(findAuditDisplayRow($props, 'accounting_journal.posted')['display'])
+                ->toMatchArray([
+                    'module_label' => '會計傳票',
+                    'event_label' => '過帳會計傳票',
+                    'description_label' => '會計傳票已過帳',
+                ])
+                ->and(findAuditDisplayRow($props, 'accounting_journal.voided')['display'])
+                ->toMatchArray([
+                    'module_label' => '會計傳票',
+                    'event_label' => '作廢會計傳票',
+                    'description_label' => '會計傳票已作廢',
+                ])
+                ->and(findAuditDisplayRow($props, 'vehicle_sale.marked_sold_from_receivable')['display'])
+                ->toMatchArray(['event_label' => '收款標記成交'])
+                ->and(findAuditDisplayRow($props, 'vehicle_sale_payment.created')['display'])
+                ->toMatchArray(['event_label' => '新增銷售收款']);
+        });
+});
+
 it('unknown events fallback safely and activity audit does not include login logs or sensitive display fields', function (): void {
     $user = makeAuditDisplayUser();
 

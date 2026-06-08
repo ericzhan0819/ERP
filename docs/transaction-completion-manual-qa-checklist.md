@@ -189,4 +189,6 @@ npm run build
 
 | 日期 | 測試帳號 | 環境 | 測試項目 | 結果 | 備註 |
 | --- | --- | --- | --- | --- | --- |
-|  |  |  |  |  |  |
+| 2026-06-08 | admin@example.com | local Sail / 192.168.0.10 | Transaction Completion Happy Path | PASS_WITH_NOTE | Customer → Vehicle Sale → Receivables → Mark Sold → Complete Transaction → Audit Logs 大致通過；交易完成狀態與 UI flow 正常。 |
+| 2026-06-08 | admin@example.com | local Sail / 192.168.0.10 | Audit Localization | FIX_NEEDED | `vehicle_sale.transaction_completed`、`accounting_journal.posted`、`accounting_journal.voided` 顯示層中文化不足，本次補 AuditLogDisplay mapping。 |
+| 2026-06-08 | admin@example.com | local Sail / 192.168.0.10 | Audit Localization Mapping | FIXED_BY_CODE | 已補顯示層 event / description mapping；仍需瀏覽器重新整理確認畫面顯示。 |
