@@ -14,6 +14,9 @@ export default function ReceivablesIndex({ auth, sales, filters = {}, receivable
         const parsed = Number(value);
         return Number.isNaN(parsed) ? displayValue(value) : parsed.toLocaleString('zh-TW');
     };
+    const completionBadgeClass = (status) => status === 'completed'
+        ? 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-200 dark:ring-emerald-800'
+        : 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800/80 dark:text-slate-200 dark:ring-slate-700';
     const updateFilter = (key, value) => router.get(route('employee-system.receivables.index'), { ...filters, [key]: value }, { preserveState: true, replace: true });
 
     return (
@@ -47,7 +50,7 @@ export default function ReceivablesIndex({ auth, sales, filters = {}, receivable
                         <table className="min-w-full text-sm">
                             <thead className="bg-slate-50 text-left text-xs text-muted dark:bg-slate-900/40">
                                 <tr>
-                                    <th className="px-3 py-3 font-medium">收款狀態</th><th className="px-3 py-3 font-medium">車輛</th><th className="px-3 py-3 font-medium">客戶</th><th className="px-3 py-3 font-medium">銷售狀態</th><th className="px-3 py-3 font-medium">成交價</th><th className="px-3 py-3 font-medium">已收</th><th className="px-3 py-3 font-medium">未收</th><th className="px-3 py-3 font-medium">最近收款</th><th className="px-3 py-3 font-medium">操作</th>
+                                    <th className="px-3 py-3 font-medium">收款狀態</th><th className="px-3 py-3 font-medium">車輛</th><th className="px-3 py-3 font-medium">客戶</th><th className="px-3 py-3 font-medium">銷售狀態</th><th className="px-3 py-3 font-medium">交易完成</th><th className="px-3 py-3 font-medium">成交價</th><th className="px-3 py-3 font-medium">已收</th><th className="px-3 py-3 font-medium">未收</th><th className="px-3 py-3 font-medium">最近收款</th><th className="px-3 py-3 font-medium">操作</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -57,6 +60,15 @@ export default function ReceivablesIndex({ auth, sales, filters = {}, receivable
                                         <td className="px-3 py-3">{displayValue(sale.vehicle?.stock_number)}｜{displayValue(sale.vehicle?.brand)} {displayValue(sale.vehicle?.model)}｜{displayValue(sale.vehicle?.license_plate)}</td>
                                         <td className="px-3 py-3">{sale.customer?.customer_number ? `${sale.customer.customer_number}｜` : ''}{displayValue(sale.customer_name)}｜{displayValue(sale.customer_phone)}</td>
                                         <td className="px-3 py-3">{displayValue(sale.sale_status_label)}</td>
+                                        <td className="px-3 py-3">
+                                            <div className="space-y-1 text-xs text-muted">
+                                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 font-medium ring-1 ring-inset ${completionBadgeClass(sale.completion?.status)}`}>
+                                                    {sale.completion?.status === 'completed' ? '已完成交易' : displayValue(sale.completion?.status_label)}
+                                                </span>
+                                                {sale.completion?.status === 'completed' && <p>完成時間：{displayValue(sale.completion?.completed_at)}</p>}
+                                                {sale.completion?.status === 'completed' && <p>完成人員：{displayValue(sale.completion?.completed_by_name)}</p>}
+                                            </div>
+                                        </td>
                                         <td className="px-3 py-3">{formatNumber(sale.payment_summary?.receivable_amount)}</td>
                                         <td className="px-3 py-3">{formatNumber(sale.payment_summary?.received_amount)}</td>
                                         <td className="px-3 py-3">{formatNumber(sale.payment_summary?.receivable_balance)}</td>

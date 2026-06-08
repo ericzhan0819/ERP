@@ -52,6 +52,9 @@ export default function VehiclesEdit({
     };
 
     const statusBadgeClass = (status) => lifecycleBadgeMap[status] ?? lifecycleBadgeMap.draft;
+    const completionBadgeClass = (status) => status === 'completed'
+        ? 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-200 dark:ring-emerald-800'
+        : 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800/80 dark:text-slate-200 dark:ring-slate-700';
 
     const { data, setData, patch, processing, errors } = useForm({
         vin: vehicle.vin ?? '',
@@ -463,6 +466,18 @@ export default function VehiclesEdit({
                                                         </div>
                                                         {sale.payment_summary.receivable_status === 'overpaid' && <p className="mt-2 text-xs text-amber-700">提醒：此筆銷售目前為超收狀態，請確認收款紀錄。</p>}
                                                         <p className="mt-2 text-xs text-muted">收款紀錄只代表付款資料，不代表收入認列或正式會計分錄。</p>
+                                                        <div className="mt-2 rounded-lg border border-default p-2 text-xs text-secondary">
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                <span>交易完成狀態：</span>
+                                                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 font-medium ring-1 ring-inset ${completionBadgeClass(sale.completion?.status)}`}>
+                                                                    {sale.completion?.status === 'completed' ? '已完成交易' : displayValue(sale.completion?.status_label)}
+                                                                </span>
+                                                            </div>
+                                                            <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-3">
+                                                                <span>完成時間：{displayValue(sale.completion?.completed_at)}</span><span>完成人員：{displayValue(sale.completion?.completed_by_name)}</span><span>完成備註：{displayValue(sale.completion?.note)}</span>
+                                                            </div>
+                                                            <p className="mt-2 text-muted">本頁僅顯示交易完成狀態；完成交易操作由收款工作台依權限與後端條件執行。</p>
+                                                        </div>
                                                         <Link href={route('employee-system.receivables.show', sale.id)} className="mt-2 inline-flex text-xs text-accent underline">前往收款管理</Link>
                                                         {canCreateVehicleSalePayments && <button type="button" onClick={() => setPaymentSaleId(paymentSaleId === sale.id ? null : sale.id)} className="ml-3 mt-2 text-xs text-secondary underline">舊入口新增收款</button>}
                                                         {paymentSaleId === sale.id && (

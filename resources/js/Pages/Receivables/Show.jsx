@@ -11,6 +11,7 @@ export default function ReceivablesShow({ auth, sale, paymentTypes = {}, payment
     const paymentForm = useForm({ payment_type: 'deposit', payment_method: 'cash', amount: '', paid_at: '', reference_no: '', notes: '' });
     const voidForm = useForm({ void_reason: '' });
     const markSoldForm = useForm({});
+    const completionForm = useForm({ completion_note: '' });
     const displayValue = (value) => (value === null || value === undefined || value === '' ? '—' : value);
     const formatNumber = (value) => {
         if (value === null || value === undefined || value === '') return '—';
@@ -19,6 +20,12 @@ export default function ReceivablesShow({ auth, sale, paymentTypes = {}, payment
     };
     const canReceive = can.create_receivables === true && !sale.receivable_block_reason;
     const canMarkSold = can.can_mark_sold_receivable === true && sale.canMarkSold === true;
+    const completion = sale.completion ?? {};
+    const isCompleted = completion.status === 'completed';
+    const canComplete = completion.can_complete === true && Boolean(completion.complete_route);
+    const completionBadgeClass = (status) => status === 'completed'
+        ? 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-200 dark:ring-emerald-800'
+        : 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800/80 dark:text-slate-200 dark:ring-slate-700';
 
     const submitPayment = (event) => {
         event.preventDefault();
@@ -32,6 +39,17 @@ export default function ReceivablesShow({ auth, sale, paymentTypes = {}, payment
         // 技術註解：此處只送出使用者明確的一鍵成交意圖；權限與狀態條件仍由後端強制檢查，避免前端 UX 被繞過。
         markSoldForm.patch(route('employee-system.receivables.mark-sold', sale.id), { preserveScroll: true });
     };
+    const submitCompletion = (event) => {
+        event.preventDefault();
+        if (!canComplete) return;
+
+        // 技術註解：完成交易只送出後端允許的備註欄位，避免前端注入操作者、租戶或會計相關欄位。
+        completionForm.patch(completion.complete_route, {
+            data: { completion_note: completionForm.data.completion_note },
+            preserveScroll: true,
+            onSuccess: () => completionForm.reset(),
+        });
+    };
 
     return (
         <DashboardLayout user={auth.user}>
@@ -44,6 +62,42 @@ export default function ReceivablesShow({ auth, sale, paymentTypes = {}, payment
                 <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <div className="rounded-2xl border border-default bg-surface p-4 text-sm text-secondary"><h2 className="mb-3 font-semibold text-primary">銷售與車輛資訊</h2><div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><p>車輛：{displayValue(sale.vehicle?.stock_number)} / {displayValue(sale.vehicle?.brand)} {displayValue(sale.vehicle?.model)}</p><p>車牌：{displayValue(sale.vehicle?.license_plate)}</p><p>VIN：{displayValue(sale.vehicle?.vin)}</p><p>客戶：{sale.customer?.customer_number ? `${sale.customer.customer_number}｜` : ''}{displayValue(sale.customer_name)}</p><p>電話：{displayValue(sale.customer_phone)}</p><p>銷售狀態：{displayValue(sale.sale_status_label)}</p><p>成交價：{formatNumber(sale.sale_price)}</p><p>成交日：{formatDate(sale.sold_at)}</p><p>業務：{displayValue(sale.salesperson_name)}</p><p>備註：{displayValue(sale.notes)}</p></div></div>
                     <div className="rounded-2xl border border-default bg-surface p-4 text-sm text-secondary"><h2 className="mb-3 font-semibold text-primary">收款摘要</h2><div className="grid grid-cols-2 gap-3"><p>應收金額：<b className="text-primary">{formatNumber(sale.payment_summary?.receivable_amount)}</b></p><p>已收金額：<b className="text-primary">{formatNumber(sale.payment_summary?.received_amount)}</b></p><p>未收金額：<b className="text-primary">{formatNumber(sale.payment_summary?.receivable_balance)}</b></p><p>收款狀態：<b className="text-primary">{displayValue(sale.payment_summary?.receivable_status_label)}</b></p><p>有效收款：{formatNumber(sale.payment_summary?.received_payment_count)} 筆</p><p>紀錄總數：{formatNumber(sale.payment_summary?.payment_record_count)} 筆</p></div>{sale.payment_summary?.receivable_status === 'overpaid' && <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">提醒：此筆銷售目前為超收狀態。</p>}{canMarkSold && <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-800"><span>收款條件已滿足，可將銷售與車輛狀態標記為 sold。此動作不是交車完成，也不會自動認列收入或 COGS。</span><button type="button" disabled={markSoldForm.processing} onClick={submitMarkSold} className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60">標記為成交</button></div>}{!canMarkSold && sale.markSoldHelpText && <div className="mt-3 space-y-1 text-xs text-muted"><p>目前不可標記成交：{sale.markSoldHelpText}</p><p>mark sold 僅代表銷售狀態銜接，交車完成將在後續流程獨立處理。</p></div>}</div>
+                </section>
+
+                <section className="rounded-2xl border border-default bg-surface p-4 text-sm text-secondary">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h2 className="text-sm font-semibold text-primary">交易完成</h2>
+                            <p className="mt-1 text-xs text-muted">此區只消費後端 completion 狀態；正式授權與條件仍由後端控制。</p>
+                        </div>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${completionBadgeClass(completion.status)}`}>
+                            {isCompleted ? '已完成交易' : displayValue(completion.status_label)}
+                        </span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        <p>狀態：<b className="text-primary">{displayValue(completion.status_label)}</b></p>
+                        <p>完成時間：{displayValue(completion.completed_at)}</p>
+                        <p>完成人員：{displayValue(completion.completed_by_name)}</p>
+                        <p>備註：{displayValue(completion.note)}</p>
+                    </div>
+                    {isCompleted && <p className="mt-3 rounded-lg border border-default px-3 py-2 text-xs text-muted">此交易已完成。此狀態不代表已自動產生會計分錄。</p>}
+                    {!isCompleted && canComplete && (
+                        <form onSubmit={submitCompletion} className="mt-3 space-y-3 rounded-xl border border-default p-3">
+                            <p className="text-xs text-muted">完成交易只記錄交易完成狀態，不會自動認列收入、COGS 或產生會計分錄。</p>
+                            <label className="block text-sm">
+                                <span className="mb-1 block text-muted">完成備註</span>
+                                <textarea value={completionForm.data.completion_note} onChange={(event) => completionForm.setData('completion_note', event.target.value)} placeholder="例如：交車完成，文件已確認。" className="min-h-20 w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" />
+                            </label>
+                            {completionForm.errors.completion_note && <p className="text-xs text-red-600">{completionForm.errors.completion_note}</p>}
+                            <button type="submit" disabled={completionForm.processing} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">確認交車 / 完成交易</button>
+                        </form>
+                    )}
+                    {!isCompleted && !canComplete && (
+                        <div className="mt-3 space-y-1 rounded-lg border border-default px-3 py-2 text-xs text-muted">
+                            <p>{displayValue(completion.block_reason || '目前尚不可完成交易。')}</p>
+                            <p>需先完成收款條件與 mark sold 後，才可能完成交易。</p>
+                        </div>
+                    )}
                 </section>
 
                 <section className="rounded-2xl border border-default bg-surface p-4 text-sm text-secondary">
