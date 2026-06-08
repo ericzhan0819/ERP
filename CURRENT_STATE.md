@@ -2,9 +2,9 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed。
 - 穩定節點：Transaction Completion MVP completed through UI，已涵蓋 RBAC foundation、Data model foundation、Backend completion action、Backend completion payload、React UI、Manual QA checklist documented。
-- 最新驗證狀態：`npm run build` passed；focused tests passed：`ReceivableTest：14 passed / 265 assertions`、`VehicleSaleTest：35 passed / 394 assertions`；full test passed：`./vendor/bin/sail artisan test`，304 passed / 2646 assertions。
+- 最新驗證狀態：`npm run build` passed；focused tests passed：`ReceivableTest：14 passed / 265 assertions`、`VehicleSaleTest：35 passed / 394 assertions`、`AccountingEventTest：5 passed / 32 assertions`；full test passed：`./vendor/bin/sail artisan test`，304 passed / 2646 assertions。
 - 本文件為目前穩定節點同步整理；目前不實作退款、不做 AR / AP / cash / invoice / reports 整合、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
 
 ## 技術棧
@@ -42,6 +42,7 @@
 - Accounting Module Boundary Polish：會計科目與會計傳票已拆成獨立 module entries
 - Accounting Journal Workbench UI Polish
 - Vehicle Cost Accounting Treatment Spec
+- Accounting Event Foundation Phase 1
 - Confirm Delivery / Transaction Completion Spec
 - Sales / Payments / Delivery semantics UI hints
 - Transaction Completion / Confirm Delivery MVP：Completion RBAC、Completion data fields、Completion backend action、Completion payload、Completion UI、Completion audit event、Manual QA checklist
@@ -94,6 +95,20 @@
 - No accounting event / journal draft generation from business documents yet。
 - No automatic revenue recognition。
 - No automatic COGS recognition。
+
+## Accounting Event Foundation Phase 1
+
+- Accounting Event Foundation Phase 1 completed。
+- 已完成 `accounting_events` table。
+- 已完成 `app/Models/AccountingEvent.php`。
+- 已完成 `config/accounting_events.php`。
+- 已完成 `tests/Feature/AccountingEventTest.php`。
+- `accounting_events` 目前只是後端 foundation domain object。
+- 目前沒有 route / controller / policy / permission / sidebar / React page。
+- 目前不會由 completion 自動建立 accounting event。
+- 目前不會轉 journal draft。
+- 目前不做 revenue / COGS / profit / gross margin。
+- Focused test：`./vendor/bin/sail artisan test tests/Feature/AccountingEventTest.php`，5 passed / 32 assertions。
 
 ## Accounting Module Boundaries
 
@@ -168,7 +183,7 @@
 - Transaction Completion Backend Payload completed：Receivables Show 已提供完整 `sale.completion` object；Receivables Index 已提供 lightweight completion summary；Vehicle Show / Edit 已提供 readonly completion summary。
 - Transaction Completion React UI completed：Receivables Show 已有交易完成狀態、block reason、`completion_note` form、完成交易 action；Vehicle Show / Edit 只顯示唯讀 completion summary。
 - Receivables Show 是目前主要操作入口；Vehicle Show / Edit 只顯示唯讀 completion summary。
-- 目前沒有 accounting event、journal draft generation、revenue recognition、COGS recognition、profit / gross margin payload、return / refund / reversal flow。
+- Accounting Event Foundation Phase 1 已存在，但目前沒有 completion runtime integration、journal draft generation、revenue recognition、COGS recognition、profit / gross margin payload、return / refund / reversal flow。
 
 ## 車輛流程
 
@@ -202,8 +217,9 @@ Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Complete 
 Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Confirm Delivery / Complete Transaction → Accounting Event / Journal Draft → Revenue / COGS Recognition
 ```
 
-- Accounting Event / Journal Draft → Revenue / COGS Recognition 目前仍是 backlog，尚未實作。
-- No accounting event / journal draft generation yet。
+- Accounting Event Foundation Phase 1 已存在。
+- Completion → Accounting Event → Journal Draft → Revenue / COGS Recognition 仍是 future backlog，尚未接 runtime。
+- No automatic accounting event / journal draft generation yet。
 - No automatic revenue recognition。
 - No automatic COGS recognition。
 

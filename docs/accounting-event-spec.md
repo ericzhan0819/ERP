@@ -1,8 +1,8 @@
 # Accounting Event Foundation Spec
 
-> Status: Foundation spec only.
-> Scope: define Accounting Event product semantics, future data direction, status flow, source documents, tenant / permission / audit principles, and future Journal Draft / Revenue / COGS integration direction.
-> This document does not implement migrations, models, controllers, routes, policies, React pages, permissions, or runtime behavior.
+> Status: Spec completed + Phase 1 foundation completed.
+> Scope: define Accounting Event product semantics, current foundation state, future data direction, status flow, source documents, tenant / permission / audit principles, and future Journal Draft / Revenue / COGS integration direction.
+> Phase 1 has implemented the minimal table, model, config, and tests only. It does not implement controllers, routes, policies, React pages, permissions, or runtime behavior.
 
 ## 1. Purpose
 
@@ -56,10 +56,20 @@ Current accounting module boundaries are already split:
 - `accounting-journals`: Accounting Journal module.
 - `module.accounting.view`: compatibility / category concept only. It must not be used as the only permission to enter accounting accounts, journals, or future accounting events.
 
+The current Accounting Event foundation includes:
+
+```txt
+accounting_events table
+AccountingEvent model
+config/accounting_events.php
+AccountingEventTest
+```
+
+`AccountingEventTest` covers schema, casts, relationships, config, tenant scoped query, and completion regression. The completion regression confirms a successful completion action leaves `AccountingEvent::count()` at `0`.
+
 The following are not completed yet:
 
 ```txt
-Accounting Event
 Completion -> Accounting Event
 Accounting Event -> Journal Draft
 Automatic Revenue Recognition
@@ -117,7 +127,9 @@ updated_at
 
 Important boundaries:
 
-- This is future data model direction only. This task must not add a migration.
+- Phase 0 spec did not add migration.
+- Phase 1 has now added the minimal table / model / config / tests foundation.
+- Future phases still must not assume runtime integration exists.
 - `payload` must not store sensitive personal data.
 - `payload` must not store profit / gross margin.
 - `payload` must not store unnecessary tenant raw IDs.
@@ -140,7 +152,7 @@ Recommended first candidate source:
 vehicle_sale_completion
 ```
 
-This document does not implement any source type or event creation logic.
+The config foundation defines source type labels, but no source type has runtime event creation logic yet.
 
 ## 6. Event Types
 
@@ -159,7 +171,7 @@ Recommended first candidate event type:
 vehicle_sale_completed
 ```
 
-This document does not implement any event type.
+The config foundation defines event type labels, but no event type has runtime event creation logic yet.
 
 ## 7. Status Flow
 
@@ -346,8 +358,6 @@ Audit payloads should use explicit allowlists and only include fields needed to 
 This phase does not do:
 
 ```txt
-No migration.
-No model.
 No controller.
 No request.
 No policy.
@@ -375,8 +385,8 @@ No full accounting automation.
 Suggested future small-step sequence:
 
 ```txt
-Phase 0: Spec only. Current task.
-Phase 1: AccountingEvent table + model + config + tests only.
+Phase 0: Spec completed.
+Phase 1: AccountingEvent table + model + config + tests completed.
 Phase 2: Accounting Event index/show readonly workspace.
 Phase 3: Completion -> pending accounting event, still no journal draft.
 Phase 4: Reviewed accounting event -> manual journal draft generation.
@@ -384,14 +394,15 @@ Phase 5: Revenue / COGS draft mapping after account configuration exists.
 Phase 6: Reversal / refund / return flow.
 ```
 
-Phase 1 must not directly connect completion to Accounting Event. The first implementation step should establish the minimal Accounting Event foundation and tests without changing transaction completion runtime semantics.
+Phase 1 did not directly connect completion to Accounting Event. The foundation establishes the minimal Accounting Event table, model, config, and tests without changing transaction completion runtime semantics.
 
 ## 17. Acceptance Criteria
 
-- This spec adds no runtime behavior.
-- This spec does not change database schema.
+- This update changes documentation only.
+- Accounting Event Foundation Phase 1 exists.
+- No runtime integration exists.
+- Completion semantics remain unchanged.
+- Current accounting module boundaries remain unchanged.
 - This spec does not change permissions.
 - This spec does not change routes.
-- This spec preserves current completion semantics.
-- This spec preserves current accounting module boundaries.
 - This spec can be used as the next Roo Code prompt reference for Accounting Event Foundation.
