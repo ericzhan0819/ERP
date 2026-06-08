@@ -6,6 +6,7 @@ use App\Models\Module;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleSale;
+use App\Models\VehicleSalePayment;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -38,6 +39,9 @@ beforeEach(function (): void {
     Permission::findOrCreate('module.vehicles.sales.view', 'web');
     Permission::findOrCreate('module.vehicles.sales.create', 'web');
     Permission::findOrCreate('module.vehicles.sales.update', 'web');
+    Permission::findOrCreate('module.vehicles.sales.completion.view', 'web');
+    Permission::findOrCreate('module.vehicles.sales.completion.confirm', 'web');
+    Permission::findOrCreate('module.receivables.mark-sold', 'web');
     Permission::findOrCreate('module.vehicles.costs.view', 'web');
     Permission::findOrCreate('module.vehicles.pricing.view', 'web');
 });
@@ -158,6 +162,25 @@ function makeVehicleSaleRecord(Vehicle $vehicle, User $actor, array $overrides =
         'created_by' => $actor->id,
         'updated_by' => $actor->id,
     ], $overrides));
+}
+
+function makeVehicleSalePaymentRecord(VehicleSale $sale, User $actor, float $amount, string $status = 'received'): VehicleSalePayment
+{
+    return VehicleSalePayment::create([
+        'company_id' => $sale->company_id,
+        'branch_id' => $sale->branch_id,
+        'vehicle_id' => $sale->vehicle_id,
+        'vehicle_sale_id' => $sale->id,
+        'customer_id' => $sale->customer_id,
+        'payment_number' => 'PAY-SALE-'.uniqid(),
+        'payment_type' => 'deposit',
+        'payment_method' => 'cash',
+        'amount' => $amount,
+        'paid_at' => now()->toDateString(),
+        'status' => $status,
+        'created_by' => $actor->id,
+        'updated_by' => $actor->id,
+    ]);
 }
 
 it('VehicleSale model 可儲存與讀取交易完成資料欄位', function (): void {
@@ -669,6 +692,229 @@ it('audit log 可記 customer_id 但不記 Customer 敏感個資欄位', functio
         ->and(array_key_exists('id_number', $createdLog?->new_values ?? []))->toBeFalse()
         ->and(array_key_exists('birthday', $createdLog?->new_values ?? []))->toBeFalse()
         ->and(array_key_exists('address', $createdLog?->new_values ?? []))->toBeFalse();
+});
+
+it('有 completion.confirm 權限且符合條件可完成交易並寫入 audit log', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-complete-allow@example.com');
+    $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.sales.view', 'module.vehicles.sales.completion.confirm']);
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-COMP-ACT-001', 'vin-sale-comp-act-001');
+    $vehicle->update(['lifecycle_status' => 'sold']);
+    $sale = makeVehicleSaleRecord($vehicle, $user, [
+        'sale_price' => 760000,
+        'paid_amount' => 123,
+        'sale_status' => 'sold',
+        'sold_at' => now()->subDay(),
+        'completed_at' => null,
+    ]);
+    $payment = makeVehicleSalePaymentRecord($sale, $user, 760000);
+
+    $this->actingAs($user)
+        ->patch(route('employee-system.vehicles.sales.complete', [$vehicle->id, $sale->id]), [
+            'completion_note' => '交車完成，文件確認。',
+        ])
+        ->assertRedirect(route('employee-system.vehicles.show', $vehicle->id));
+
+    $sale->refresh();
+    expect($sale->completed_at)->not->toBeNull()
+        ->and($sale->completed_by)->toBe($user->id)
+        ->and($sale->completion_note)->toBe('交車完成，文件確認。')
+        ->and($sale->sale_status)->toBe('sold')
+        ->and($sale->sale_price)->toBe('760000.00')
+        ->and($sale->paid_amount)->toBe('123.00')
+        ->and($vehicle->fresh()->lifecycle_status)->toBe('sold')
+        ->and($payment->fresh()->amount)->toBe('760000.00');
+
+    $audit = ActivityLog::query()->where('event', 'vehicle_sale.transaction_completed')->latest('id')->first();
+    expect($audit)->not->toBeNull()
+        ->and($audit?->metadata['module'] ?? null)->toBe('vehicle_sales')
+        ->and($audit?->description)->toBe('Vehicle sale transaction completed')
+        ->and($audit?->new_values['completion_note'] ?? null)->toBe('交車完成，文件確認。')
+        ->and($audit?->new_values['receivable_status'] ?? null)->toBe('paid');
+});
+
+it('沒有 completion.confirm 權限不可完成交易且其他銷售或收款權限不可替代', function (): void {
+    foreach ([['module.vehicles.sales.completion.view'], ['module.vehicles.sales.update'], ['module.receivables.mark-sold']] as $index => $permissions) {
+        $user = makeVehicleSaleUser('vehicle-sale-complete-deny-'.$index.'@example.com');
+        $user->givePermissionTo(array_merge(['module.vehicles.view'], $permissions));
+        $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-COMP-DENY-'.$index, 'vin-sale-comp-deny-'.$index);
+        $vehicle->update(['lifecycle_status' => 'sold']);
+        $sale = makeVehicleSaleRecord($vehicle, $user, ['sale_price' => 100000, 'sale_status' => 'sold', 'sold_at' => now()]);
+        makeVehicleSalePaymentRecord($sale, $user, 100000);
+
+        $this->actingAs($user)
+            ->patch(route('employee-system.vehicles.sales.complete', [$vehicle->id, $sale->id]))
+            ->assertForbidden();
+
+        expect($sale->fresh()->completed_at)->toBeNull();
+    }
+});
+
+it('跨 tenant 不可完成交易且優先回 404', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-complete-cross@example.com', 1, 10);
+    $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.sales.completion.confirm']);
+    $crossUser = makeVehicleSaleUser('vehicle-sale-complete-cross-owner@example.com', 2, 20);
+    $crossVehicle = makeVehicleSaleVehicle(2, 20, 'STK-SALE-COMP-XTEN-001', 'vin-sale-comp-xten-001');
+    $crossVehicle->update(['lifecycle_status' => 'sold']);
+    $crossSale = makeVehicleSaleRecord($crossVehicle, $crossUser, ['sale_price' => 100000, 'sale_status' => 'sold', 'sold_at' => now()]);
+    makeVehicleSalePaymentRecord($crossSale, $crossUser, 100000);
+
+    $this->actingAs($user)
+        ->patch(route('employee-system.vehicles.sales.complete', [$crossVehicle->id, $crossSale->id]))
+        ->assertNotFound();
+
+    expect($crossSale->fresh()->completed_at)->toBeNull();
+});
+
+it('收款未完成或部分收款不可完成交易', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-complete-unpaid@example.com');
+    $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.sales.completion.confirm']);
+
+    foreach ([[0, '收款尚未完成，無法完成交易。'], [50000, '收款尚未完成，無法完成交易。']] as $index => [$paid, $message]) {
+        $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-COMP-UNPAID-'.$index, 'vin-sale-comp-unpaid-'.$index);
+        $vehicle->update(['lifecycle_status' => 'sold']);
+        $sale = makeVehicleSaleRecord($vehicle, $user, ['sale_price' => 100000, 'sale_status' => 'sold', 'sold_at' => now()]);
+        if ($paid > 0) {
+            makeVehicleSalePaymentRecord($sale, $user, $paid);
+        }
+
+        $this->actingAs($user)
+            ->patch(route('employee-system.vehicles.sales.complete', [$vehicle->id, $sale->id]))
+            ->assertStatus(422)
+            ->assertJson(['message' => $message]);
+
+        expect($sale->fresh()->completed_at)->toBeNull();
+    }
+});
+
+it('reserved sale 不可完成交易', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-complete-reserved@example.com');
+    $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.sales.completion.confirm']);
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-COMP-RES-001', 'vin-sale-comp-res-001');
+    $vehicle->update(['lifecycle_status' => 'sold']);
+    $sale = makeVehicleSaleRecord($vehicle, $user, ['sale_price' => 100000, 'sale_status' => 'reserved']);
+    makeVehicleSalePaymentRecord($sale, $user, 100000);
+
+    $this->actingAs($user)
+        ->patch(route('employee-system.vehicles.sales.complete', [$vehicle->id, $sale->id]))
+        ->assertStatus(422)
+        ->assertJson(['message' => '僅已成交銷售可完成交易。']);
+
+    expect($sale->fresh()->completed_at)->toBeNull();
+});
+
+it('車輛不是 sold 不可完成交易', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-complete-vehicle-unsold@example.com');
+    $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.sales.completion.confirm']);
+
+    foreach (['in_stock', 'reserved'] as $index => $status) {
+        $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-COMP-VEH-'.$index, 'vin-sale-comp-veh-'.$index);
+        $vehicle->update(['lifecycle_status' => $status]);
+        $sale = makeVehicleSaleRecord($vehicle, $user, ['sale_price' => 100000, 'sale_status' => 'sold', 'sold_at' => now()]);
+        makeVehicleSalePaymentRecord($sale, $user, 100000);
+
+        $this->actingAs($user)
+            ->patch(route('employee-system.vehicles.sales.complete', [$vehicle->id, $sale->id]))
+            ->assertStatus(422)
+            ->assertJson(['message' => '僅已售出車輛可完成交易。']);
+
+        expect($sale->fresh()->completed_at)->toBeNull();
+    }
+});
+
+it('已完成交易不可重複 complete 且不覆寫完成欄位', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-complete-repeat@example.com');
+    $other = makeVehicleSaleUser('vehicle-sale-complete-repeat-other@example.com');
+    $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.sales.completion.confirm']);
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-COMP-REPEAT-001', 'vin-sale-comp-repeat-001');
+    $vehicle->update(['lifecycle_status' => 'sold']);
+    $completedAt = now()->subDays(2)->setMicrosecond(0);
+    $sale = makeVehicleSaleRecord($vehicle, $user, [
+        'sale_price' => 100000,
+        'sale_status' => 'sold',
+        'sold_at' => now(),
+        'completed_at' => $completedAt,
+        'completed_by' => $other->id,
+        'completion_note' => '原始完成備註',
+    ]);
+    makeVehicleSalePaymentRecord($sale, $user, 100000);
+
+    $this->actingAs($user)
+        ->patch(route('employee-system.vehicles.sales.complete', [$vehicle->id, $sale->id]), ['completion_note' => '不應覆寫'])
+        ->assertStatus(422)
+        ->assertJson(['message' => '此交易已完成，不可重複完成。']);
+
+    $sale->refresh();
+    expect($sale->completed_at?->toDateTimeString())->toBe($completedAt->toDateTimeString())
+        ->and($sale->completed_by)->toBe($other->id)
+        ->and($sale->completion_note)->toBe('原始完成備註');
+});
+
+it('complete payload 夾帶系統、會計、收入、COGS 或毛利欄位時拒絕', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-complete-payload-deny@example.com');
+    $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.sales.completion.confirm']);
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-COMP-PAYLOAD-001', 'vin-sale-comp-payload-001');
+    $vehicle->update(['lifecycle_status' => 'sold']);
+    $sale = makeVehicleSaleRecord($vehicle, $user, ['sale_price' => 100000, 'sale_status' => 'sold', 'sold_at' => now()]);
+    makeVehicleSalePaymentRecord($sale, $user, 100000);
+
+    $this->actingAs($user)
+        ->patch(route('employee-system.vehicles.sales.complete', [$vehicle->id, $sale->id]), [
+            'completion_note' => 'payload guard',
+            'company_id' => 999,
+            'branch_id' => 888,
+            'completed_by' => 777,
+            'completed_at' => now()->subYear()->toDateTimeString(),
+            'sale_status' => 'cancelled',
+            'accounting_event_id' => 1,
+            'journal_entry_id' => 2,
+            'revenue_amount' => 100000,
+            'cogs_amount' => 80000,
+            'gross_profit' => 20000,
+            'gross_margin' => 20,
+        ])
+        ->assertForbidden();
+
+    expect($sale->fresh()->completed_at)->toBeNull();
+});
+
+it('complete audit 僅包含安全白名單且排除 tenant 個資會計與毛利欄位', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-complete-audit-white@example.com');
+    $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.sales.view', 'module.vehicles.sales.completion.confirm']);
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-COMP-AUDIT-001', 'vin-sale-comp-audit-001');
+    $vehicle->update(['lifecycle_status' => 'sold']);
+    $customer = makeVehicleSaleCustomer(1, 10, 'CU-202606-COMP', [
+        'name' => '完成交易客戶',
+        'phone' => '0999999999',
+        'id_number' => 'B123456789',
+        'birthday' => '1988-08-08',
+        'address' => '不可寫入 audit 的地址',
+    ]);
+    $sale = makeVehicleSaleRecord($vehicle, $user, [
+        'customer_id' => $customer->id,
+        'customer_name' => $customer->name,
+        'customer_phone' => $customer->phone,
+        'sale_price' => 100000,
+        'sale_status' => 'sold',
+        'sold_at' => now(),
+    ]);
+    makeVehicleSalePaymentRecord($sale, $user, 120000);
+
+    $this->actingAs($user)
+        ->patch(route('employee-system.vehicles.sales.complete', [$vehicle->id, $sale->id]), ['completion_note' => 'audit whitelist'])
+        ->assertRedirect();
+
+    $audit = ActivityLog::query()->where('event', 'vehicle_sale.transaction_completed')->latest('id')->first();
+    expect($audit)->not->toBeNull()
+        ->and($audit?->old_values)->toHaveKeys(['completed_at', 'completed_by', 'completion_note', 'receivable_status', 'vehicle_stock_number'])
+        ->and($audit?->new_values)->toHaveKeys(['completed_at', 'completed_by', 'completion_note', 'receivable_status', 'vehicle_stock_number'])
+        ->and($audit?->new_values['vehicle_stock_number'] ?? null)->toBe('STK-SALE-COMP-AUDIT-001')
+        ->and($audit?->new_values['receivable_status'] ?? null)->toBe('overpaid')
+        ->and($audit?->new_values['customer_name'] ?? null)->toBe('完成交易客戶');
+
+    foreach (['company_id', 'branch_id', 'customer_phone', 'id_number', 'birthday', 'address', 'gross_profit', 'gross_margin', 'profit', 'accounting_event_id', 'journal_entry_id'] as $forbidden) {
+        expect(array_key_exists($forbidden, $audit?->old_values ?? []))->toBeFalse()
+            ->and(array_key_exists($forbidden, $audit?->new_values ?? []))->toBeFalse();
+    }
 });
 
 it('Staff Permission 權限矩陣可看到 vehicles.sales nested permission', function (): void {

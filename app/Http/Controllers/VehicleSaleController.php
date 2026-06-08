@@ -2,20 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CompleteVehicleSaleTransactionRequest;
 use App\Http\Requests\StoreVehicleSaleRequest;
 use App\Http\Requests\UpdateVehicleSaleRequest;
 use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\VehicleSale;
 use App\Services\AuditLogService;
+use App\Services\ReceivableSummaryService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 
 class VehicleSaleController extends Controller
 {
-    public function __construct(private readonly AuditLogService $auditLogService) {}
+    public function __construct(
+        private readonly AuditLogService $auditLogService,
+        private readonly ReceivableSummaryService $summaryService,
+    ) {}
 
     /**
      * 技術註解：建立流程先 tenant-scoped 查車輛（404 優先），再 policy 授權與交易寫入，避免跨租戶銷售注入與 IDOR。
@@ -139,6 +145,60 @@ class VehicleSaleController extends Controller
     }
 
     /**
+     * 技術註解：完成交易只寫入 completion 欄位，不自動 mark sold、認列收入、產生 COGS 或建立會計事件。
+     */
+    public function complete(CompleteVehicleSaleTransactionRequest $request, int $vehicle, int $vehicleSale): RedirectResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        $foundVehicle = $this->scopedVehicleQuery($user)
+            ->whereKey($vehicle)
+            ->firstOrFail();
+
+        $foundVehicleSale = $this->scopedVehicleSaleQuery($user)
+            ->where('vehicle_id', $foundVehicle->id)
+            ->whereKey($vehicleSale)
+            ->with(['vehicle', 'payments', 'customer:id,customer_number,name,phone'])
+            ->firstOrFail();
+
+        $this->authorize('complete', [$foundVehicleSale, $foundVehicle]);
+
+        $summary = $this->summaryService->summarize($foundVehicleSale);
+        $this->ensureSaleCanBeCompleted($foundVehicleSale, $summary);
+
+        DB::transaction(function () use ($request, $user, $foundVehicleSale, $summary): void {
+            $oldValues = $this->buildCompletionAuditValues($foundVehicleSale, $summary);
+
+            // 技術註解：completed_at / completed_by 由伺服器在交易內寫入，避免前端回填時間或指定操作者造成稽核失真。
+            $foundVehicleSale->update([
+                'completed_at' => now(),
+                'completed_by' => (int) $user->id,
+                'completion_note' => $request->validated('completion_note'),
+                'updated_by' => (int) $user->id,
+            ]);
+
+            $foundVehicleSale->refresh()->load(['vehicle', 'payments', 'customer:id,customer_number,name,phone']);
+            $newSummary = $this->summaryService->summarize($foundVehicleSale);
+
+            $this->auditLogService->log(
+                actor: $user,
+                action: 'vehicle_sale.transaction_completed',
+                description: 'Vehicle sale transaction completed',
+                targetUser: null,
+                metadata: ['module' => 'vehicle_sales'],
+                subject: $foundVehicleSale,
+                oldValues: $oldValues,
+                newValues: $this->buildCompletionAuditValues($foundVehicleSale, $newSummary),
+                request: $request,
+                event: 'vehicle_sale.transaction_completed',
+            );
+        });
+
+        return redirect()->route('employee-system.vehicles.show', $foundVehicle->id);
+    }
+
+    /**
      * 技術註解：每車僅允許一筆 active sale，避免多筆保留/成交互相覆寫 vehicle lifecycle_status。
      */
     private function ensureNoActiveSaleConflict(Vehicle $vehicle, string $nextStatus, ?int $ignoreSaleId = null): void
@@ -177,6 +237,42 @@ class VehicleSaleController extends Controller
         throw new HttpResponseException(response()->json([
             'message' => '已成交銷售紀錄不可改回保留狀態。',
         ], 422));
+    }
+
+    /**
+     * 技術註解：交易完成必須由使用者明確觸發且通過狀態與收款檢查，避免收款或售出狀態自動推導完成。
+     *
+     * @param  array<string, mixed>  $summary
+     */
+    private function ensureSaleCanBeCompleted(VehicleSale $sale, array $summary): void
+    {
+        if ($sale->sale_status === 'cancelled') {
+            throw new HttpResponseException(response()->json(['message' => '已取消銷售不可完成交易。'], 422));
+        }
+
+        if ($sale->vehicle?->lifecycle_status === 'archived') {
+            throw new HttpResponseException(response()->json(['message' => '已封存車輛不可完成交易。'], 422));
+        }
+
+        if ($sale->completed_at !== null) {
+            throw new HttpResponseException(response()->json(['message' => '此交易已完成，不可重複完成。'], 422));
+        }
+
+        if ($sale->sale_status !== 'sold') {
+            throw new HttpResponseException(response()->json(['message' => '僅已成交銷售可完成交易。'], 422));
+        }
+
+        if ($sale->vehicle?->lifecycle_status !== 'sold') {
+            throw new HttpResponseException(response()->json(['message' => '僅已售出車輛可完成交易。'], 422));
+        }
+
+        if ($sale->sale_price === null || (float) $sale->sale_price <= 0) {
+            throw new HttpResponseException(response()->json(['message' => '銷售價格未設定，無法完成交易。'], 422));
+        }
+
+        if (! in_array($summary['receivable_status'] ?? null, ['paid', 'overpaid'], true)) {
+            throw new HttpResponseException(response()->json(['message' => '收款尚未完成，無法完成交易。'], 422));
+        }
     }
 
     /**
@@ -223,6 +319,37 @@ class VehicleSaleController extends Controller
             'salesperson_name' => $vehicleSale->salesperson_name,
             'commission_amount' => $vehicleSale->commission_amount,
             'notes' => $vehicleSale->notes,
+        ];
+    }
+
+    /**
+     * 技術註解：completion audit 僅記錄安全白名單，避免 tenant raw ids、個資、會計分錄欄位或毛利資料進入稽核快照。
+     *
+     * @param  array<string, mixed>|null  $summary
+     * @return array<string, mixed>
+     */
+    private function buildCompletionAuditValues(?VehicleSale $vehicleSale, ?array $summary = null): array
+    {
+        if ($vehicleSale === null) {
+            return [];
+        }
+
+        return [
+            'vehicle_sale_id' => $vehicleSale->id,
+            'vehicle_id' => $vehicleSale->vehicle?->id ?? $vehicleSale->vehicle_id,
+            'vehicle_stock_number' => $vehicleSale->vehicle?->stock_number,
+            'customer_id' => $vehicleSale->customer_id,
+            'customer_number' => $vehicleSale->customer?->customer_number,
+            'customer_name' => $vehicleSale->customer?->name ?? $vehicleSale->customer_name,
+            'sale_status' => $vehicleSale->sale_status,
+            'sold_at' => optional($vehicleSale->sold_at)->format('Y-m-d H:i:s'),
+            'completed_at' => optional($vehicleSale->completed_at)->format('Y-m-d H:i:s'),
+            'completed_by' => $vehicleSale->completed_by,
+            'completion_note' => $vehicleSale->completion_note,
+            'receivable_status' => $summary['receivable_status'] ?? null,
+            'receivable_amount' => $summary['receivable_amount'] ?? null,
+            'received_amount' => $summary['received_amount'] ?? null,
+            'receivable_balance' => $summary['receivable_balance'] ?? null,
         ];
     }
 

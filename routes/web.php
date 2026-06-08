@@ -180,6 +180,13 @@ Route::patch('/employee-system/vehicles/{vehicle}/sales/{vehicleSale}', [Vehicle
     ->whereNumber('vehicleSale')
     ->name('employee-system.vehicles.sales.update');
 
+Route::patch('/employee-system/vehicles/{vehicle}/sales/{vehicleSale}/complete', [VehicleSaleController::class, 'complete'])
+    // 技術註解：交易完成屬 Vehicle Sale domain，維持 vehicles 模組門禁並由 policy 檢查 completion.confirm，避免與 Receivables mark-sold 權限混用。
+    ->middleware(['auth', 'module.access:vehicles'])
+    ->whereNumber('vehicle')
+    ->whereNumber('vehicleSale')
+    ->name('employee-system.vehicles.sales.complete');
+
 Route::post('/employee-system/vehicles/{vehicle}/sales/{vehicleSale}/payments', [VehicleSalePaymentController::class, 'store'])
     // 技術註解：收款建立掛於銷售底下，Controller 先 tenant scoped vehicle/sale 後授權，避免跨車收款注入。
     ->middleware(['auth', 'module.access:vehicles'])

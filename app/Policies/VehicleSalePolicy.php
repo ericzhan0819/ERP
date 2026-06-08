@@ -57,6 +57,18 @@ class VehicleSalePolicy
     }
 
     /**
+     * 技術註解：完成交易是獨立敏感節點，不可用 sales.update、receivables.mark-sold 或 completion.view 代替 confirm 權限。
+     */
+    public function complete(User $user, VehicleSale $vehicleSale, Vehicle $vehicle): bool
+    {
+        if (! $user->can('module.vehicles.sales.completion.confirm')) {
+            return false;
+        }
+
+        return $this->isSameTenantWithSale($user, $vehicleSale, $vehicle);
+    }
+
+    /**
      * 技術註解：集中 vehicle tenant 判斷可避免多處重複條件漂移導致權限邊界不一致。
      */
     private function isSameTenantWithVehicle(User $user, Vehicle $vehicle): bool
