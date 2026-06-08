@@ -2,9 +2,9 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed；Accounting Event Phase 4C Account Mapping Spec completed；Accounting Event Phase 4C-2 Config-based Mapping Foundation completed。
 - 穩定節點：Transaction Completion MVP completed through UI，已涵蓋 RBAC foundation、Data model foundation、Backend completion action、Backend completion payload、React UI、Manual QA checklist documented。
-- 最新驗證狀態：`npm run build` passed；focused tests passed：`ReceivableTest：14 passed / 265 assertions`、`VehicleSaleTest：35 passed / 394 assertions`、`AccountingEventWorkspaceTest：12 passed / 166 assertions`、`AccountingEventTest：5 passed / 32 assertions`；full test passed：`./vendor/bin/sail artisan test`，304 passed / 2646 assertions。
+- 最新驗證狀態：`npm run build` passed；focused tests passed：`ReceivableTest：14 passed / 265 assertions`、`VehicleSaleTest：35 passed / 394 assertions`、`AccountingEventWorkspaceTest：12 passed / 166 assertions`、`AccountingEventMappingConfigTest：10 tests / 155 assertions`、`AccountingEventTest：5 tests / 33 assertions`；full test passed：`./vendor/bin/sail artisan test`，304 passed / 2646 assertions。
 - 本文件為目前穩定節點同步整理；目前不實作退款、不做 AR / AP / cash / invoice / reports 整合、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
 
 ## 技術棧
@@ -47,6 +47,8 @@
 - Accounting Event Phase 3 completion integration
 - Accounting Event Phase 4A Review Workflow
 - Accounting Event Phase 4B Void Workflow
+- Accounting Event Phase 4C Account Mapping Spec
+- Accounting Event Phase 4C-2 Config-based Mapping Foundation
 - Confirm Delivery / Transaction Completion Spec
 - Sales / Payments / Delivery semantics UI hints
 - Transaction Completion / Confirm Delivery MVP：Completion RBAC、Completion data fields、Completion backend action、Completion payload、Completion UI、Completion audit event、Manual QA checklist
@@ -217,6 +219,25 @@
 - Focused test：`./vendor/bin/sail artisan test tests/Feature/StaffPermissionRoleMatrixTest.php`。
 - Build verification：`npm run build`。
 
+## Accounting Event Phase 4C-2 Config-based Mapping Foundation
+
+- Config-based Accounting Event mapping foundation completed。
+- Added `config/accounting_event_mappings.php`。
+- Added `AccountingEventMappingConfigTest`。
+- `vehicle_sale_completed` mapping metadata exists。
+- Mapping is disabled for runtime conversion。
+- Mapping does not contain actual account IDs。
+- Mapping does not contain fixed account codes。
+- Journal line templates are disabled metadata only。
+- No convert route / permission / service exists。
+- No journal draft or journal lines are generated。
+- No revenue / COGS recognition runtime exists。
+- No profit / gross margin payload exists。
+- Focused test：`./vendor/bin/sail artisan test tests/Feature/AccountingEventMappingConfigTest.php`。
+- Result：10 tests / 155 assertions。
+- Focused test：`./vendor/bin/sail artisan test tests/Feature/AccountingEventTest.php`。
+- Result：5 tests / 33 assertions。
+
 ## Accounting Module Boundaries
 
 - Accounting is now split by functional module boundaries。
@@ -290,7 +311,7 @@
 - Transaction Completion Backend Payload completed：Receivables Show 已提供完整 `sale.completion` object；Receivables Index 已提供 lightweight completion summary；Vehicle Show / Edit 已提供 readonly completion summary。
 - Transaction Completion React UI completed：Receivables Show 已有交易完成狀態、block reason、`completion_note` form、完成交易 action；Vehicle Show / Edit 只顯示唯讀 completion summary。
 - Receivables Show 是目前主要操作入口；Vehicle Show / Edit 只顯示唯讀 completion summary。
-- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow 與 Phase 4B Void Workflow 已存在，但目前沒有 journal draft generation、revenue recognition、COGS recognition、profit / gross margin payload、return / refund / reversal flow。
+- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow、Phase 4B Void Workflow 與 Phase 4C-2 Config-based Mapping Foundation 已存在，但目前沒有 convert、journal draft generation、revenue recognition、COGS recognition、profit / gross margin payload、return / refund / reversal flow。
 - Accounting Event convert 仍未實作。
 
 ## 車輛流程
@@ -324,8 +345,8 @@ Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Complete 
 Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Confirm Delivery / Complete Transaction → Accounting Event / Journal Draft → Revenue / COGS Recognition
 ```
 
-- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow 與 Phase 4B Void Workflow 已存在。
-- Completion → pending Accounting Event 已完成；pending → reviewed 已完成；pending / reviewed → voided 已完成；Accounting Event → Journal Draft → Revenue / COGS Recognition 仍是 future backlog。
+- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow、Phase 4B Void Workflow 與 Phase 4C-2 Config-based Mapping Foundation 已存在。
+- Completion → pending Accounting Event 已完成；pending → reviewed 已完成；pending / reviewed → voided 已完成；config-based mapping foundation 已完成但 disabled；Accounting Event → Journal Draft → Revenue / COGS Recognition 仍是 future backlog。
 - Accounting Event convert 仍未實作。
 - No automatic journal draft generation yet。
 - No automatic revenue recognition。
@@ -442,8 +463,10 @@ Audit 資料原則：
 - Completion → pending Accounting Event 已完成。
 - Accounting Event review 已完成。
 - Accounting Event void 已完成。
+- Config-based mapping foundation 已完成。
 - Accounting Event convert 仍未實作。
 - 尚未由 Accounting Event 產生 Journal Draft。
+- database-backed mapping / mapping UI 仍是 future direction。
 - 尚未自動 revenue recognition。
 - 尚未自動 COGS recognition。
 - 尚未計算 profit / gross margin。
@@ -480,8 +503,9 @@ Audit 資料原則：
 
 - Phase B 已完成：Sales / Payments / Delivery semantics UI hints。
 - Manual browser QA execution if not yet done。
-- Phase 0 / 1 / 2 / 3 / 4A / 4B 已完成：Accounting Event spec、foundation、readonly workspace、Completion → pending Accounting Event、pending → reviewed、pending / reviewed → voided。
+- Phase 0 / 1 / 2 / 3 / 4A / 4B / 4C / 4C-2 已完成：Accounting Event spec、foundation、readonly workspace、Completion → pending Accounting Event、pending → reviewed、pending / reviewed → voided、Account Mapping Spec、config-based mapping foundation。
 - 後續可做：Accounting Event convert workflow。
+- 後續可做：Account Mapping UI / database-backed mapping。
 - 後續可做：Accounting Event → Journal Draft。
 - 後續可做：Revenue Recognition。
 - 後續可做：COGS Recognition。

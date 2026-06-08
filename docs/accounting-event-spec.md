@@ -1,8 +1,8 @@
 # Accounting Event Foundation Spec
 
-> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed + Phase 4A review workflow completed + Phase 4B void workflow completed.
+> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed.
 > Scope: define Accounting Event product semantics, current foundation state, future data direction, status flow, source documents, tenant / permission / audit principles, and future Journal Draft / Revenue / COGS integration direction.
-> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. Phase 4A has implemented pending -> reviewed. Phase 4B has implemented pending / reviewed -> voided. It does not implement create / convert workflows, journal draft generation, or accounting recognition runtime behavior.
+> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. Phase 4A has implemented pending -> reviewed. Phase 4B has implemented pending / reviewed -> voided. Phase 4C completed the account mapping design spec. Phase 4C-2 implemented config-based mapping foundation metadata. It does not implement create / convert workflows, journal draft generation, or accounting recognition runtime behavior.
 
 ## 1. Purpose
 
@@ -78,6 +78,9 @@ VoidAccountingEventRequest
 AccountingEventPolicy::void
 AccountingEventController::void
 AccountingEventVoidTest
+config/accounting_event_mappings.php
+AccountingEventMappingConfigTest
+vehicle_sale_completed mapping metadata
 ```
 
 `AccountingEventTest` covers schema, casts, relationships, config, tenant scoped query, and completion regression. The completion regression confirms a successful completion action creates one pending Accounting Event.
@@ -104,6 +107,15 @@ Accounting Event Show page has void UI for pending / reviewed events when can.vo
 `AccountingEventService` exists. Successful completion creates one pending Accounting Event. Completion integration is backend-only and does not require `module.accounting.events.view`.
 
 `AccountingEventCompletionIntegrationTest` covers successful completion event creation, safe payload allowlist, ReceivableSummaryService semantics, overpaid status, failure / unauthorized / cross-tenant non-creation, idempotency, no journal draft / lines, and readonly workspace consumption.
+
+The current Accounting Event mapping foundation includes:
+
+- `config/accounting_event_mappings.php` exists.
+- `AccountingEventMappingConfigTest` exists.
+- `vehicle_sale_completed` mapping metadata exists.
+- Mapping is disabled for runtime conversion.
+- Journal line templates are disabled metadata only.
+- Mapping config has no runtime account IDs and no fixed account codes.
 
 The following are not completed yet:
 
@@ -171,6 +183,8 @@ Important boundaries:
 - Phase 3 has now added successful completion -> one pending Accounting Event.
 - Phase 4A has now added pending Accounting Event -> reviewed workflow.
 - Phase 4B has now added pending / reviewed Accounting Event -> voided workflow.
+- Phase 4C has now completed Account Mapping Config design spec.
+- Phase 4C-2 has now added config-based mapping foundation metadata.
 - Future phases still must not assume journal draft or accounting recognition runtime exists.
 - `payload` must not store sensitive personal data.
 - `payload` must not store profit / gross margin.
@@ -312,6 +326,16 @@ Current void boundaries:
 - Void does not recognize revenue.
 - Void does not recognize COGS.
 - Void does not add profit / gross margin payload.
+
+Current mapping config boundaries:
+
+- Mapping config does not generate journal draft.
+- Mapping config does not generate `accounting_journal_entry_lines`.
+- Mapping config does not post journal.
+- Mapping config does not recognize revenue.
+- Mapping config does not recognize COGS.
+- Mapping config does not add profit / gross margin payload.
+- Convert still requires future implementation.
 
 Future conversion direction:
 
@@ -478,8 +502,10 @@ Phase 2: Accounting Event index/show readonly workspace completed.
 Phase 3: Completion -> pending Accounting Event completed.
 Phase 4A: Pending Accounting Event -> reviewed completed.
 Phase 4B: Pending / reviewed Accounting Event -> voided completed.
-Phase 4C: Account mapping config design before convert.
-Phase 4D: Reviewed Accounting Event -> manual journal draft generation.
+Phase 4C: Account mapping config design spec completed.
+Phase 4C-2: Config-based mapping foundation completed.
+Phase 4D-1: Convert permission / route / request / policy skeleton only, no journal draft generation if mapping disabled or missing.
+Phase 4D-2: Journal draft generation service using mapping.
 Phase 5: Revenue / COGS draft mapping after account configuration exists.
 Phase 6: Reversal / refund / return flow.
 ```
@@ -494,6 +520,10 @@ Phase 3 directly connects successful completion to one pending Accounting Event 
 - Accounting Event Phase 3 completion integration exists.
 - Accounting Event Phase 4A review workflow exists.
 - Accounting Event Phase 4B void workflow exists.
+- Accounting Event Phase 4C-2 config-based mapping foundation exists.
+- Mapping config is metadata only.
+- Mapping config contains no actual account IDs or fixed account codes.
+- Mapping config is disabled for runtime conversion.
 - Successful completion creates one pending Accounting Event.
 - Only pending Accounting Events can be reviewed.
 - Only pending / reviewed Accounting Events can be voided.

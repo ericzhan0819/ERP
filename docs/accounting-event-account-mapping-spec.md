@@ -1,6 +1,6 @@
 # Accounting Event Account Mapping Spec
 
-Status: Spec only.
+Status: Spec completed + config-based mapping foundation completed.
 Scope: define future account mapping configuration boundaries for converting reviewed Accounting Events into manual Journal Drafts.
 This document does not implement migrations, models, controllers, requests, policies, permissions, React pages, journal draft generation, journal lines generation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or runtime behavior.
 
@@ -32,7 +32,8 @@ Boundaries:
 - Account Mapping is not an official journal entry.
 - Account Mapping does not mean revenue / COGS has been recognized.
 - Account Mapping must not directly create a posted journal.
-- This document defines future direction only and does not implement code.
+- Config-based mapping foundation now exists as disabled metadata only.
+- This document still defines runtime conversion direction and does not enable convert behavior.
 
 ## 2. Current Repo State
 
@@ -75,9 +76,18 @@ Accounting Event Phase 4B:
 - void route / request / policy / controller / UI / tests
 - `pending / reviewed -> voided`
 
+Accounting Event Phase 4C-2:
+
+- `config/accounting_event_mappings.php` added
+- `tests/Feature/AccountingEventMappingConfigTest.php` added
+- `vehicle_sale_completed` metadata exists
+- required / optional keys defined
+- templates disabled
+- no account IDs / account codes
+- no route / permission / UI / runtime conversion
+
 Currently not completed:
 
-- Account Mapping Config
 - Accounting Event convert
 - Accounting Event -> Journal Draft
 - Journal Draft generation from Accounting Event
@@ -155,7 +165,7 @@ Recommended first scope:
 vehicle_sale_completed
 ```
 
-This document does not implement that scope.
+This scope now exists as disabled config metadata only. It is not enabled for runtime conversion.
 
 Explicit exclusions for the first mapping phase:
 
@@ -166,7 +176,7 @@ Explicit exclusions for the first mapping phase:
 
 ## 6. Future Mapping Configuration Shape
 
-Future mapping may use a config file such as:
+Option A config-based mapping foundation has been implemented as metadata only:
 
 ```txt
 config/accounting_event_mappings.php
@@ -208,18 +218,18 @@ Cons:
 - Higher complexity.
 - Requires more complete validation.
 
-Recommendation:
+Current recommendation:
 
 ```txt
-Short-term: config-based mapping spec first, no runtime.
+Short-term: config-based mapping foundation exists, metadata only, no runtime.
 Medium-term: database-backed mapping before SaaS multi-tenant accounting customization.
 ```
 
-This document does not add a config file or table.
+It remains disabled for runtime conversion and does not contain account IDs. Database-backed mapping remains future direction.
 
 ## 7. Suggested Mapping Keys
 
-Future mapping key direction for `vehicle_sale_completed` may include:
+Current mapping metadata for `vehicle_sale_completed` includes:
 
 ```txt
 vehicle_sale_completed.accounts_receivable_account
@@ -233,7 +243,10 @@ vehicle_sale_completed.rounding_adjustment_account
 
 Boundaries:
 
-- These keys are future direction and do not currently exist.
+- `vehicle_sale_completed.accounts_receivable_account` exists as metadata.
+- `vehicle_sale_completed.sales_revenue_account` exists as metadata.
+- Optional keys exist as metadata.
+- None contain runtime account IDs.
 - Do not specify actual `account_id` values in this document.
 - Do not assume the chart of accounts has fixed codes.
 - Do not hard-code any mapping into PHP code.
@@ -562,8 +575,8 @@ Suggested future small-step sequence:
 
 ```txt
 Phase 4C: Account mapping config design spec. Current task.
-Phase 4C-1: Decide config-based vs database-backed mapping.
-Phase 4C-2: If config-based, add config/accounting_event_mappings.php + tests only.
+Phase 4C-1: Decide config-based vs database-backed mapping. Completed as config-based first.
+Phase 4C-2: Config-based mapping foundation completed.
 Phase 4C-3: If database-backed, add mapping table/model/policy/settings UI later.
 Phase 4D-1: Add convert permission / route / request / policy tests only, no journal generation yet if mapping absent.
 Phase 4D-2: Add journal draft generation service using mapping.
@@ -573,31 +586,29 @@ Phase 5: Revenue / COGS draft mapping after account configuration exists.
 Phase 6: Reversal / refund / return flow.
 ```
 
-The next code step must not directly hard-code mapping.
+Phase 4C completed.
 
-The safest next step is config-based mapping foundation with tests only.
+Phase 4C-2 completed.
 
-Convert should only come after mapping foundation exists.
+Next safest code step: Phase 4D-1 convert skeleton only, no journal generation.
+
+Convert must fail safely while mapping `enabled = false`.
+
+Actual draft generation must wait for mapping activation / validation decision.
 
 ## 22. Explicit Non-goals
 
 This document does not do:
 
-- No code changes.
-- No migration.
-- No model change.
-- No controller change.
-- No request.
-- No policy.
 - No route.
 - No React page.
 - No permission seeding.
-- No mapping config implementation.
-- No mapping table.
+- No runtime mapping usage.
+- No database-backed mapping.
 - No mapping UI.
 - No convert implementation.
 - No journal draft generation.
-- No `accounting_journal_entry_lines` generation.
+- No journal line generation.
 - No automatic journal posting.
 - No revenue recognition.
 - No COGS recognition.
@@ -613,13 +624,16 @@ This document does not do:
 
 ## 23. Acceptance Criteria
 
+- This spec reflects config-based mapping foundation completed.
 - This spec adds no runtime behavior.
 - This spec does not change database schema.
 - This spec does not change routes.
 - This spec does not change permissions.
 - This spec does not change React pages.
+- Mapping config remains disabled.
+- Mapping config contains no actual account IDs or fixed account codes.
 - This spec preserves current completion -> pending Accounting Event behavior.
 - This spec preserves current review and void workflows.
 - This spec defines future account mapping boundaries before convert.
-- This spec explicitly prevents hard-coded account IDs and debit / credit mappings in the next implementation step.
-- This spec explicitly prevents automatic posting, revenue recognition, COGS recognition, and profit / gross margin payload.
+- This spec still prevents hard-coded debit / credit runtime behavior.
+- This spec still prevents automatic posting, revenue recognition, COGS recognition, and profit / gross margin payload.

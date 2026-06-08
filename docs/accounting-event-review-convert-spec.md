@@ -1,6 +1,6 @@
 # Accounting Event Review / Convert Workflow Spec
 
-Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed.
+Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed.
 Scope: define current Accounting Event review workflow state and future convert / void workflow boundaries.
 This document reflects the implemented review and void workflows. It does not implement convert routes, journal draft generation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
 
@@ -76,6 +76,18 @@ Accounting Event Phase 4B completed:
 - pending / reviewed -> voided exists
 - converted event void remains not allowed
 - already voided event cannot be voided again
+
+Accounting Event Phase 4C completed:
+
+- Account Mapping Spec completed
+- `docs/accounting-event-account-mapping-spec.md` exists
+
+Accounting Event Phase 4C-2 completed:
+
+- Config-based Mapping Foundation completed
+- `config/accounting_event_mappings.php` exists
+- `AccountingEventMappingConfigTest` exists
+- mapping metadata exists but convert remains future-only
 
 Current business flow:
 
@@ -219,6 +231,11 @@ Convert boundaries:
 - Convert must not create posted journal.
 - After convert, event status is `converted`, but journal status remains `draft`.
 - Convert needs an idempotency guard: if the event already has `converted_journal_entry_id`, it must not create a second journal draft.
+- Convert still must not run unless mapping is enabled and validated.
+- Current mapping config has `enabled = false`.
+- Current journal line templates have `enabled = false`.
+- Future convert must fail safely if mapping disabled / missing.
+- Future convert must still create draft only, never posted.
 
 Suggested future permission:
 
@@ -522,8 +539,10 @@ Suggested future implementation sequence:
 ```txt
 Phase 4A: completed review permission + review route/controller action/request/policy/tests
 Phase 4B: completed void permission + void route/controller action/request/policy/tests for pending/reviewed only
-Phase 4C: design account mapping config before convert
-Phase 4D: convert reviewed event to journal draft after account mapping exists
+Phase 4C: completed account mapping config design spec
+Phase 4C-2: completed config-based mapping foundation
+Phase 4D-1: convert permission / route / request / policy skeleton only
+Phase 4D-2: journal draft generation service using mapping
 Phase 5: revenue / COGS draft mapping only after accounting rules are confirmed
 ```
 
@@ -531,9 +550,12 @@ Phase boundaries:
 
 - Phase 4A completed and did not do convert.
 - Phase 4B completed and does not touch converted event reversal.
-- Next recommended step is Phase 4C: Account mapping config design before convert.
-- Phase 4C designs mapping first and must not hard-code accounts.
-- Phase 4D only creates draft and must not post.
+- Phase 4C completed and must not hard-code accounts.
+- Phase 4C-2 completed and remains disabled metadata only.
+- Next recommended step is Phase 4D-1: convert permission / route / request / policy skeleton only.
+- Phase 4D-1 should not generate journal draft.
+- Phase 4D-1 should return 422 when mapping is disabled / missing.
+- Phase 4D-2 should be the first phase to use mapping for journal draft generation service.
 - Phase 5 is the first place to handle revenue / COGS draft mapping.
 
 ## 15. Explicit Non-goals
@@ -548,7 +570,6 @@ This document does not do:
 - No revenue recognition.
 - No COGS recognition.
 - No profit / gross margin payload.
-- No account mapping implementation.
 - No AR / AP module.
 - No Cash / Bank module.
 - No Invoice module.
