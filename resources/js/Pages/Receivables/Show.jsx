@@ -105,7 +105,7 @@ export default function ReceivablesShow({ auth, sale, paymentTypes = {}, payment
                     <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
                         <p><span className="block text-xs font-semibold text-primary">Step 1｜Payments</span><span className="text-xs text-muted">記錄實際收到的款項。</span></p>
                         <p><span className="block text-xs font-semibold text-primary">Step 2｜Mark Sold</span><span className="text-xs text-muted">收款條件滿足時，銜接銷售與車輛 sold 狀態。</span></p>
-                        <p><span className="block text-xs font-semibold text-primary">Step 3｜Confirm Delivery</span><span className="text-xs text-muted">交車完成 / 完成交易尚未實作，未來會獨立處理。</span></p>
+                        <p><span className="block text-xs font-semibold text-primary">Step 3｜Confirm Delivery</span><span className="text-xs text-muted">交車完成 / 完成交易已可由符合條件且有權限的使用者明確確認；目前只記錄 completion 狀態，不會自動產生會計事件或分錄。</span></p>
                         <p><span className="block text-xs font-semibold text-primary">Step 4｜Accounting</span><span className="text-xs text-muted">目前不自動產生 accounting event、journal draft、revenue 或 COGS。</span></p>
                     </div>
                 </section>
