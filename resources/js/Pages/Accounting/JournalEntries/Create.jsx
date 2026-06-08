@@ -28,9 +28,9 @@ export default function AccountingJournalEntriesCreate({ auth, accounts = [], de
                     <section className="rounded-2xl border border-default bg-surface p-4">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div className="min-w-0">
-                                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Accounting Journal</p>
-                                <h1 className="mt-1 text-2xl font-semibold text-primary">新增會計傳票草稿</h1>
-                                <p className="mt-1 text-sm text-secondary">傳票編號會在儲存草稿後由系統產生。</p>
+                                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Journal Entry Workbench</p>
+                                <h1 className="mt-1 text-2xl font-semibold text-primary">新增傳票草稿</h1>
+                                <p className="mt-1 text-sm text-secondary">先建立可編輯草稿；傳票編號會在儲存後由後端產生。</p>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
                                 <Link href={route('employee-system.accounting.journal-entries.index')} className="rounded-md border border-default px-3 py-2 text-sm font-medium text-secondary transition hover:bg-slate-50 dark:hover:bg-slate-900/40">返回列表</Link>

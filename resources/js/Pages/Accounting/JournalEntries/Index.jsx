@@ -8,6 +8,10 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 export default function AccountingJournalEntriesIndex({ auth, journals, filters = {}, journalStatuses = {}, can = {} }) {
     const rows = journals?.data ?? [];
     const links = journals?.links ?? [];
+    const rowSummary = rows.reduce((summary, journal) => ({
+        ...summary,
+        [journal.status]: (summary[journal.status] ?? 0) + 1,
+    }), { total: rows.length, draft: 0, posted: 0, voided: 0 });
 
     const postJournal = (journal) => {
         if (!window.confirm('已過帳傳票不可修改。')) {
@@ -52,9 +56,9 @@ export default function AccountingJournalEntriesIndex({ auth, journals, filters 
             <div className="space-y-5 p-4 md:p-6">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Accounting</p>
-                        <h1 className="mt-1 text-2xl font-semibold text-primary">傳票管理</h1>
-                        <p className="mt-1 text-sm text-secondary">建立、過帳與作廢會計傳票，借貸必平衡。已過帳或已作廢傳票不可修改。</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Journal Entry Workbench</p>
+                        <h1 className="mt-1 text-2xl font-semibold text-primary">會計傳票</h1>
+                        <p className="mt-1 text-sm text-secondary">以傳票狀態驅動查看、草稿編輯、過帳與作廢操作；正式權限與驗證仍由後端執行。</p>
                     </div>
                     {can.create && (
                         <Link href={route('employee-system.accounting.journal-entries.create')} className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
@@ -63,14 +67,39 @@ export default function AccountingJournalEntriesIndex({ auth, journals, filters 
                     )}
                 </div>
 
-                <section className="grid grid-cols-1 gap-3 rounded-2xl border border-default bg-surface p-4 md:grid-cols-4">
-                    <input value={filters.q ?? ''} onChange={(event) => updateFilter('q', event.target.value)} placeholder="搜尋傳票編號 / 摘要" className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm md:col-span-1" />
-                    <input type="date" value={filters.date_from ?? ''} onChange={(event) => updateFilter('date_from', event.target.value)} className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm" />
-                    <input type="date" value={filters.date_to ?? ''} onChange={(event) => updateFilter('date_to', event.target.value)} className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm" />
-                    <select value={filters.status ?? ''} onChange={(event) => updateFilter('status', event.target.value)} className="rounded-lg border border-default bg-transparent px-3 py-2 text-sm">
-                        <option value="">全部狀態</option>
-                        {Object.entries(journalStatuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                    </select>
+                <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                    <SummaryCard label="目前列表" value={rowSummary.total} />
+                    <SummaryCard label="草稿" value={rowSummary.draft} />
+                    <SummaryCard label="已過帳" value={rowSummary.posted} />
+                    <SummaryCard label="已作廢" value={rowSummary.voided} />
+                </section>
+
+                <section className="rounded-2xl border border-default bg-surface p-4">
+                    <div className="mb-4 border-b border-default pb-3">
+                        <h2 className="text-base font-semibold text-primary">傳票篩選</h2>
+                        <p className="mt-1 text-xs text-secondary">依傳票編號、摘要、日期與狀態縮小目前工作清單。</p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                        <label className="block">
+                            <span className="mb-1 block text-xs font-medium text-secondary">關鍵字</span>
+                            <input value={filters.q ?? ''} onChange={(event) => updateFilter('q', event.target.value)} placeholder="傳票編號 / 摘要" className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" />
+                        </label>
+                        <label className="block">
+                            <span className="mb-1 block text-xs font-medium text-secondary">起始日期</span>
+                            <input type="date" value={filters.date_from ?? ''} onChange={(event) => updateFilter('date_from', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" />
+                        </label>
+                        <label className="block">
+                            <span className="mb-1 block text-xs font-medium text-secondary">結束日期</span>
+                            <input type="date" value={filters.date_to ?? ''} onChange={(event) => updateFilter('date_to', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm" />
+                        </label>
+                        <label className="block">
+                            <span className="mb-1 block text-xs font-medium text-secondary">傳票狀態</span>
+                            <select value={filters.status ?? ''} onChange={(event) => updateFilter('status', event.target.value)} className="w-full rounded-lg border border-default bg-transparent px-3 py-2 text-sm">
+                                <option value="">全部狀態</option>
+                                {Object.entries(journalStatuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                            </select>
+                        </label>
+                    </div>
                 </section>
 
                 <section className="overflow-x-auto rounded-2xl border border-default bg-surface">
@@ -83,8 +112,8 @@ export default function AccountingJournalEntriesIndex({ auth, journals, filters 
                                     <th className="px-3 py-3 font-medium">傳票編號</th>
                                     <th className="px-3 py-3 font-medium">日期</th>
                                     <th className="px-3 py-3 font-medium">摘要</th>
-                                    <th className="px-3 py-3 font-medium">借方總額</th>
-                                    <th className="px-3 py-3 font-medium">貸方總額</th>
+                                    <th className="px-3 py-3 text-right font-medium">借方總額</th>
+                                    <th className="px-3 py-3 text-right font-medium">貸方總額</th>
                                     <th className="px-3 py-3 font-medium">狀態</th>
                                     <th className="px-3 py-3 font-medium">操作人員</th>
                                     <th className="px-3 py-3 font-medium">操作</th>
@@ -96,14 +125,14 @@ export default function AccountingJournalEntriesIndex({ auth, journals, filters 
                                         <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{journal.journal_number}</td>
                                         <td className="px-3 py-3 whitespace-nowrap">{journal.entry_date}</td>
                                         <td className="px-3 py-3">{journal.summary || '—'}</td>
-                                        <td className="px-3 py-3 whitespace-nowrap">$ {Number(journal.total_debit || 0).toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                        <td className="px-3 py-3 whitespace-nowrap">$ {Number(journal.total_credit || 0).toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td className="px-3 py-3 text-right font-mono whitespace-nowrap">$ {Number(journal.total_debit || 0).toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td className="px-3 py-3 text-right font-mono whitespace-nowrap">$ {Number(journal.total_credit || 0).toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         <td className="px-3 py-3 whitespace-nowrap">
-                                            <span className="inline-flex rounded-full border border-default px-2 py-1 text-xs text-secondary">{journalStatuses[journal.status] ?? journal.status}</span>
+                                            <StatusBadge status={journal.status} label={journalStatuses[journal.status] ?? journal.status} />
                                         </td>
                                         <td className="px-3 py-3 whitespace-nowrap">{journal.operator_name ?? '—'}</td>
                                         <td className="px-3 py-3 whitespace-nowrap">
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-2">
                                                 <Link href={route('employee-system.accounting.journal-entries.show', journal.id)} className="text-primary underline underline-offset-2">查看</Link>
                                                 {can.update && journal.status === 'draft' && (
                                                     <Link href={route('employee-system.accounting.journal-entries.edit', journal.id)} className="text-primary underline underline-offset-2">編輯</Link>
@@ -135,4 +164,23 @@ export default function AccountingJournalEntriesIndex({ auth, journals, filters 
             </div>
         </DashboardLayout>
     );
+}
+
+function SummaryCard({ label, value }) {
+    return (
+        <div className="rounded-2xl border border-default bg-surface p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted">{label}</p>
+            <p className="mt-2 font-mono text-2xl font-semibold text-primary">{Number(value || 0).toLocaleString('zh-TW')}</p>
+        </div>
+    );
+}
+
+function StatusBadge({ status, label }) {
+    const classes = {
+        draft: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300',
+        posted: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300',
+        voided: 'border-slate-300 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300',
+    };
+
+    return <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${classes[status] ?? 'border-default text-secondary'}`}>{label}</span>;
 }

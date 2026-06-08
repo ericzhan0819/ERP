@@ -49,14 +49,14 @@ export default function JournalEntryForm({ data, setData, errors = {}, accounts 
                 </div>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                    <label className="mb-1 block text-sm text-secondary">傳票日期</label>
-                    <input type="date" className={inputClass} value={data.entry_date ?? ''} onChange={(event) => setData('entry_date', event.target.value)} />
-                    {errors.entry_date && <p className="mt-1 text-sm text-accent">{errors.entry_date}</p>}
+                        <label className="mb-1 block text-sm text-secondary">傳票日期</label>
+                        <input type="date" className={inputClass} value={data.entry_date ?? ''} onChange={(event) => setData('entry_date', event.target.value)} />
+                        {errors.entry_date && <p className="mt-1 text-sm text-accent">{errors.entry_date}</p>}
                     </div>
                     <div className="md:col-span-2">
-                    <label className="mb-1 block text-sm text-secondary">摘要</label>
-                    <input type="text" className={inputClass} value={data.summary ?? ''} onChange={(event) => setData('summary', event.target.value)} placeholder="請輸入傳票摘要" />
-                    {errors.summary && <p className="mt-1 text-sm text-accent">{errors.summary}</p>}
+                        <label className="mb-1 block text-sm text-secondary">摘要</label>
+                        <input type="text" className={inputClass} value={data.summary ?? ''} onChange={(event) => setData('summary', event.target.value)} placeholder="請輸入傳票摘要" />
+                        {errors.summary && <p className="mt-1 text-sm text-accent">{errors.summary}</p>}
                     </div>
                 </div>
             </section>
@@ -72,7 +72,7 @@ export default function JournalEntryForm({ data, setData, errors = {}, accounts 
                     </button>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-default">
+                <div className="overflow-x-auto rounded-xl border border-default bg-surface">
                     <table className="min-w-full text-sm">
                         <thead className="bg-slate-100 text-left text-xs uppercase tracking-[0.14em] text-muted dark:bg-slate-900/50">
                             <tr>
@@ -123,12 +123,13 @@ export default function JournalEntryForm({ data, setData, errors = {}, accounts 
                 <div className="grid grid-cols-1 gap-3 rounded-xl border border-default bg-slate-50 p-4 md:grid-cols-3 dark:bg-slate-900/30">
                     <SummaryCard label="借方合計" value={totalDebit} />
                     <SummaryCard label="貸方合計" value={totalCredit} />
-                    <div className="rounded-lg border border-default bg-surface p-3">
+                    <div className={`rounded-lg border p-3 ${difference === 0 ? 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/20' : 'border-rose-200 bg-rose-50/60 dark:border-rose-900 dark:bg-rose-950/20'}`}>
                         <p className="text-xs uppercase tracking-[0.18em] text-muted">差額</p>
                         <p className={`mt-2 font-mono text-xl font-semibold ${difference === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{difference.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         <span className={`mt-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${difference === 0 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300'}`}>
                             {difference === 0 ? '已平衡' : '未平衡'}
                         </span>
+                        {difference !== 0 && <p className="mt-2 text-xs text-rose-700 dark:text-rose-300">借貸不平衡時後端會拒絕儲存 / 過帳。</p>}
                     </div>
                 </div>
             </section>

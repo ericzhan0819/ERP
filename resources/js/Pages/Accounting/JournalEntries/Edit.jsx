@@ -31,9 +31,10 @@ export default function AccountingJournalEntriesEdit({ auth, journal, accounts =
                     <section className="rounded-2xl border border-default bg-surface p-4">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div className="min-w-0">
-                                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Accounting Journal</p>
+                                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Journal Entry Workbench</p>
                                 <h1 className="mt-1 text-2xl font-semibold text-primary">編輯會計傳票草稿</h1>
                                 <p className="mt-1 font-mono text-sm text-secondary">{journal.journal_number}</p>
+                                <p className="mt-1 text-sm text-secondary">目前僅允許草稿狀態調整日期、摘要與分錄；正式限制由後端驗證。</p>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
                                 <Link href={route('employee-system.accounting.journal-entries.show', journal.id)} className="rounded-md border border-default px-3 py-2 text-sm font-medium text-secondary transition hover:bg-slate-50 dark:hover:bg-slate-900/40">返回明細</Link>

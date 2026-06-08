@@ -42,27 +42,27 @@ export default function AccountingJournalEntriesShow({ auth, journal, journalSta
                 <section className="rounded-2xl border border-default bg-surface p-4">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
-                            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Accounting Journal</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Journal Entry Workbench</p>
                             <h1 className="mt-1 font-mono text-2xl font-semibold text-primary">{journal.journal_number}</h1>
-                            <p className="mt-1 text-sm text-secondary">已過帳或已作廢傳票不可修改。作廢後不可恢復。</p>
+                            <p className="mt-1 text-sm text-secondary">唯讀傳票工作台；草稿可編輯或過帳，已過帳僅可作廢，已作廢只能查看。</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             <Link href={route('employee-system.accounting.journal-entries.index')} className="rounded-md border border-default px-3 py-2 text-sm font-medium text-secondary transition hover:bg-slate-50 dark:hover:bg-slate-900/40">返回列表</Link>
-                        {can.update && journal.status === 'draft' && (
-                            <Link href={route('employee-system.accounting.journal-entries.edit', journal.id)} className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90">
-                                編輯草稿
-                            </Link>
-                        )}
-                        {can.post && journal.status === 'draft' && (
-                            <button type="button" onClick={postJournal} className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90">
-                                過帳
-                            </button>
-                        )}
-                        {can.void && journal.status === 'posted' && (
-                            <button type="button" onClick={voidJournal} className="rounded-md border border-rose-300 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/30">
-                                作廢
-                            </button>
-                        )}
+                            {can.update && journal.status === 'draft' && (
+                                <Link href={route('employee-system.accounting.journal-entries.edit', journal.id)} className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+                                    編輯草稿
+                                </Link>
+                            )}
+                            {can.post && journal.status === 'draft' && (
+                                <button type="button" onClick={postJournal} className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+                                    過帳
+                                </button>
+                            )}
+                            {can.void && journal.status === 'posted' && (
+                                <button type="button" onClick={voidJournal} className="rounded-md border border-rose-300 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/30">
+                                    作廢
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -75,7 +75,7 @@ export default function AccountingJournalEntriesShow({ auth, journal, journalSta
                             <h2 className="text-base font-semibold text-primary">傳票資訊</h2>
                             <p className="mt-1 text-xs text-secondary">目前狀態與稽核時間僅依既有 payload 顯示。</p>
                         </div>
-                        <span className="rounded-full border border-default px-3 py-1 text-xs font-semibold text-secondary">{statusLabel}</span>
+                        <StatusBadge status={journal.status} label={statusLabel} />
                     </div>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         <InfoCard label="傳票編號" value={journal.journal_number ?? '—'} mono />
@@ -128,12 +128,13 @@ export default function AccountingJournalEntriesShow({ auth, journal, journalSta
                     <div className="grid grid-cols-1 gap-3 rounded-xl border border-default bg-slate-50 p-4 md:grid-cols-3 dark:bg-slate-900/30">
                         <TotalCard label="借方合計" value={totalDebit} />
                         <TotalCard label="貸方合計" value={totalCredit} />
-                        <div className="rounded-lg border border-default bg-surface p-3">
+                        <div className={`rounded-lg border p-3 ${difference === 0 ? 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/20' : 'border-rose-200 bg-rose-50/60 dark:border-rose-900 dark:bg-rose-950/20'}`}>
                             <p className="text-xs uppercase tracking-[0.18em] text-muted">差額</p>
                             <p className={`mt-2 font-mono text-xl font-semibold ${difference === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{difference.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                             <span className={`mt-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${difference === 0 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300'}`}>
                                 {difference === 0 ? '已平衡' : '未平衡'}
                             </span>
+                            {difference !== 0 && <p className="mt-2 text-xs text-rose-700 dark:text-rose-300">借貸不平衡時後端會拒絕儲存 / 過帳。</p>}
                         </div>
                     </div>
                 </section>
@@ -171,6 +172,16 @@ function InfoCard({ label, value, mono = false }) {
             <p className={`mt-2 text-base font-semibold text-primary ${mono ? 'font-mono' : ''}`}>{value}</p>
         </div>
     );
+}
+
+function StatusBadge({ status, label }) {
+    const classes = {
+        draft: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300',
+        posted: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300',
+        voided: 'border-slate-300 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300',
+    };
+
+    return <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${classes[status] ?? 'border-default text-secondary'}`}>{label}</span>;
 }
 
 function TotalCard({ label, value }) {
