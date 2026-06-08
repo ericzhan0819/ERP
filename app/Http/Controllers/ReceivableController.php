@@ -39,7 +39,7 @@ class ReceivableController extends Controller
         $saleStatus = in_array($saleStatus, $allowedSaleStatuses, true) ? $saleStatus : 'all';
 
         $sales = $this->scopedVehicleSaleQuery($request->user())
-            ->with(['vehicle:id,stock_number,vin,license_plate,brand,model', 'customer:id,customer_number,name,phone', 'payments'])
+            ->with(['vehicle:id,stock_number,vin,license_plate,brand,model,lifecycle_status', 'customer:id,customer_number,name,phone', 'payments', 'completer:id,name'])
             // 技術註解：收款管理 MVP 主要處理 reserved/sold，排除 draft/cancelled 以避免把未成立或已取消交易誤列為待收款清單。
             ->whereIn('sale_status', ['reserved', 'sold'])
             ->when($saleStatus !== 'all', fn (Builder $query) => $query->where('sale_status', $saleStatus))
@@ -78,12 +78,12 @@ class ReceivableController extends Controller
         abort_unless($request->user()?->can('module.receivables.view'), 403);
 
         $sale = $this->scopedVehicleSaleQuery($request->user())
-            ->with(['vehicle:id,stock_number,vin,license_plate,brand,model,lifecycle_status', 'customer:id,customer_number,name,phone', 'payments.creator:id,name', 'payments.voider:id,name'])
+            ->with(['vehicle:id,stock_number,vin,license_plate,brand,model,lifecycle_status', 'customer:id,customer_number,name,phone', 'payments.creator:id,name', 'payments.voider:id,name', 'completer:id,name'])
             ->whereKey($vehicleSale)
             ->firstOrFail();
 
         return Inertia::render('Receivables/Show', [
-            'sale' => $this->buildSaleDetailPayload($sale),
+            'sale' => $this->buildSaleDetailPayload($sale, $request->user()),
             'paymentTypes' => config('vehicle_sale_payments.payment_types', []),
             'paymentMethods' => config('vehicle_sale_payments.payment_methods', []),
             'can' => [
@@ -196,6 +196,67 @@ class ReceivableController extends Controller
         return $query;
     }
 
+    /** @return array{status: string, status_label: string, completed_at: string|null, completed_by_name: string|null, note: string|null, can_complete: bool, block_reason: string|null, complete_route: string|null} */
+    private function buildCompletionPayload(VehicleSale $sale, array $summary, ?Authenticatable $user): array
+    {
+        $completed = $sale->completed_at !== null;
+        $blockReason = $completed ? null : $this->resolveCompletionBlockReason($sale, $summary);
+        $canConfirm = $user?->can('module.vehicles.sales.completion.confirm') ?? false;
+
+        if ($blockReason === null && ! $completed && ! $canConfirm) {
+            $blockReason = '沒有完成交易權限。';
+        }
+
+        $canComplete = ! $completed && $blockReason === null && $canConfirm;
+        $status = $completed ? 'completed' : ($canComplete ? 'ready_to_complete' : 'blocked');
+
+        return [
+            'status' => $status,
+            'status_label' => $this->resolveCompletionStatusLabel($status),
+            'completed_at' => optional($sale->completed_at)->format('Y-m-d H:i:s'),
+            'completed_by_name' => $completed ? $sale->completer?->name : null,
+            'note' => $sale->completion_note,
+            'can_complete' => $canComplete,
+            'block_reason' => $status === 'blocked' ? $blockReason : null,
+            'complete_route' => $canComplete ? route('employee-system.vehicles.sales.complete', [$sale->vehicle_id, $sale->id]) : null,
+        ];
+    }
+
+    /** @return array{status: string, status_label: string, completed_at: string|null, completed_by_name: string|null} */
+    private function buildCompletionSummaryPayload(VehicleSale $sale): array
+    {
+        $status = $sale->completed_at !== null ? 'completed' : 'blocked';
+
+        return [
+            'status' => $status,
+            'status_label' => $this->resolveCompletionStatusLabel($status),
+            'completed_at' => optional($sale->completed_at)->format('Y-m-d H:i:s'),
+            'completed_by_name' => $sale->completed_at !== null ? $sale->completer?->name : null,
+        ];
+    }
+
+    /** @param array<string, mixed> $summary */
+    private function resolveCompletionBlockReason(VehicleSale $sale, array $summary): ?string
+    {
+        if ($sale->sale_status === 'cancelled') return '已取消銷售不可完成交易。';
+        if ($sale->vehicle?->lifecycle_status === 'archived') return '已封存車輛不可完成交易。';
+        if ($sale->sale_status !== 'sold') return '僅已成交銷售可完成交易。';
+        if ($sale->vehicle?->lifecycle_status !== 'sold') return '僅已售出車輛可完成交易。';
+        if ($sale->sale_price === null || (float) $sale->sale_price <= 0) return '銷售價格未設定，無法完成交易。';
+        if (! in_array($summary['receivable_status'] ?? null, ['paid', 'overpaid'], true)) return '收款尚未完成，無法完成交易。';
+
+        return null;
+    }
+
+    private function resolveCompletionStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'completed' => '已完成交易',
+            'ready_to_complete' => '可完成交易',
+            default => '尚不可完成交易',
+        };
+    }
+
     private function ensureSaleCanReceivePayment(VehicleSale $sale): void
     {
         if ($sale->sale_status === 'cancelled') throw new HttpResponseException(response()->json(['message' => '已取消銷售不可新增收款紀錄。'], 422));
@@ -253,15 +314,17 @@ class ReceivableController extends Controller
             'customer_name' => $sale->customer_name,
             'customer_phone' => $sale->customer_phone,
             'payment_summary' => $summary,
+            'completion' => $this->buildCompletionSummaryPayload($sale),
         ];
     }
 
     /** @return array<string, mixed> */
-    private function buildSaleDetailPayload(VehicleSale $sale): array
+    private function buildSaleDetailPayload(VehicleSale $sale, ?Authenticatable $user): array
     {
         $paymentTypes = config('vehicle_sale_payments.payment_types', []); $paymentMethods = config('vehicle_sale_payments.payment_methods', []); $paymentStatuses = config('vehicle_sale_payments.statuses', []);
         $payload = $this->buildSaleListPayload($sale);
         $markSoldHelpText = $this->resolveMarkSoldHelpText($sale, $payload['payment_summary']);
+        $payload['completion'] = $this->buildCompletionPayload($sale, $payload['payment_summary'], $user);
         return $payload + ['sold_at' => optional($sale->sold_at)->format('Y-m-d'), 'salesperson_name' => $sale->salesperson_name, 'notes' => $sale->notes, 'receivable_block_reason' => $sale->sale_status === 'cancelled' ? '已取消銷售不可新增收款紀錄。' : (($sale->sale_price === null || (float) $sale->sale_price <= 0) ? '銷售價格未設定，無法新增收款。' : null), 'canMarkSold' => $markSoldHelpText === null, 'markSoldHelpText' => $markSoldHelpText, 'payments' => $sale->payments->sortByDesc('id')->map(fn (VehicleSalePayment $payment): array => ['id' => $payment->id, 'payment_number' => $payment->payment_number, 'payment_type_label' => $paymentTypes[$payment->payment_type] ?? $payment->payment_type, 'payment_method_label' => $paymentMethods[$payment->payment_method] ?? $payment->payment_method, 'amount' => $payment->amount, 'paid_at' => optional($payment->paid_at)->format('Y-m-d'), 'reference_no' => $payment->reference_no, 'status' => $payment->status, 'status_label' => $paymentStatuses[$payment->status] ?? $payment->status, 'notes' => $payment->notes, 'creator' => $payment->creator ? ['name' => $payment->creator->name] : null, 'voider' => $payment->voider ? ['name' => $payment->voider->name] : null, 'voided_at' => optional($payment->voided_at)->format('Y-m-d H:i:s'), 'void_reason' => $payment->void_reason])->values()];
     }
 

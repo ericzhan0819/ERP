@@ -15,7 +15,7 @@ use Spatie\Permission\PermissionRegistrar;
 beforeEach(function (): void {
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     Module::updateOrCreate(['key' => 'receivables'], ['label' => '收款管理', 'section' => 'operations', 'route_name' => 'employee-system.receivables.index', 'base_permission' => 'module.receivables.view', 'permission_prefix' => 'module.receivables', 'is_enabled' => true, 'is_active' => true]);
-    foreach (['module.receivables.view', 'module.receivables.create', 'module.receivables.void', 'module.receivables.mark-sold', 'staff-permission.view', 'module.permissions.view'] as $permission) {
+    foreach (['module.receivables.view', 'module.receivables.create', 'module.receivables.void', 'module.receivables.mark-sold', 'module.vehicles.sales.completion.view', 'module.vehicles.sales.completion.confirm', 'staff-permission.view', 'module.permissions.view'] as $permission) {
         Permission::findOrCreate($permission, 'web');
     }
 });
@@ -43,6 +43,115 @@ it('Receivables show payload isolation 與 summary 正確', function (): void {
     $user = rcvUser('rcv-show@example.com'); $user->givePermissionTo('module.receivables.view');
     $sale = rcvSale(rcvVehicle($user), $user, 100); rcvPayment($sale, $user, 40);
     $this->actingAs($user)->get(route('employee-system.receivables.show', $sale->id))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('sale.payment_summary.received_amount', '40.00')->where('sale.payment_summary.received_payment_count', 1)->where('sale.payment_summary.payment_record_count', 1)->has('sale.canMarkSold')->has('sale.markSoldHelpText')->missing('sale.company_id')->missing('sale.branch_id')->missing('sale.profit')->missing('sale.gross_profit')->missing('sale.payments.0.company_id')->missing('sale.payments.0.branch_id'));
+});
+
+it('Receivables show payload 回傳已完成交易 completion object', function (): void {
+    $user = rcvUser('rcv-completion-completed@example.com');
+    $completer = rcvUser('rcv-completion-completer@example.com');
+    $user->givePermissionTo(['module.receivables.view', 'module.vehicles.sales.completion.confirm']);
+    $vehicle = rcvVehicle($user); $vehicle->update(['lifecycle_status' => 'sold']);
+    $completedAt = now()->subHour()->setMicrosecond(0);
+    $sale = rcvSale($vehicle, $user, 100, 'sold', '完成客戶', now());
+    $sale->update(['completed_at' => $completedAt, 'completed_by' => $completer->id, 'completion_note' => '完成備註']);
+    rcvPayment($sale, $user, 100);
+
+    $this->actingAs($user)->get(route('employee-system.receivables.show', $sale->id))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('sale.completion.status', 'completed')
+        ->where('sale.completion.status_label', '已完成交易')
+        ->where('sale.completion.completed_at', $completedAt->format('Y-m-d H:i:s'))
+        ->where('sale.completion.completed_by_name', $completer->name)
+        ->where('sale.completion.note', '完成備註')
+        ->where('sale.completion.can_complete', false)
+        ->where('sale.completion.complete_route', null)
+    );
+});
+
+it('Receivables show payload 回傳可完成交易 completion object', function (): void {
+    $user = rcvUser('rcv-completion-ready@example.com');
+    $user->givePermissionTo(['module.receivables.view', 'module.vehicles.sales.completion.confirm']);
+    $vehicle = rcvVehicle($user); $vehicle->update(['lifecycle_status' => 'sold']);
+    $sale = rcvSale($vehicle, $user, 100, 'sold', '可完成客戶', now());
+    rcvPayment($sale, $user, 120);
+
+    $this->actingAs($user)->get(route('employee-system.receivables.show', $sale->id))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('sale.completion.status', 'ready_to_complete')
+        ->where('sale.completion.status_label', '可完成交易')
+        ->where('sale.completion.can_complete', true)
+        ->where('sale.completion.block_reason', null)
+        ->where('sale.completion.complete_route', route('employee-system.vehicles.sales.complete', [$vehicle->id, $sale->id]))
+    );
+});
+
+it('Receivables show payload 依收款狀態阻擋 completion', function (): void {
+    $user = rcvUser('rcv-completion-payment-block@example.com');
+    $user->givePermissionTo(['module.receivables.view', 'module.vehicles.sales.completion.confirm']);
+    $vehicle = rcvVehicle($user); $vehicle->update(['lifecycle_status' => 'sold']);
+    $sale = rcvSale($vehicle, $user, 100, 'sold', '未收清客戶', now());
+    rcvPayment($sale, $user, 40);
+
+    $this->actingAs($user)->get(route('employee-system.receivables.show', $sale->id))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('sale.completion.status', 'blocked')
+        ->where('sale.completion.can_complete', false)
+        ->where('sale.completion.block_reason', '收款尚未完成，無法完成交易。')
+        ->where('sale.completion.complete_route', null)
+    );
+});
+
+it('Receivables show payload 依 completion confirm 權限阻擋 completion', function (): void {
+    $user = rcvUser('rcv-completion-permission-block@example.com');
+    $user->givePermissionTo(['module.receivables.view', 'module.vehicles.sales.completion.view']);
+    $vehicle = rcvVehicle($user); $vehicle->update(['lifecycle_status' => 'sold']);
+    $sale = rcvSale($vehicle, $user, 100, 'sold', '無權限客戶', now());
+    rcvPayment($sale, $user, 100);
+
+    $this->actingAs($user)->get(route('employee-system.receivables.show', $sale->id))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('sale.completion.status', 'blocked')
+        ->where('sale.completion.can_complete', false)
+        ->where('sale.completion.block_reason', '沒有完成交易權限。')
+        ->where('sale.completion.complete_route', null)
+    );
+});
+
+it('Receivables index payload 只回傳輕量 completion summary', function (): void {
+    $user = rcvUser('rcv-completion-index@example.com');
+    $completer = rcvUser('rcv-completion-index-completer@example.com');
+    $user->givePermissionTo('module.receivables.view');
+    $vehicle = rcvVehicle($user, 'RCV-COMP-INDEX'); $vehicle->update(['lifecycle_status' => 'sold']);
+    $completedAt = now()->setMicrosecond(0);
+    $sale = rcvSale($vehicle, $user, 100, 'sold', '列表完成客戶', now());
+    $sale->update(['completed_at' => $completedAt, 'completed_by' => $completer->id, 'completion_note' => '列表不回 note']);
+
+    $this->actingAs($user)->get(route('employee-system.receivables.index'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('sales.data.0.completion.status', 'completed')
+        ->where('sales.data.0.completion.status_label', '已完成交易')
+        ->where('sales.data.0.completion.completed_at', $completedAt->format('Y-m-d H:i:s'))
+        ->where('sales.data.0.completion.completed_by_name', $completer->name)
+        ->missing('sales.data.0.completion.can_complete')
+        ->missing('sales.data.0.completion.block_reason')
+        ->missing('sales.data.0.completion.complete_route')
+    );
+});
+
+it('Receivables completion payload 不暴露禁止欄位', function (): void {
+    $user = rcvUser('rcv-completion-forbidden-fields@example.com');
+    $user->givePermissionTo(['module.receivables.view', 'module.vehicles.sales.completion.confirm']);
+    $vehicle = rcvVehicle($user); $vehicle->update(['lifecycle_status' => 'sold']);
+    $sale = rcvSale($vehicle, $user, 100, 'sold', '安全欄位客戶', now());
+    rcvPayment($sale, $user, 100);
+
+    $this->actingAs($user)->get(route('employee-system.receivables.show', $sale->id))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->missing('sale.completion.company_id')
+        ->missing('sale.completion.branch_id')
+        ->missing('sale.completion.completed_by')
+        ->missing('sale.completion.completed_by_email')
+        ->missing('sale.completion.accounting_event_id')
+        ->missing('sale.completion.journal_entry_id')
+        ->missing('sale.completion.gross_profit')
+        ->missing('sale.completion.gross_margin')
+        ->missing('sale.completion.profit')
+        ->missing('sale.completion.revenue_amount')
+        ->missing('sale.completion.cogs_amount')
+    );
 });
 
 it('Receivables mark-sold 可在收清後成交並寫入安全 audit payload', function (): void {

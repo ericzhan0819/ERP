@@ -231,6 +231,36 @@ it('有 sales.view 權限者 Show/Edit payload 看得到 sales', function (): vo
         );
 });
 
+it('有 sales.view 權限者 Show/Edit vehicleSales payload 看得到唯讀 completion summary', function (): void {
+    $user = makeVehicleSaleUser('vehicle-sale-completion-summary@example.com');
+    $completer = makeVehicleSaleUser('vehicle-sale-completion-summary-completer@example.com');
+    $user->givePermissionTo(['module.vehicles.view', 'module.vehicles.update', 'module.vehicles.sales.view']);
+    $vehicle = makeVehicleSaleVehicle(1, 10, 'STK-SALE-COMP-SUM-001', 'vin-sale-comp-sum-001');
+    $completedAt = now()->setMicrosecond(0);
+    makeVehicleSaleRecord($vehicle, $user, [
+        'sale_status' => 'sold',
+        'completed_at' => $completedAt,
+        'completed_by' => $completer->id,
+        'completion_note' => '車輛頁唯讀完成備註',
+    ]);
+
+    foreach (['show', 'edit'] as $action) {
+        $this->actingAs($user)
+            ->get(route('employee-system.vehicles.'.$action, $vehicle->id))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('vehicleSales.0.completion.status', 'completed')
+                ->where('vehicleSales.0.completion.status_label', '已完成交易')
+                ->where('vehicleSales.0.completion.completed_at', $completedAt->format('Y-m-d H:i:s'))
+                ->where('vehicleSales.0.completion.completed_by_name', $completer->name)
+                ->where('vehicleSales.0.completion.note', '車輛頁唯讀完成備註')
+                ->missing('vehicleSales.0.completion.can_complete')
+                ->missing('vehicleSales.0.completion.block_reason')
+                ->missing('vehicleSales.0.completion.complete_route')
+            );
+    }
+});
+
 it('有 sales.view 時 sales payload 僅回傳 Customer 基本資訊且排除敏感個資', function (): void {
     $user = makeVehicleSaleUser('vehicle-sale-customer-payload@example.com');
     $user->givePermissionTo('module.vehicles.view');
@@ -372,8 +402,9 @@ it('無 sales.view 權限者 payload 不回傳 sales 且不暴露銷售敏感欄
             ->missing('vehicleSales')
             ->missing('vehicleSaleSummary')
             ->missing('vehicleSales.0.customer_phone')
-            ->missing('vehicleSales.0.commission_amount')
-            ->where('can.view_vehicle_sales', false)
+                ->missing('vehicleSales.0.commission_amount')
+                ->missing('vehicleSales.0.completion')
+                ->where('can.view_vehicle_sales', false)
         );
 
     $this->actingAs($user)
@@ -607,6 +638,7 @@ it('Show/Edit 在無 sales.view costs.view pricing.view 時不回傳銷售成本
                 ->missing('vehicleSales.0.sale_price')
                 ->missing('vehicleSales.0.customer_phone')
                 ->missing('vehicleSales.0.commission_amount')
+                ->missing('vehicleSales.0.completion')
                 ->missing('vehicleSales.0.gross_profit')
                 ->missing('vehicleSales.0.gross_margin')
                 ->missing('vehicleSales.0.profit')
@@ -635,6 +667,17 @@ it('sales 資料不暴露成本或毛利欄位', function (): void {
             ->missing('vehicleSales.0.company_id')
             ->missing('vehicleSales.0.branch_id')
             ->missing('vehicleSales.0.vehicle_id')
+            ->missing('vehicleSales.0.completion.company_id')
+            ->missing('vehicleSales.0.completion.branch_id')
+            ->missing('vehicleSales.0.completion.completed_by')
+            ->missing('vehicleSales.0.completion.completed_by_email')
+            ->missing('vehicleSales.0.completion.accounting_event_id')
+            ->missing('vehicleSales.0.completion.journal_entry_id')
+            ->missing('vehicleSales.0.completion.gross_profit')
+            ->missing('vehicleSales.0.completion.gross_margin')
+            ->missing('vehicleSales.0.completion.profit')
+            ->missing('vehicleSales.0.completion.revenue_amount')
+            ->missing('vehicleSales.0.completion.cogs_amount')
         );
 });
 

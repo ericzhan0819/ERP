@@ -692,6 +692,7 @@ class VehicleController extends Controller
                 'creator:id,name',
                 'updater:id,name',
                 'customer:id,customer_number,name,phone',
+                'completer:id,name',
                 $canViewPayments ? 'payments.creator:id,name' : null,
                 $canViewPayments ? 'payments.updater:id,name' : null,
                 $canViewPayments ? 'payments.voider:id,name' : null,
@@ -711,6 +712,9 @@ class VehicleController extends Controller
                 'salesperson_name',
                 'commission_amount',
                 'notes',
+                'completed_at',
+                'completed_by',
+                'completion_note',
                 'created_by',
                 'updated_by',
             ]);
@@ -737,6 +741,7 @@ class VehicleController extends Controller
                     'salesperson_name' => $sale->salesperson_name,
                     'commission_amount' => $sale->commission_amount,
                     'notes' => $sale->notes,
+                    'completion' => $this->buildSaleCompletionSummaryPayload($sale),
                     'creator' => $sale->creator ? ['name' => $sale->creator->name] : null,
                     'updater' => $sale->updater ? ['name' => $sale->updater->name] : null,
                 ];
@@ -817,5 +822,23 @@ class VehicleController extends Controller
         }
 
         return 'overpaid';
+    }
+
+    /** @return array{status: string, status_label: string, completed_at: string|null, completed_by_name: string|null, note: string|null} */
+    private function buildSaleCompletionSummaryPayload(VehicleSale $sale): array
+    {
+        $status = $sale->completed_at !== null ? 'completed' : 'blocked';
+
+        return [
+            'status' => $status,
+            'status_label' => match ($status) {
+                'completed' => '已完成交易',
+                'ready_to_complete' => '可完成交易',
+                default => '尚不可完成交易',
+            },
+            'completed_at' => optional($sale->completed_at)->format('Y-m-d H:i:s'),
+            'completed_by_name' => $sale->completed_at !== null ? $sale->completer?->name : null,
+            'note' => $sale->completion_note,
+        ];
     }
 }
