@@ -1,8 +1,8 @@
 # Accounting Event Account Mapping Spec
 
-Status: Spec completed + config-based mapping foundation completed.
-Scope: define future account mapping configuration boundaries for converting reviewed Accounting Events into manual Journal Drafts.
-This document does not implement migrations, models, controllers, requests, policies, permissions, React pages, journal draft generation, journal lines generation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or runtime behavior.
+Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed.
+Scope: config-based mapping foundation and convert skeleton exist; mapping runtime journal generation remains disabled.
+This document does not implement mapping management migrations, models, React pages, journal draft generation, journal lines generation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or successful runtime conversion.
 
 ## 1. Purpose
 
@@ -33,7 +33,7 @@ Boundaries:
 - Account Mapping does not mean revenue / COGS has been recognized.
 - Account Mapping must not directly create a posted journal.
 - Config-based mapping foundation now exists as disabled metadata only.
-- This document still defines runtime conversion direction and does not enable convert behavior.
+- This document defines runtime draft generation direction. Phase 4D-1 convert skeleton exists but mapping remains disabled and does not produce a draft.
 
 ## 2. Current Repo State
 
@@ -84,14 +84,24 @@ Accounting Event Phase 4C-2:
 - required / optional keys defined
 - templates disabled
 - no account IDs / account codes
-- no route / permission / UI / runtime conversion
+- no mapping management route / permission / UI
+- no runtime journal generation
+
+Accounting Event Phase 4D-1:
+
+- `module.accounting.events.convert` implemented
+- convert route / request / policy / controller skeleton implemented
+- Show payload includes `can.convert`
+- convert checks reviewed / not voided / not converted / tenant / permission / mapping exists / source_type match / enabled
+- mapping disabled fail-safe returns 422 because `vehicle_sale_completed.enabled = false`
 
 Currently not completed:
 
-- Accounting Event convert
-- Accounting Event -> Journal Draft
+- Accounting Event -> Journal Draft still not completed
 - Journal Draft generation from Accounting Event
 - Journal Entry Lines generation from Accounting Event
+- successful conversion to `converted`
+- `converted_journal_entry_id` write
 - Revenue Recognition
 - COGS Recognition
 - Profit / Gross Margin payload
@@ -389,6 +399,8 @@ Before future `reviewed Accounting Event -> Journal Draft`, implementation must 
 - user must have `module.accounting.events.convert`
 - user may also need `module.accounting.journals.create`
 - mapping config must exist for `event_type`
+- mapping source_type must match event source_type
+- mapping enabled check must pass
 - mapped accounts must exist
 - mapped accounts must belong to same company / allowed branch scope
 - mapped accounts must be active
@@ -399,6 +411,8 @@ Before future `reviewed Accounting Event -> Journal Draft`, implementation must 
 Convert idempotency is required. If `converted_journal_entry_id` already exists, the system must not create a second draft.
 
 Convert failure must not change event status. Journal draft creation and event status update should happen in the same DB transaction.
+
+Phase 4D-1 already implements the reviewed, not voided, no `converted_journal_entry_id`, tenant, convert permission, mapping exists, source_type match, and enabled checks. It stops at disabled mapping fail-safe and does not generate a draft.
 
 ## 15. Future Journal Draft Shape
 
@@ -493,20 +507,21 @@ Current implemented permissions:
 module.accounting.events.view
 module.accounting.events.review
 module.accounting.events.void
+module.accounting.events.convert
 ```
 
 Future possible permissions:
 
 ```txt
-module.accounting.events.convert
 module.accounting.mappings.view
 module.accounting.mappings.update
 ```
 
 Permission boundaries:
 
-- This document does not add permissions.
-- `module.accounting.events.convert` is not implemented.
+- `module.accounting.events.convert` is implemented.
+- `module.accounting.mappings.view` is not implemented.
+- `module.accounting.mappings.update` is not implemented.
 - `module.accounting.events.review` must not automatically allow convert.
 - `module.accounting.events.void` must not automatically allow convert.
 - Whether `module.accounting.journals.create` is also required for convert must be explicitly decided in future implementation.
@@ -578,7 +593,7 @@ Phase 4C: Account mapping config design spec. Current task.
 Phase 4C-1: Decide config-based vs database-backed mapping. Completed as config-based first.
 Phase 4C-2: Config-based mapping foundation completed.
 Phase 4C-3: If database-backed, add mapping table/model/policy/settings UI later.
-Phase 4D-1: Add convert permission / route / request / policy tests only, no journal generation yet if mapping absent.
+Phase 4D-1: Convert permission / route / request / policy / controller skeleton completed, no journal generation.
 Phase 4D-2: Add journal draft generation service using mapping.
 Phase 4D-3: Add journal line preview / validation before creation if needed.
 Phase 4D-4: Convert reviewed event into draft only, never posted.
@@ -590,7 +605,9 @@ Phase 4C completed.
 
 Phase 4C-2 completed.
 
-Next safest code step: Phase 4D-1 convert skeleton only, no journal generation.
+Phase 4D-1 completed.
+
+Next safest step: Phase 4D-2 spec for journal draft generation service using mapping.
 
 Convert must fail safely while mapping `enabled = false`.
 
@@ -600,15 +617,14 @@ Actual draft generation must wait for mapping activation / validation decision.
 
 This document does not do:
 
-- No route.
 - No React page.
-- No permission seeding.
-- No runtime mapping usage.
 - No database-backed mapping.
 - No mapping UI.
-- No convert implementation.
+- No successful draft generation.
 - No journal draft generation.
 - No journal line generation.
+- No converted status transition.
+- No `converted_journal_entry_id` write.
 - No automatic journal posting.
 - No revenue recognition.
 - No COGS recognition.
@@ -625,10 +641,10 @@ This document does not do:
 ## 23. Acceptance Criteria
 
 - This spec reflects config-based mapping foundation completed.
+- This spec reflects Phase 4D-1 Convert Skeleton completed.
 - This spec adds no runtime behavior.
 - This spec does not change database schema.
-- This spec does not change routes.
-- This spec does not change permissions.
+- Convert route / permission skeleton exists; mapping management routes / permissions do not exist.
 - This spec does not change React pages.
 - Mapping config remains disabled.
 - Mapping config contains no actual account IDs or fixed account codes.

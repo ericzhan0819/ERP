@@ -1,8 +1,8 @@
 # Accounting Event Review / Convert Workflow Spec
 
-Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed.
-Scope: define current Accounting Event review workflow state and future convert / void workflow boundaries.
-This document reflects the implemented review and void workflows. It does not implement convert routes, journal draft generation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
+Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed.
+Scope: review / void / convert skeleton are implemented; journal draft generation, revenue recognition, COGS recognition, posting, and additional accounting runtime behavior remain not implemented.
+This document reflects the implemented review, void, and convert skeleton workflows. It does not implement journal draft generation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
 
 ## 1. Purpose
 
@@ -31,7 +31,7 @@ Accounting Event is an accounting candidate event. It is not an official journal
 - `reviewed` does not mean posted.
 - `converted` does not mean posted.
 - Journal posting must continue through the existing Accounting Journal post workflow.
-- Phase 4A implemented pending -> reviewed. Phase 4B implemented pending / reviewed -> voided. Future convert behavior remains direction and safety boundaries only.
+- Phase 4A implemented pending -> reviewed. Phase 4B implemented pending / reviewed -> voided. Phase 4D-1 implemented convert permission / route / request / policy / controller skeleton and mapping fail-safe only; journal draft generation remains future work.
 
 ## 2. Current Repo State
 
@@ -87,7 +87,21 @@ Accounting Event Phase 4C-2 completed:
 - Config-based Mapping Foundation completed
 - `config/accounting_event_mappings.php` exists
 - `AccountingEventMappingConfigTest` exists
-- mapping metadata exists but convert remains future-only
+- mapping metadata exists and remains disabled for runtime draft generation
+
+Accounting Event Phase 4D-1 completed:
+
+- `module.accounting.events.convert` added
+- PATCH route `/employee-system/accounting/events/{accountingEvent}/convert`, route name `employee-system.accounting.events.convert`
+- `ConvertAccountingEventRequest` added
+- `AccountingEventPolicy::convert` added
+- `AccountingEventController::convert` added
+- Show payload includes `can.convert`
+- `AccountingEventConvertTest` exists
+- admin / accounting default to convert permission; viewer does not
+- Staff Permission matrix shows accounting.events convert action label `轉傳票`
+- convert checks same tenant, reviewed, not voided, not converted, convert permission, mapping exists, source_type match, and mapping enabled
+- mapping disabled fail-safe returns 422 because `vehicle_sale_completed.enabled = false`
 
 Current business flow:
 
@@ -103,8 +117,8 @@ Customer
 
 Currently not completed:
 
-- Accounting Event convert
-- Accounting Event -> Journal Draft
+- Accounting Event successful conversion to Journal Draft
+- Journal Draft generation from Accounting Event
 - Journal Draft generation from Accounting Event
 - Revenue Recognition
 - COGS Recognition
@@ -203,11 +217,43 @@ Permission boundaries:
 - `module.accounting.events.view` can only view and must not allow review.
 - `module.accounting.view` must not be used as review permission.
 
-## 6. Future Convert Workflow
+## 6. Convert Workflow
 
-Future convert behavior should generate only a manual journal draft, never a posted journal.
+Current Phase 4D-1 Convert Skeleton behavior:
 
-Suggested flow:
+```txt
+reviewed Accounting Event
+-> user with module.accounting.events.convert
+-> scoped tenant query
+-> policy convert guard
+-> mapping exists / source_type / enabled checks
+-> mapping enabled=false
+-> 422 fail-safe
+-> no state change
+-> no journal draft
+```
+
+Current fail-safe messages:
+
+- Mapping disabled：`會計事件映射尚未啟用，無法產生傳票草稿。`
+- Mapping missing：`找不到會計事件映射設定，無法產生傳票草稿。`
+- Mapping source_type mismatch：`會計事件映射與來源類型不一致，無法產生傳票草稿。`
+
+Current convert boundaries:
+
+- Convert skeleton exists.
+- Cross tenant convert returns 404 before authorization details leak.
+- view-only / review-only / void-only / `module.accounting.view` cannot convert.
+- Forbidden payload returns 403.
+- Phase 4D-1 does not create `AccountingJournalEntry`.
+- Phase 4D-1 does not create `AccountingJournalEntryLine`.
+- Phase 4D-1 does not write `converted_journal_entry_id`.
+- Phase 4D-1 does not change `accounting_events.status` to `converted`.
+- Phase 4D-1 does not add `AccountingEventConvertService`.
+
+Future Phase 4D-2+ Draft Generation behavior should generate only a manual journal draft, never a posted journal.
+
+Future draft generation flow:
 
 ```txt
 reviewed Accounting Event
@@ -229,7 +275,7 @@ Convert boundaries:
 - Convert must not bypass `module.accounting.journals.create/update/post` permission logic.
 - Convert must not modify existing posted / voided journal.
 - Convert must not create posted journal.
-- After convert, event status is `converted`, but journal status remains `draft`.
+- In Phase 4D-2+, after successful draft generation, event status should become `converted`, but journal status must remain `draft`.
 - Convert needs an idempotency guard: if the event already has `converted_journal_entry_id`, it must not create a second journal draft.
 - Convert still must not run unless mapping is enabled and validated.
 - Current mapping config has `enabled = false`.
@@ -237,7 +283,7 @@ Convert boundaries:
 - Future convert must fail safely if mapping disabled / missing.
 - Future convert must still create draft only, never posted.
 
-Suggested future permission:
+Implemented permission:
 
 ```txt
 module.accounting.events.convert
@@ -245,8 +291,9 @@ module.accounting.events.convert
 
 Permission boundaries:
 
-- This permission is not implemented.
-- This document does not modify `RolePermissionSeeder`.
+- This permission is implemented.
+- Convert is not review.
+- `module.accounting.view` cannot replace convert.
 - `module.accounting.events.view` must not convert.
 - `module.accounting.events.review` should not automatically equal convert.
 - Whether convert also requires `module.accounting.journals.create` must be explicitly decided during future implementation.
@@ -442,11 +489,6 @@ Current implemented permissions:
 module.accounting.events.view
 module.accounting.events.review
 module.accounting.events.void
-```
-
-Future possible permissions:
-
-```txt
 module.accounting.events.convert
 ```
 
@@ -455,9 +497,10 @@ Permission boundaries:
 - `module.accounting.events.view` is implemented.
 - `module.accounting.events.review` is implemented.
 - `module.accounting.events.void` is implemented.
-- `module.accounting.events.convert` is not implemented.
+- `module.accounting.events.convert` is implemented.
 - `module.accounting.events.view` only views readonly workspace.
-- `module.accounting.events.convert` should be required to generate journal draft.
+- `module.accounting.events.convert` controls the convert skeleton route for reviewed events only.
+- `module.accounting.events.convert` is required before any future journal draft generation.
 - `module.accounting.events.void` is required to void.
 - `module.accounting.view` must not be the only entry or operation permission for Accounting Events.
 - Review / convert / void should default to admin / accounting only; whether other roles receive these permissions requires a separate decision.
@@ -479,6 +522,8 @@ accounting_event.created
 ```
 
 Current Phase 3 represents pending event creation through the completion workflow, `vehicle_sale.transaction_completed` audit event, and the `accounting_events` table. It does not currently define a separate `accounting_event.created` audit event.
+
+Phase 4D-1 convert fail-safe does not write audit because there is no state change, no journal draft, and no converted relationship. `accounting_event.converted` remains required only for future successful draft generation.
 
 Audit payload allowlist principle:
 
@@ -541,7 +586,7 @@ Phase 4A: completed review permission + review route/controller action/request/p
 Phase 4B: completed void permission + void route/controller action/request/policy/tests for pending/reviewed only
 Phase 4C: completed account mapping config design spec
 Phase 4C-2: completed config-based mapping foundation
-Phase 4D-1: convert permission / route / request / policy skeleton only
+Phase 4D-1: completed convert permission / route / request / policy / controller skeleton only
 Phase 4D-2: journal draft generation service using mapping
 Phase 5: revenue / COGS draft mapping only after accounting rules are confirmed
 ```
@@ -552,9 +597,10 @@ Phase boundaries:
 - Phase 4B completed and does not touch converted event reversal.
 - Phase 4C completed and must not hard-code accounts.
 - Phase 4C-2 completed and remains disabled metadata only.
-- Next recommended step is Phase 4D-1: convert permission / route / request / policy skeleton only.
-- Phase 4D-1 should not generate journal draft.
-- Phase 4D-1 should return 422 when mapping is disabled / missing.
+- Phase 4D-1 completed convert permission / route / request / policy / controller skeleton.
+- Phase 4D-1 does not generate journal draft.
+- Phase 4D-1 returns 422 when mapping is disabled / missing / source_type mismatch.
+- Next recommended step is docs / Phase 4D-2 spec, not direct runtime draft generation.
 - Phase 4D-2 should be the first phase to use mapping for journal draft generation service.
 - Phase 5 is the first place to handle revenue / COGS draft mapping.
 
@@ -563,8 +609,9 @@ Phase boundaries:
 This document does not do:
 
 - No code changes.
-- No convert implementation.
 - No journal draft generation.
+- No convert success state transition.
+- No `converted_journal_entry_id` write.
 - No `accounting_journal_entry_lines` generation.
 - No automatic journal posting.
 - No revenue recognition.
@@ -582,8 +629,9 @@ This document does not do:
 
 - This spec reflects Phase 4A review workflow completed.
 - This spec reflects Phase 4B void workflow completed.
+- This spec reflects Phase 4D-1 Convert Skeleton completed.
 - This spec adds no new runtime behavior.
 - This spec preserves current completion -> pending Accounting Event behavior.
 - This spec preserves current readonly workspace behavior.
-- This spec still defines future convert boundaries.
+- This spec defines current convert skeleton behavior and future draft generation boundaries.
 - This spec preserves no automatic posting, revenue recognition, COGS recognition, and profit / gross margin payload.

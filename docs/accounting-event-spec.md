@@ -1,8 +1,8 @@
 # Accounting Event Foundation Spec
 
-> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed.
+> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed.
 > Scope: define Accounting Event product semantics, current foundation state, future data direction, status flow, source documents, tenant / permission / audit principles, and future Journal Draft / Revenue / COGS integration direction.
-> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. Phase 4A has implemented pending -> reviewed. Phase 4B has implemented pending / reviewed -> voided. Phase 4C completed the account mapping design spec. Phase 4C-2 implemented config-based mapping foundation metadata. It does not implement create / convert workflows, journal draft generation, or accounting recognition runtime behavior.
+> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. Phase 4A has implemented pending -> reviewed. Phase 4B has implemented pending / reviewed -> voided. Phase 4C completed the account mapping design spec. Phase 4C-2 implemented config-based mapping foundation metadata. Phase 4D-1 implemented convert skeleton. It does not implement create workflows, successful journal draft conversion, journal draft generation, or accounting recognition runtime behavior.
 
 ## 1. Purpose
 
@@ -81,6 +81,12 @@ AccountingEventVoidTest
 config/accounting_event_mappings.php
 AccountingEventMappingConfigTest
 vehicle_sale_completed mapping metadata
+module.accounting.events.convert
+convert route
+ConvertAccountingEventRequest
+AccountingEventPolicy::convert
+AccountingEventController::convert
+AccountingEventConvertTest
 ```
 
 `AccountingEventTest` covers schema, casts, relationships, config, tenant scoped query, and completion regression. The completion regression confirms a successful completion action creates one pending Accounting Event.
@@ -91,8 +97,8 @@ The current Accounting Event readonly workspace includes:
 accounting-events module exists
 module.accounting.events.view exists
 Accounting Event readonly index/show routes exist
-AccountingEventController exists with index/show/review/void
-AccountingEventPolicy exists with viewAny/view/review/void
+AccountingEventController exists with index/show/review/void/convert
+AccountingEventPolicy exists with viewAny/view/review/void/convert
 React readonly Index / Show pages exist
 Accounting Event Show page has review UI for pending events when can.review = true
 Accounting Event Show page has void UI for pending / reviewed events when can.void = true
@@ -103,6 +109,8 @@ Accounting Event Show page has void UI for pending / reviewed events when can.vo
 `AccountingEventReviewTest` covers authorized review, view-only denied, `module.accounting.view` denied, cross-tenant 404, only pending, deny-list, audit safe payload, `can.review` props, seeder permission, permission matrix, and no journal draft/lines.
 
 `AccountingEventVoidTest` covers pending/reviewed void, view-only denied, review-only denied, `module.accounting.view` denied, cross-tenant 404, converted denied, already voided denied, void_reason validation, deny-list, audit safe payload, `can.void` props, seeder permission, permission matrix, and no journal draft/lines.
+
+`AccountingEventConvertTest` covers authorized convert skeleton, mapping disabled fail-safe 422, mapping missing 422, source_type mismatch 422, same tenant guard, reviewed-only guard, not voided / not converted guards, view-only / review-only / void-only / `module.accounting.view` denial, forbidden payload 403, `can.convert` props, seeder permission, permission matrix, and no journal draft/lines/status/write.
 
 `AccountingEventService` exists. Successful completion creates one pending Accounting Event. Completion integration is backend-only and does not require `module.accounting.events.view`.
 
@@ -120,8 +128,11 @@ The current Accounting Event mapping foundation includes:
 The following are not completed yet:
 
 ```txt
-Accounting Event -> Journal Draft
-Accounting Event convert
+Accounting Event successful conversion to journal draft
+Journal Draft generation from Accounting Event
+Journal Entry Lines generation
+converted status transition
+converted_journal_entry_id write
 Automatic Revenue Recognition
 Automatic COGS Recognition
 Profit / Gross Margin Payload
@@ -185,6 +196,7 @@ Important boundaries:
 - Phase 4B has now added pending / reviewed Accounting Event -> voided workflow.
 - Phase 4C has now completed Account Mapping Config design spec.
 - Phase 4C-2 has now added config-based mapping foundation metadata.
+- Phase 4D-1 has now added convert permission / route / request / policy / controller skeleton.
 - Future phases still must not assume journal draft or accounting recognition runtime exists.
 - `payload` must not store sensitive personal data.
 - `payload` must not store profit / gross margin.
@@ -251,8 +263,8 @@ Implemented flow:
 
 - `pending` -> `reviewed` has been implemented.
 - `pending` / `reviewed` -> `voided` has been implemented.
-- `reviewed` -> `converted` has not been implemented.
-- `converted` still has not been implemented.
+- `reviewed` -> `converted` skeleton route / guard exists, but successful transition is not implemented because mapping disabled fail-safe returns 422.
+- `converted` status is still not produced by runtime.
 - `converted` event currently cannot be voided.
 - `voided` event cannot be voided again.
 - `voided` does not delete the original event.
@@ -305,7 +317,7 @@ Vehicle Sale sold + paid / overpaid + completed
 
 ## 9. Relationship with Journal Draft
 
-Future Accounting Event can be converted into an Accounting Journal Draft, but this phase does not implement conversion.
+Future Accounting Event can be converted into an Accounting Journal Draft, but current Phase 4D-1 only implements convert skeleton and fail-safe guards.
 
 Current review boundaries:
 
@@ -335,7 +347,17 @@ Current mapping config boundaries:
 - Mapping config does not recognize revenue.
 - Mapping config does not recognize COGS.
 - Mapping config does not add profit / gross margin payload.
-- Convert still requires future implementation.
+- Mapping disabled fail-safe exists for the convert skeleton.
+
+Current convert skeleton boundaries:
+
+- Convert route exists.
+- Mapping check exists.
+- Mapping disabled fail-safe exists.
+- No draft is created.
+- No journal lines are created.
+- No status is changed to `converted`.
+- No `converted_journal_entry_id` is written.
 
 Future conversion direction:
 
@@ -403,13 +425,13 @@ Current implemented permissions:
 module.accounting.events.view
 module.accounting.events.review
 module.accounting.events.void
+module.accounting.events.convert
 ```
 
 Future permission direction may include:
 
 ```txt
 module.accounting.events.create
-module.accounting.events.convert
 ```
 
 Permission boundaries:
@@ -421,7 +443,9 @@ Permission boundaries:
 - `module.accounting.events.void` is implemented.
 - `module.accounting.events.void` controls pending / reviewed Accounting Event void only.
 - Completion side effect does not require `module.accounting.events.view`.
-- `module.accounting.events.convert` is not implemented.
+- `module.accounting.events.convert` is implemented.
+- `module.accounting.events.convert` controls the skeleton route only for reviewed events.
+- `module.accounting.view` cannot convert.
 - `accounting-events` module is independent from `accounting-accounts` and `accounting-journals`.
 - `module.accounting.view` must not be used as the only permission for accounting events or any Accounting Event operation.
 
@@ -472,9 +496,10 @@ This phase does not do:
 ```txt
 No create route.
 No store route.
-No convert route.
-No convert implementation.
 No journal draft generation.
+No successful conversion.
+No converted status write.
+No converted_journal_entry_id write.
 No accounting_journal_entry_lines generation.
 No journal draft cancellation.
 No posted journal reversal.
@@ -504,7 +529,8 @@ Phase 4A: Pending Accounting Event -> reviewed completed.
 Phase 4B: Pending / reviewed Accounting Event -> voided completed.
 Phase 4C: Account mapping config design spec completed.
 Phase 4C-2: Config-based mapping foundation completed.
-Phase 4D-1: Convert permission / route / request / policy skeleton only, no journal draft generation if mapping disabled or missing.
+Phase 4D-1: Convert permission / route / request / policy / controller skeleton completed, no journal draft generation because mapping remains disabled fail-safe.
+Phase 4D-1-docs: Documentation status sync completed by this change.
 Phase 4D-2: Journal draft generation service using mapping.
 Phase 5: Revenue / COGS draft mapping after account configuration exists.
 Phase 6: Reversal / refund / return flow.
@@ -521,6 +547,7 @@ Phase 3 directly connects successful completion to one pending Accounting Event 
 - Accounting Event Phase 4A review workflow exists.
 - Accounting Event Phase 4B void workflow exists.
 - Accounting Event Phase 4C-2 config-based mapping foundation exists.
+- Accounting Event Phase 4D-1 Convert Skeleton exists.
 - Mapping config is metadata only.
 - Mapping config contains no actual account IDs or fixed account codes.
 - Mapping config is disabled for runtime conversion.
@@ -528,8 +555,7 @@ Phase 3 directly connects successful completion to one pending Accounting Event 
 - Only pending Accounting Events can be reviewed.
 - Only pending / reviewed Accounting Events can be voided.
 - Converted / already voided Accounting Events cannot be voided.
-- No Accounting Event convert workflow exists.
-- No Journal Draft generation exists.
+- Convert skeleton exists; no successful Journal Draft generation exists.
 - No journal draft cancellation / posted journal reversal exists.
 - No revenue / COGS / profit / gross margin runtime exists.
 - Current accounting module boundaries remain unchanged.
