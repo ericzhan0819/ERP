@@ -2,7 +2,7 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed。
 - 穩定節點：Transaction Completion MVP completed through UI，已涵蓋 RBAC foundation、Data model foundation、Backend completion action、Backend completion payload、React UI、Manual QA checklist documented。
 - 最新驗證狀態：`npm run build` passed；focused tests passed：`ReceivableTest：14 passed / 265 assertions`、`VehicleSaleTest：35 passed / 394 assertions`、`AccountingEventWorkspaceTest：12 passed / 166 assertions`、`AccountingEventTest：5 passed / 32 assertions`；full test passed：`./vendor/bin/sail artisan test`，304 passed / 2646 assertions。
 - 本文件為目前穩定節點同步整理；目前不實作退款、不做 AR / AP / cash / invoice / reports 整合、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
@@ -44,6 +44,7 @@
 - Vehicle Cost Accounting Treatment Spec
 - Accounting Event Foundation Phase 1
 - Accounting Event Phase 2 readonly workspace
+- Accounting Event Phase 3 completion integration
 - Confirm Delivery / Transaction Completion Spec
 - Sales / Payments / Delivery semantics UI hints
 - Transaction Completion / Confirm Delivery MVP：Completion RBAC、Completion data fields、Completion backend action、Completion payload、Completion UI、Completion audit event、Manual QA checklist
@@ -105,7 +106,7 @@
 - 已完成 `config/accounting_events.php`。
 - 已完成 `tests/Feature/AccountingEventTest.php`。
 - `accounting_events` 目前已有 foundation domain object 與只讀 workspace。
-- 目前不會由 completion 自動建立 accounting event。
+- Completion → pending Accounting Event 已由 Phase 3 完成。
 - 目前不會轉 journal draft。
 - 目前不做 revenue / COGS / profit / gross margin。
 - Focused test：`./vendor/bin/sail artisan test tests/Feature/AccountingEventTest.php`，5 passed / 32 assertions。
@@ -129,6 +130,34 @@
 - Focused test：`./vendor/bin/sail artisan test tests/Feature/AccountingEventTest.php`，5 passed / 32 assertions。
 - `npm run build` passed。
 - Accounting Event 目前只讀：index / show only；no create；no review；no convert；no void；no mutation route。
+
+## Accounting Event Phase 3 Completion Integration
+
+- Accounting Event Phase 3 completion integration completed。
+- successful completion 現在會建立一筆 `pending` Accounting Event。
+- `source_type = vehicle_sale_completion`。
+- `event_type = vehicle_sale_completed`。
+- `status = pending`。
+- event root 使用 company / branch tenant 欄位。
+- payload 是後端控制的 safe allowlist。
+- payload 包含 sale、vehicle、customer display、completion、receivable summary 的非敏感摘要。
+- received amount / receivable status 沿用 `ReceivableSummaryService`。
+- 不使用 `vehicle_sales.paid_amount` 作為已收金額來源。
+- failed / unauthorized / cross-tenant completion 不會建立 Accounting Event。
+- idempotency guard 防止同一 sale 重複建立 Accounting Event。
+- completion update、Accounting Event creation、audit log 在同一 DB transaction 內。
+- Accounting Event review / convert / void 仍未完成。
+- Accounting Event → Journal Draft 仍未完成。
+- Journal Lines generation 仍未完成。
+- Revenue Recognition 仍未完成。
+- COGS Recognition 仍未完成。
+- Profit / Gross Margin payload 仍未完成。
+- AR / AP / Cash / Bank / Invoice / Reports 仍未完成。
+- Refund / reversal 仍未完成。
+- Focused test：`./vendor/bin/sail artisan test tests/Feature/AccountingEventCompletionIntegrationTest.php`。
+- Focused test：`./vendor/bin/sail artisan test tests/Feature/AccountingEventTest.php`。
+- Focused test：`./vendor/bin/sail artisan test tests/Feature/AccountingEventWorkspaceTest.php`。
+- Focused test：`./vendor/bin/sail artisan test tests/Feature/VehicleSaleTest.php`。
 
 ## Accounting Module Boundaries
 
@@ -203,7 +232,7 @@
 - Transaction Completion Backend Payload completed：Receivables Show 已提供完整 `sale.completion` object；Receivables Index 已提供 lightweight completion summary；Vehicle Show / Edit 已提供 readonly completion summary。
 - Transaction Completion React UI completed：Receivables Show 已有交易完成狀態、block reason、`completion_note` form、完成交易 action；Vehicle Show / Edit 只顯示唯讀 completion summary。
 - Receivables Show 是目前主要操作入口；Vehicle Show / Edit 只顯示唯讀 completion summary。
-- Accounting Event Foundation Phase 1 與 Phase 2 readonly workspace 已存在，但目前沒有 completion runtime integration、journal draft generation、revenue recognition、COGS recognition、profit / gross margin payload、return / refund / reversal flow。
+- Accounting Event Foundation Phase 1、Phase 2 readonly workspace 與 Phase 3 completion integration 已存在，但目前沒有 journal draft generation、revenue recognition、COGS recognition、profit / gross margin payload、return / refund / reversal flow。
 - Accounting Event review / convert / void 仍未實作。
 
 ## 車輛流程
@@ -224,8 +253,7 @@ Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Complete 
 - Customer 主檔可被 Vehicle Sale 關聯，並保留交易當下 customer snapshot。
 - Vehicle Sale 建立後可透過 Receivables / Payments 管理應收、已收、未收與收款紀錄。
 - Receivables mark-sold action 可在收款 / 應收流程中完成售出狀態銜接。
-- Complete Transaction / Confirm Delivery 目前只代表交易完成狀態記錄。
-- Complete Transaction / Confirm Delivery 不會自動產生 accounting event。
+- Complete Transaction / Confirm Delivery 目前代表交易完成狀態記錄，並建立一筆 pending Accounting Event。
 - Complete Transaction / Confirm Delivery 不會自動產生 journal draft。
 - Complete Transaction / Confirm Delivery 不會自動認列 revenue / COGS。
 - Complete Transaction / Confirm Delivery 不會計算 profit / gross margin。
@@ -238,10 +266,10 @@ Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Complete 
 Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Confirm Delivery / Complete Transaction → Accounting Event / Journal Draft → Revenue / COGS Recognition
 ```
 
-- Accounting Event Foundation Phase 1 與 Phase 2 readonly workspace 已存在。
-- Completion → Accounting Event → Journal Draft → Revenue / COGS Recognition 仍是 future backlog，尚未接 runtime。
+- Accounting Event Foundation Phase 1、Phase 2 readonly workspace 與 Phase 3 completion integration 已存在。
+- Completion → pending Accounting Event 已完成；Accounting Event → Journal Draft → Revenue / COGS Recognition 仍是 future backlog。
 - Accounting Event review / convert / void 仍未實作。
-- No automatic accounting event / journal draft generation yet。
+- No automatic journal draft generation yet。
 - No automatic revenue recognition。
 - No automatic COGS recognition。
 
@@ -353,7 +381,7 @@ Audit 資料原則：
 
 - 尚未做完整會計。
 - Accounting Event readonly workspace 已存在。
-- 尚未由 completion 自動產生 Accounting Event。
+- Completion → pending Accounting Event 已完成。
 - 尚未由 Accounting Event 產生 Journal Draft。
 - 尚未自動 revenue recognition。
 - 尚未自動 COGS recognition。
@@ -391,8 +419,7 @@ Audit 資料原則：
 
 - Phase B 已完成：Sales / Payments / Delivery semantics UI hints。
 - Manual browser QA execution if not yet done。
-- 後續可做：Accounting Event spec / implementation。
-- 後續可做：Completion → Accounting Event draft。
+- Phase 0 / 1 / 2 / 3 已完成：Accounting Event spec、foundation、readonly workspace、Completion → pending Accounting Event。
 - 後續可做：Accounting Event → Journal Draft。
 - 後續可做：Accounting Event review / convert / void workflow。
 - 後續可做：Revenue Recognition。

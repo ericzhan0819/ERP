@@ -1,8 +1,8 @@
 # Accounting Event Foundation Spec
 
-> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed.
+> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed.
 > Scope: define Accounting Event product semantics, current foundation state, future data direction, status flow, source documents, tenant / permission / audit principles, and future Journal Draft / Revenue / COGS integration direction.
-> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. It does not implement mutation routes, create / review / convert / void workflows, completion integration, journal draft generation, or accounting recognition runtime behavior.
+> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. It does not implement mutation routes, create / review / convert / void workflows, journal draft generation, or accounting recognition runtime behavior.
 
 ## 1. Purpose
 
@@ -63,9 +63,11 @@ accounting_events table
 AccountingEvent model
 config/accounting_events.php
 AccountingEventTest
+AccountingEventService
+AccountingEventCompletionIntegrationTest
 ```
 
-`AccountingEventTest` covers schema, casts, relationships, config, tenant scoped query, and completion regression. The completion regression confirms a successful completion action leaves `AccountingEvent::count()` at `0`.
+`AccountingEventTest` covers schema, casts, relationships, config, tenant scoped query, and completion regression. The completion regression confirms a successful completion action creates one pending Accounting Event.
 
 The current Accounting Event readonly workspace includes:
 
@@ -80,10 +82,13 @@ React readonly Index / Show pages exist
 
 `AccountingEventWorkspaceTest` covers route access, tenant scope, filters, payload sanitizer, module registry, staff permission matrix, no mutation routes, and completion regression.
 
+`AccountingEventService` exists. Successful completion creates one pending Accounting Event. Completion integration is backend-only and does not require `module.accounting.events.view`.
+
+`AccountingEventCompletionIntegrationTest` covers successful completion event creation, safe payload allowlist, ReceivableSummaryService semantics, overpaid status, failure / unauthorized / cross-tenant non-creation, idempotency, no journal draft / lines, and readonly workspace consumption.
+
 The following are not completed yet:
 
 ```txt
-Completion -> Accounting Event
 Accounting Event -> Journal Draft
 Automatic Revenue Recognition
 Automatic COGS Recognition
@@ -143,7 +148,8 @@ Important boundaries:
 - Phase 0 spec did not add migration.
 - Phase 1 has now added the minimal table / model / config / tests foundation.
 - Phase 2 has now added readonly index/show workspace routes, controller, policy, permission, module registry entry, React pages, and focused tests.
-- Future phases still must not assume runtime integration exists.
+- Phase 3 has now added successful completion -> one pending Accounting Event.
+- Future phases still must not assume journal draft or accounting recognition runtime exists.
 - `payload` must not store sensitive personal data.
 - `payload` must not store profit / gross margin.
 - `payload` must not store unnecessary tenant raw IDs.
@@ -151,7 +157,7 @@ Important boundaries:
 
 ## 5. Source Types
 
-Future possible source types:
+Source types:
 
 ```txt
 vehicle_sale_completion
@@ -160,17 +166,17 @@ vehicle_cost
 manual_adjustment
 ```
 
-Recommended first candidate source:
+Runtime source type:
 
 ```txt
 vehicle_sale_completion
 ```
 
-The config foundation defines source type labels, but no source type has runtime event creation logic yet.
+`vehicle_sale_completion` has runtime event creation logic. Other source types remain future direction.
 
 ## 6. Event Types
 
-Future possible event types:
+Event types:
 
 ```txt
 vehicle_sale_completed
@@ -179,13 +185,13 @@ vehicle_cost_recorded
 manual_accounting_review
 ```
 
-Recommended first candidate event type:
+Runtime event type:
 
 ```txt
 vehicle_sale_completed
 ```
 
-The config foundation defines event type labels, but no event type has runtime event creation logic yet.
+`vehicle_sale_completed` has runtime event creation logic. Other event types remain future direction.
 
 ## 7. Status Flow
 
@@ -217,7 +223,7 @@ Current state:
 
 ```txt
 Complete Transaction / Confirm Delivery currently only records completion state.
-It does not create Accounting Event yet.
+Successful completion creates one pending Accounting Event.
 It does not create Journal Draft yet.
 It does not recognize revenue yet.
 It does not recognize COGS yet.
@@ -229,6 +235,7 @@ The current completion action writes only:
 - `vehicle_sales.completed_by`
 - `vehicle_sales.completion_note`
 - Audit event `vehicle_sale.transaction_completed`
+- Pending Accounting Event with `source_type = vehicle_sale_completion` and `event_type = vehicle_sale_completed`
 
 Future direction:
 
@@ -244,7 +251,7 @@ Vehicle Sale sold + paid / overpaid + completed
 
 - `mark sold` is the sale / vehicle status connection point.
 - `complete transaction / confirm delivery` is the future candidate point for revenue / COGS recognition.
-- This phase still must not automatically recognize revenue or COGS.
+- This phase creates only a pending candidate event and still must not automatically recognize revenue or COGS.
 
 ## 9. Relationship with Journal Draft
 
@@ -328,6 +335,8 @@ module.accounting.events.void
 Permission boundaries:
 
 - `module.accounting.events.view` is implemented.
+- `module.accounting.events.view` only controls readonly workspace access.
+- Completion side effect does not require `module.accounting.events.view`.
 - `module.accounting.events.create/review/convert/void` remain future direction only and are not implemented.
 - `accounting-events` module is independent from `accounting-accounts` and `accounting-journals`.
 - `module.accounting.view` must not be used as the only permission for accounting events.
@@ -384,8 +393,8 @@ No review route.
 No convert route.
 No void route.
 No mutation form.
-No automatic event creation from completion.
-No automatic journal draft generation.
+No journal draft generation.
+No accounting_journal_entry_lines generation.
 No automatic journal posting.
 No revenue recognition.
 No COGS recognition.
@@ -407,22 +416,23 @@ Suggested future small-step sequence:
 Phase 0: Spec completed.
 Phase 1: AccountingEvent table + model + config + tests completed.
 Phase 2: Accounting Event index/show readonly workspace completed.
-Phase 3: Completion -> pending accounting event, still no journal draft.
+Phase 3: Completion -> pending Accounting Event completed, still no journal draft.
 Phase 4: Reviewed accounting event -> manual journal draft generation.
 Phase 5: Revenue / COGS draft mapping after account configuration exists.
 Phase 6: Reversal / refund / return flow.
 ```
 
-Phase 1 did not directly connect completion to Accounting Event. The foundation establishes the minimal Accounting Event table, model, config, and tests without changing transaction completion runtime semantics.
+Phase 3 directly connects successful completion to one pending Accounting Event without changing journal draft, posting, revenue recognition, or COGS recognition behavior.
 
 ## 17. Acceptance Criteria
 
 - This update changes documentation only.
 - Accounting Event Foundation Phase 1 exists.
 - Accounting Event Phase 2 readonly workspace exists.
+- Accounting Event Phase 3 completion integration exists.
+- Successful completion creates one pending Accounting Event.
 - No Accounting Event mutation workflow exists.
-- No runtime integration with completion exists.
-- Completion semantics remain unchanged.
+- No Journal Draft generation exists.
+- No revenue / COGS / profit / gross margin runtime exists.
 - Current accounting module boundaries remain unchanged.
-- No journal draft / revenue / COGS / profit / gross margin runtime exists.
 - This spec can be used as the next Roo Code prompt reference for Accounting Event Foundation.
