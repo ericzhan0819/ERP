@@ -329,7 +329,7 @@ it('RolePermissionSeeder registers accounting events review permission', functio
         ->and($admin->hasPermissionTo('module.accounting.events.review'))->toBeTrue()
         ->and($accounting->hasPermissionTo('module.accounting.events.review'))->toBeTrue()
         ->and($viewer->hasPermissionTo('module.accounting.events.review'))->toBeFalse()
-        ->and(Permission::query()->where('name', 'module.accounting.events.convert')->exists())->toBeFalse()
+        ->and(Permission::query()->where('name', 'module.accounting.events.convert')->exists())->toBeTrue()
         ->and(Permission::query()->where('name', 'module.accounting.events.void')->exists())->toBeTrue();
 });
 

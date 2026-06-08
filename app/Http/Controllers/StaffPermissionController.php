@@ -68,7 +68,7 @@ class StaffPermissionController extends Controller
             403
         );
 
-        $actions = ['view', 'create', 'update', 'delete', 'export', 'approve', 'post', 'void', 'mark-sold', 'confirm', 'complete', 'review', 'manage'];
+        $actions = ['view', 'create', 'update', 'delete', 'export', 'approve', 'post', 'void', 'mark-sold', 'confirm', 'complete', 'review', 'convert', 'manage'];
 
         $roles = Role::query()
             ->withCount('users')
@@ -166,6 +166,7 @@ class StaffPermissionController extends Controller
                 'confirm' => '確認',
                 'complete' => '完成',
                 'review' => '覆核',
+                'convert' => '轉傳票',
                 'manage' => '管理',
             ],
             'moduleLabels' => $moduleLabels,

@@ -401,9 +401,12 @@ it('RolePermissionSeeder 註冊 accounting-events module 與 view permission', f
         ->and($admin->hasPermissionTo('module.accounting.events.void'))->toBeTrue()
         ->and($accounting->hasPermissionTo('module.accounting.events.void'))->toBeTrue()
         ->and($viewer->hasPermissionTo('module.accounting.events.void'))->toBeFalse()
+        ->and(Permission::query()->where('name', 'module.accounting.events.convert')->exists())->toBeTrue()
+        ->and($admin->hasPermissionTo('module.accounting.events.convert'))->toBeTrue()
+        ->and($accounting->hasPermissionTo('module.accounting.events.convert'))->toBeTrue()
+        ->and($viewer->hasPermissionTo('module.accounting.events.convert'))->toBeFalse()
         ->and(Permission::query()->whereIn('name', [
             'module.accounting.events.create',
-            'module.accounting.events.convert',
         ])->exists())->toBeFalse();
 });
 
@@ -432,16 +435,17 @@ it('Staff Permission matrix 顯示 accounting.events', function (): void {
                 && ($matrix['accounting.events']['label'] ?? null) === '會計事件'
                 && ($matrix['accounting.events']['actions']['view']['permission'] ?? null) === 'module.accounting.events.view'
                 && ($matrix['accounting.events']['actions']['review']['permission'] ?? null) === 'module.accounting.events.review'
-                && ($matrix['accounting.events']['actions']['void']['permission'] ?? null) === 'module.accounting.events.void';
+                && ($matrix['accounting.events']['actions']['void']['permission'] ?? null) === 'module.accounting.events.void'
+                && ($matrix['accounting.events']['actions']['convert']['permission'] ?? null) === 'module.accounting.events.convert';
         }));
 });
 
-it('只提供 accounting event review 與 void mutation routes', function (): void {
+it('只提供 accounting event review void 與 convert skeleton mutation routes', function (): void {
     expect(Route::has('employee-system.accounting.events.create'))->toBeFalse()
         ->and(Route::has('employee-system.accounting.events.store'))->toBeFalse()
         ->and(Route::has('employee-system.accounting.events.review'))->toBeTrue()
         ->and(Route::has('employee-system.accounting.events.void'))->toBeTrue()
-        ->and(Route::has('employee-system.accounting.events.convert'))->toBeFalse()
+        ->and(Route::has('employee-system.accounting.events.convert'))->toBeTrue()
         ->and(Route::has('employee-system.accounting.events.edit'))->toBeFalse()
         ->and(Route::has('employee-system.accounting.events.update'))->toBeFalse();
 });

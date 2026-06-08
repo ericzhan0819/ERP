@@ -17,7 +17,7 @@ class RolePermissionSeeder extends Seeder
     /**
      * 權限 action 白名單（僅允許統一命名的固定動作）。
      */
-    private const ACTION_WHITELIST = ['view', 'create', 'update', 'delete', 'export', 'approve', 'post', 'void', 'mark-sold', 'confirm', 'complete', 'review', 'manage'];
+    private const ACTION_WHITELIST = ['view', 'create', 'update', 'delete', 'export', 'approve', 'post', 'void', 'mark-sold', 'confirm', 'complete', 'review', 'convert', 'manage'];
 
     /**
      * Seed the application's RBAC foundation.
@@ -318,6 +318,7 @@ class RolePermissionSeeder extends Seeder
             'module.accounting.events.view' => ['label' => '查看會計事件', 'group' => '會計事件'],
             'module.accounting.events.review' => ['label' => '覆核會計事件', 'group' => '會計事件'],
             'module.accounting.events.void' => ['label' => '作廢會計事件', 'group' => '會計事件'],
+            'module.accounting.events.convert' => ['label' => '轉傳票會計事件', 'group' => '會計事件'],
             'module.customers.view' => ['label' => '查看客戶', 'group' => '客戶管理'],
             'module.customers.create' => ['label' => '建立客戶', 'group' => '客戶管理'],
             'module.customers.update' => ['label' => '更新客戶', 'group' => '客戶管理'],
@@ -433,6 +434,7 @@ class RolePermissionSeeder extends Seeder
                 'module.accounting.events.view',
                 'module.accounting.events.review',
                 'module.accounting.events.void',
+                'module.accounting.events.convert',
                 'module.customers.view',
                 'module.customers.create',
                 'module.customers.update',
@@ -485,6 +487,7 @@ class RolePermissionSeeder extends Seeder
                 'module.accounting.events.view',
                 'module.accounting.events.review',
                 'module.accounting.events.void',
+                'module.accounting.events.convert',
                 'module.customers.view',
                 'module.vehicles.view',
                 'module.vehicles.sales.view',

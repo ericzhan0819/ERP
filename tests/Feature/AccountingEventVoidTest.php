@@ -408,7 +408,7 @@ it('RolePermissionSeeder registers accounting events void permission', function 
         ->and($admin->hasPermissionTo('module.accounting.events.void'))->toBeTrue()
         ->and($accounting->hasPermissionTo('module.accounting.events.void'))->toBeTrue()
         ->and($viewer->hasPermissionTo('module.accounting.events.void'))->toBeFalse()
-        ->and(Permission::query()->where('name', 'module.accounting.events.convert')->exists())->toBeFalse();
+        ->and(Permission::query()->where('name', 'module.accounting.events.convert')->exists())->toBeTrue();
 });
 
 it('Staff permission matrix displays accounting events void action', function (): void {

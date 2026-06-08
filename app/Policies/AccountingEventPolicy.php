@@ -48,6 +48,18 @@ class AccountingEventPolicy
             && $event->converted_journal_entry_id === null;
     }
 
+    /**
+     * 技術註解：轉傳票是獨立敏感能力，必須同時具備 convert 權限與 reviewed 狀態，避免 view/review/void 或舊 module.accounting.view 被擴張成認列入口。
+     */
+    public function convert(User $user, AccountingEvent $event): bool
+    {
+        return $user->can('module.accounting.events.convert')
+            && $this->isSameTenant($user, $event)
+            && $event->status === 'reviewed'
+            && $event->voided_at === null
+            && $event->converted_journal_entry_id === null;
+    }
+
     private function isSameTenant(User $user, AccountingEvent $event): bool
     {
         $userCompanyId = (int) ($user->company_id ?? 0);

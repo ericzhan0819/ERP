@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ReviewAccountingEventRequest;
+use App\Http\Requests\ConvertAccountingEventRequest;
 use App\Http\Requests\VoidAccountingEventRequest;
 use App\Models\AccountingEvent;
 use App\Services\AuditLogService;
@@ -119,6 +120,7 @@ class AccountingEventController extends Controller
                 'view' => $request->user()?->can('module.accounting.events.view') ?? false,
                 'review' => $request->user()?->can('review', $event) ?? false,
                 'void' => $request->user()?->can('void', $event) ?? false,
+                'convert' => $request->user()?->can('convert', $event) ?? false,
             ],
         ]);
     }
@@ -213,6 +215,29 @@ class AccountingEventController extends Controller
 
         return redirect()->route('employee-system.accounting.events.show', $event->id)
             ->with('success', '會計事件已作廢');
+    }
+
+    /**
+     * 技術註解：Phase 4D-1 僅建立轉傳票安全門；所有 mapping 失敗都停在 422，避免尚未完成的認列流程寫入 draft、line 或 converted 狀態。
+     */
+    public function convert(ConvertAccountingEventRequest $request, int $accountingEvent): RedirectResponse
+    {
+        $event = $this->scopedEventQuery($request->user())
+            ->whereKey($accountingEvent)
+            ->firstOrFail();
+
+        $this->authorize('convert', $event);
+        abort_unless($event->status === 'reviewed', 403);
+        abort_unless($event->converted_journal_entry_id === null, 403);
+        abort_unless($event->voided_at === null, 403);
+
+        $mapping = config('accounting_event_mappings.event_types.'.$event->event_type);
+
+        abort_unless(is_array($mapping), 422, '找不到會計事件映射設定，無法產生傳票草稿。');
+        abort_unless(($mapping['source_type'] ?? null) === $event->source_type, 422, '會計事件映射與來源類型不一致，無法產生傳票草稿。');
+        abort_unless(($mapping['enabled'] ?? false) === true, 422, '會計事件映射尚未啟用，無法產生傳票草稿。');
+
+        abort(422, '會計事件映射尚未啟用，無法產生傳票草稿。');
     }
 
     private function scopedEventQuery(?Authenticatable $user): Builder

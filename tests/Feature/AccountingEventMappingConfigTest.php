@@ -2,6 +2,7 @@
 
 use App\Models\AccountingJournalEntry;
 use App\Models\AccountingJournalEntryLine;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Models\Permission;
 
@@ -133,12 +134,14 @@ it('mapping config does not create runtime journal entries', function (): void {
         ->and(AccountingJournalEntryLine::count())->toBe(0);
 });
 
-it('mapping config does not add routes or permissions', function (): void {
-    expect(Route::has('employee-system.accounting.events.convert'))->toBeFalse()
+it('mapping config exposes convert skeleton route without mapping management routes or permissions', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    expect(Route::has('employee-system.accounting.events.convert'))->toBeTrue()
         ->and(Route::has('employee-system.accounting.mappings.index'))->toBeFalse()
         ->and(Route::has('employee-system.accounting.mappings.update'))->toBeFalse()
+        ->and(Permission::query()->where('name', 'module.accounting.events.convert')->exists())->toBeTrue()
         ->and(Permission::query()->whereIn('name', [
-            'module.accounting.events.convert',
             'module.accounting.mappings.view',
             'module.accounting.mappings.update',
         ])->exists())->toBeFalse();
