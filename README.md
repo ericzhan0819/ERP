@@ -17,9 +17,9 @@
 
 # System Status
 
-目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed。
+目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed。
 
-目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 2 獨立入口與 create / edit 工作台、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、Transaction Completion MVP through UI、客戶管理 MVP、客戶交易紀錄、Audit log display localization、Accounting Phase 1 Chart of Accounts、Accounting Phase 2 Journal Draft Foundation、Accounting Phase 3 Journal Posting / Voiding、Accounting Journal Workbench UI Polish、Vehicle Cost Accounting Treatment Spec、Accounting Event Foundation Phase 1、Accounting Event Phase 2 readonly workspace、Accounting Event Phase 3 completion integration、Accounting Event Phase 4A Review Workflow、Sales / Payments / Delivery semantics UI hints、系統稽核紀錄與登入紀錄。
+目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 2 獨立入口與 create / edit 工作台、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、Transaction Completion MVP through UI、客戶管理 MVP、客戶交易紀錄、Audit log display localization、Accounting Phase 1 Chart of Accounts、Accounting Phase 2 Journal Draft Foundation、Accounting Phase 3 Journal Posting / Voiding、Accounting Journal Workbench UI Polish、Vehicle Cost Accounting Treatment Spec、Accounting Event Foundation Phase 1、Accounting Event Phase 2 readonly workspace、Accounting Event Phase 3 completion integration、Accounting Event Phase 4A Review Workflow、Accounting Event Phase 4B Void Workflow、Sales / Payments / Delivery semantics UI hints、系統稽核紀錄與登入紀錄。
 
 Transaction Completion remains non-recognition。完成交易目前會記錄交易完成狀態、建立一筆 pending Accounting Event、寫入 audit event，但不會自動產生 revenue / COGS / journal behavior。
 
@@ -41,6 +41,7 @@ Accounting Event Foundation Phase 1 completed
 Accounting Event Phase 2 readonly workspace completed
 Accounting Event Phase 3 completion integration completed
 Accounting Event Phase 4A Review Workflow completed
+Accounting Event Phase 4B Void Workflow completed
 Sales / Payments / Delivery semantics UI hints completed
 ```
 
@@ -322,7 +323,7 @@ archived   已封存
 - Accounting Event readonly workspace 目前已完成 index / show。
 - No create。
 - No convert。
-- No void。
+- Void mutation route 已由 Phase 4B 完成。
 - Review mutation route 已由 Phase 4A 完成。
 - Completion → pending Accounting Event 已完成。
 - Accounting Event → Journal Draft 尚未完成。
@@ -358,8 +359,8 @@ archived   已封存
 - Accounting Event readonly workspace 已提供 index / show。
 - No create。
 - No convert。
-- No void。
 - Review mutation route 已由 Phase 4A 完成。
+- Void mutation route 已由 Phase 4B 完成。
 
 ## Accounting Event Phase 4A Review Workflow
 
@@ -382,7 +383,42 @@ archived   已封存
 - review does not add profit / gross margin payload。
 - view-only / `module.accounting.view` / cross-tenant users cannot review。
 - Accounting Event convert 尚未完成。
-- Accounting Event void 尚未完成。
+- Accounting Event void 已由 Phase 4B 完成。
+- Accounting Event → Journal Draft 尚未完成。
+- Journal Lines generation 尚未完成。
+- Revenue Recognition 尚未完成。
+- COGS Recognition 尚未完成。
+- Profit / Gross Margin payload 尚未完成。
+- AR / AP / Cash / Bank / Invoice / Reports 尚未完成。
+- Refund / reversal 尚未完成。
+
+## Accounting Event Phase 4B Void Workflow
+
+- Accounting Event Phase 4B Void Workflow completed。
+- 已完成 `module.accounting.events.void`。
+- 已完成 void route：`PATCH /employee-system/accounting/events/{accountingEvent}/void`，route name：`employee-system.accounting.events.void`。
+- 已完成 `VoidAccountingEventRequest` void request deny-list。
+- 已完成 `AccountingEventPolicy::void`。
+- 已完成 `AccountingEventController::void`。
+- 已完成 Accounting Event Show page void UI。
+- 已完成 `tests/Feature/AccountingEventVoidTest.php`。
+- only pending / reviewed events can be voided。
+- void only updates `status = voided`、`void_reason`、`voided_by`、`voided_at`。
+- void does not clear `review_note`、`reviewed_by`、`reviewed_at`。
+- void does not modify `converted_journal_entry_id`。
+- converted events cannot be voided。
+- already voided events cannot be voided again。
+- void does not cancel journal draft。
+- void does not reverse posted journal。
+- void does not process refund / return。
+- void does not generate journal draft。
+- void does not generate journal lines。
+- void does not post journal。
+- void does not recognize revenue。
+- void does not recognize COGS。
+- void does not add profit / gross margin payload。
+- view-only / review-only / `module.accounting.view` / cross-tenant users cannot void。
+- Accounting Event convert 尚未完成。
 - Accounting Event → Journal Draft 尚未完成。
 - Journal Lines generation 尚未完成。
 - Revenue Recognition 尚未完成。
@@ -399,8 +435,8 @@ archived   已封存
 - Transaction Completion remains non-accounting。
 - No automatic revenue recognition。
 - No automatic COGS recognition。
-- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration 與 Phase 4A Review Workflow 已存在。
-- Completion → pending Accounting Event 已完成；pending → reviewed 已完成；No journal draft generation yet。
+- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow 與 Phase 4B Void Workflow 已存在。
+- Completion → pending Accounting Event 已完成；pending → reviewed 已完成；pending / reviewed → voided 已完成；No journal draft generation yet。
 - No AR / AP / Cash / Bank / Invoice / Reports integration yet。
 
 ## Current Business Flow
@@ -426,7 +462,7 @@ Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Complete 
 Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Complete Transaction / Confirm Delivery → Accounting Event / Journal Draft → Revenue / COGS Recognition
 ```
 
-- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration 與 Phase 4A Review Workflow 已存在；`Accounting Event → Journal Draft → Revenue / COGS Recognition` 目前仍是 backlog。
+- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow 與 Phase 4B Void Workflow 已存在；`Accounting Event → Journal Draft → Revenue / COGS Recognition` 目前仍是 backlog。
 - 收款完成只代表款項已記錄，mark sold 只代表銷售與車輛售出狀態銜接。
 - 交車完成 / 完成交易目前已作為 completion 狀態節點；收入與 COGS 認列目前不會自動產生。
 
@@ -629,18 +665,19 @@ refactor: 不改行為的重構
 
 1. 維持 Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP 穩定。
 2. 維持 RBAC / tenant scope / audit foundation 穩定。
-3. Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration 與 Phase 4A Review Workflow 已完成；Journal Draft generation、Revenue Recognition、COGS Recognition 仍待後續小步實作。
+3. Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow 與 Phase 4B Void Workflow 已完成；Journal Draft generation、Revenue Recognition、COGS Recognition 仍待後續小步實作。
 4. 後續再選擇租賃 / 合約 / 完整 CRM / 報表 / 圖片等模組。
 5. 完整資安 hardening 待核心 workflows 更完整後再做。
 
 暫緩事項：
 
 - Leasing module
-- Refund / return / void flow
+- Refund / return / reversal flow
 - Full accounting
 - Accounting Event completion runtime integration completed
 - Accounting Event review completed
-- Accounting Event convert / void pending
+- Accounting Event void completed
+- Accounting Event convert pending
 - Journal Draft generation pending
 - Automatic revenue recognition is pending
 - Automatic COGS recognition is pending
@@ -674,7 +711,7 @@ refactor: 不改行為的重構
 ## Current Vehicle Payment Limitations
 
 - 尚未做完整會計分錄。
-- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration 與 Phase 4A Review Workflow 已存在；completion 已建立 pending Accounting Event，review 可標記 reviewed，但尚未實作 journal draft。
+- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow 與 Phase 4B Void Workflow 已存在；completion 已建立 pending Accounting Event，review 可標記 reviewed，void 可作廢 pending / reviewed event，但尚未實作 journal draft。
 - 尚未自動 revenue recognition。
 - 尚未自動 COGS recognition。
 - 尚未做 AR / AP、Cash / Bank、Invoice、Reports。

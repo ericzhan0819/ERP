@@ -1,8 +1,8 @@
 # Accounting Event Review / Convert Workflow Spec
 
-Status: Spec completed + Phase 4A review workflow completed.
+Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed.
 Scope: define current Accounting Event review workflow state and future convert / void workflow boundaries.
-This document reflects the implemented review workflow. It does not implement convert routes, void routes, journal draft generation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
+This document reflects the implemented review and void workflows. It does not implement convert routes, journal draft generation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
 
 ## 1. Purpose
 
@@ -31,7 +31,7 @@ Accounting Event is an accounting candidate event. It is not an official journal
 - `reviewed` does not mean posted.
 - `converted` does not mean posted.
 - Journal posting must continue through the existing Accounting Journal post workflow.
-- Phase 4A implemented pending -> reviewed. Future convert / void behavior remains direction and safety boundaries only.
+- Phase 4A implemented pending -> reviewed. Phase 4B implemented pending / reviewed -> voided. Future convert behavior remains direction and safety boundaries only.
 
 ## 2. Current Repo State
 
@@ -68,6 +68,15 @@ Accounting Event Phase 4A completed:
 - review route added
 - review request / policy / controller / UI / tests added
 
+Accounting Event Phase 4B completed:
+
+- `module.accounting.events.void` added
+- void route added
+- void request / policy / controller / UI / tests added
+- pending / reviewed -> voided exists
+- converted event void remains not allowed
+- already voided event cannot be voided again
+
 Current business flow:
 
 ```txt
@@ -83,7 +92,6 @@ Customer
 Currently not completed:
 
 - Accounting Event convert
-- Accounting Event void
 - Accounting Event -> Journal Draft
 - Journal Draft generation from Accounting Event
 - Revenue Recognition
@@ -226,9 +234,9 @@ Permission boundaries:
 - `module.accounting.events.review` should not automatically equal convert.
 - Whether convert also requires `module.accounting.journals.create` must be explicitly decided during future implementation.
 
-## 7. Future Void Workflow
+## 7. Void Workflow
 
-Future void behavior should retain the event and record why it is no longer usable.
+Current void behavior retains the event and records why it is no longer usable.
 
 Suggested flow:
 
@@ -241,19 +249,27 @@ pending / reviewed Accounting Event
 
 Void boundaries:
 
+- Current implementation: pending / reviewed -> voided exists.
+- Current implementation records `void_reason`, `voided_by`, `voided_at`.
+- Current implementation writes `accounting_event.voided` audit log.
+- Current implementation preserves review fields.
+- Current implementation does not cancel journal draft.
+- Current implementation does not reverse posted journal.
+- Current implementation does not process refund / reversal.
 - `converted` event should not be directly voided unless future cancellation / reversal logic for generated journal draft is handled first.
 - If event is converted and the journal draft is still `draft`, a future design may support cancel draft + void event. This document does not implement it.
 - If journal is posted, event cannot simply be voided. It must go through reversal / refund / return flow.
 - `void_reason` should be required.
 - Void must not delete the event.
+- Converted event simple void remains not implemented.
+- Posted journal reversal remains future flow.
+- Refund / return remains future flow.
 
-Suggested future permission:
+Implemented permission:
 
 ```txt
 module.accounting.events.void
 ```
-
-This permission is not implemented.
 
 ## 8. Journal Draft Generation Boundary
 
@@ -408,24 +424,24 @@ Current implemented permissions:
 ```txt
 module.accounting.events.view
 module.accounting.events.review
+module.accounting.events.void
 ```
 
 Future possible permissions:
 
 ```txt
 module.accounting.events.convert
-module.accounting.events.void
 ```
 
 Permission boundaries:
 
 - `module.accounting.events.view` is implemented.
 - `module.accounting.events.review` is implemented.
+- `module.accounting.events.void` is implemented.
 - `module.accounting.events.convert` is not implemented.
-- `module.accounting.events.void` is not implemented.
 - `module.accounting.events.view` only views readonly workspace.
 - `module.accounting.events.convert` should be required to generate journal draft.
-- `module.accounting.events.void` should be required to void.
+- `module.accounting.events.void` is required to void.
 - `module.accounting.view` must not be the only entry or operation permission for Accounting Events.
 - Review / convert / void should default to admin / accounting only; whether other roles receive these permissions requires a separate decision.
 
@@ -505,19 +521,20 @@ Suggested future implementation sequence:
 
 ```txt
 Phase 4A: completed review permission + review route/controller action/request/policy/tests
-Phase 4B: add void permission + void route/controller action/request/policy/tests for pending/reviewed only
+Phase 4B: completed void permission + void route/controller action/request/policy/tests for pending/reviewed only
 Phase 4C: design account mapping config before convert
 Phase 4D: convert reviewed event to journal draft after account mapping exists
-Phase 4E: revenue / COGS draft mapping only after accounting rules are confirmed
+Phase 5: revenue / COGS draft mapping only after accounting rules are confirmed
 ```
 
 Phase boundaries:
 
 - Phase 4A completed and did not do convert.
-- Phase 4B must not touch converted event reversal.
+- Phase 4B completed and does not touch converted event reversal.
+- Next recommended step is Phase 4C: Account mapping config design before convert.
 - Phase 4C designs mapping first and must not hard-code accounts.
 - Phase 4D only creates draft and must not post.
-- Phase 4E is the first place to handle revenue / COGS draft mapping.
+- Phase 5 is the first place to handle revenue / COGS draft mapping.
 
 ## 15. Explicit Non-goals
 
@@ -525,7 +542,6 @@ This document does not do:
 
 - No code changes.
 - No convert implementation.
-- No void implementation.
 - No journal draft generation.
 - No `accounting_journal_entry_lines` generation.
 - No automatic journal posting.
@@ -544,8 +560,9 @@ This document does not do:
 ## 16. Acceptance Criteria
 
 - This spec reflects Phase 4A review workflow completed.
+- This spec reflects Phase 4B void workflow completed.
 - This spec adds no new runtime behavior.
 - This spec preserves current completion -> pending Accounting Event behavior.
 - This spec preserves current readonly workspace behavior.
-- This spec still defines future convert / void boundaries.
+- This spec still defines future convert boundaries.
 - This spec preserves no automatic posting, revenue recognition, COGS recognition, and profit / gross margin payload.
