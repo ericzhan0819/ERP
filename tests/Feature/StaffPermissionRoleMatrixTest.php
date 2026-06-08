@@ -154,6 +154,71 @@ it('permissionMatrix 支援 vehicles 子範圍四段式權限並保留 action �
         );
 });
 
+it('seeder creates transaction completion permissions without delivery permissions', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    $permissions = Permission::query()
+        ->whereIn('name', [
+            'module.vehicles.sales.completion.view',
+            'module.vehicles.sales.completion.confirm',
+        ])
+        ->get()
+        ->keyBy('name');
+
+    expect($permissions)->toHaveCount(2)
+        ->and($permissions['module.vehicles.sales.completion.view']->group)->toBe('交易完成')
+        ->and($permissions['module.vehicles.sales.completion.view']->label)->toBe('查看交易完成')
+        ->and($permissions['module.vehicles.sales.completion.confirm']->group)->toBe('交易完成')
+        ->and($permissions['module.vehicles.sales.completion.confirm']->label)->toBe('確認交易完成')
+        // 技術註解：Phase 1 只建立 completion RBAC foundation，避免提前暴露 delivery 權限造成授權語意混淆。
+        ->and(Permission::query()->where('name', 'module.vehicles.sales.delivery.view')->exists())->toBeFalse()
+        ->and(Permission::query()->where('name', 'module.vehicles.sales.delivery.confirm')->exists())->toBeFalse();
+});
+
+it('default roles receive transaction completion permissions by least privilege', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    $admin = Role::findByName('admin', 'web');
+    $viewer = Role::findByName('viewer', 'web');
+
+    expect($admin->hasPermissionTo('module.vehicles.sales.completion.view'))->toBeTrue()
+        ->and($admin->hasPermissionTo('module.vehicles.sales.completion.confirm'))->toBeTrue()
+        ->and($viewer->hasPermissionTo('module.vehicles.sales.completion.view'))->toBeFalse()
+        ->and($viewer->hasPermissionTo('module.vehicles.sales.completion.confirm'))->toBeFalse();
+
+    foreach (['sales', 'accounting', 'inventory'] as $roleName) {
+        $role = Role::findByName($roleName, 'web');
+
+        expect($role->hasPermissionTo('module.vehicles.sales.completion.view'))->toBeTrue()
+            // 技術註解：交易完成確認是敏感業務節點，Phase 1 僅 admin 預設持有 confirm，避免與 mark-sold 或一般 sales update 混用。
+            ->and($role->hasPermissionTo('module.vehicles.sales.completion.confirm'))->toBeFalse();
+    }
+});
+
+it('permissionMatrix exposes transaction completion actions and action labels', function (): void {
+    $this->seed(RolePermissionSeeder::class);
+
+    $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+
+    $this->actingAs($admin)
+        ->get(route('employee-system.staff-permissions.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('permissionMatrix', function ($matrix): bool {
+                $matrix = is_array($matrix) ? $matrix : $matrix->all();
+
+                return isset($matrix['vehicles.sales.completion'])
+                    && ($matrix['vehicles.sales.completion']['label'] ?? null) === '交易完成'
+                    && ($matrix['vehicles.sales.completion']['actions']['view']['permission'] ?? null) === 'module.vehicles.sales.completion.view'
+                    && ($matrix['vehicles.sales.completion']['actions']['confirm']['permission'] ?? null) === 'module.vehicles.sales.completion.confirm'
+                    && ! isset($matrix['vehicles.sales.delivery']);
+            })
+            ->where('actionLabels.post', '過帳')
+            ->where('actionLabels.confirm', '確認')
+            ->where('actionLabels.complete', '完成')
+        );
+});
+
 it('可新增角色且可刪除未綁定使用者的非系統角色', function (): void {
     $admin = User::create([
         'name' => 'Admin Role CRUD',

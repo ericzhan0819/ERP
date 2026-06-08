@@ -17,7 +17,7 @@ class RolePermissionSeeder extends Seeder
     /**
      * 權限 action 白名單（僅允許統一命名的固定動作）。
      */
-    private const ACTION_WHITELIST = ['view', 'create', 'update', 'delete', 'export', 'approve', 'post', 'void', 'mark-sold', 'manage'];
+    private const ACTION_WHITELIST = ['view', 'create', 'update', 'delete', 'export', 'approve', 'post', 'void', 'mark-sold', 'confirm', 'complete', 'manage'];
 
     /**
      * Seed the application's RBAC foundation.
@@ -285,6 +285,8 @@ class RolePermissionSeeder extends Seeder
             'module.vehicles.sales.payments.view' => ['label' => '查看銷售收款', 'group' => '車輛銷售收款'],
             'module.vehicles.sales.payments.create' => ['label' => '建立銷售收款', 'group' => '車輛銷售收款'],
             'module.vehicles.sales.payments.void' => ['label' => '作廢銷售收款', 'group' => '車輛銷售收款'],
+            'module.vehicles.sales.completion.view' => ['label' => '查看交易完成', 'group' => '交易完成'],
+            'module.vehicles.sales.completion.confirm' => ['label' => '確認交易完成', 'group' => '交易完成'],
             'module.receivables.view' => ['label' => '查看收款管理', 'group' => '收款管理'],
             'module.receivables.create' => ['label' => '建立收款', 'group' => '收款管理'],
             'module.receivables.void' => ['label' => '作廢收款', 'group' => '收款管理'],
@@ -395,6 +397,8 @@ class RolePermissionSeeder extends Seeder
                 'module.vehicles.sales.payments.view',
                 'module.vehicles.sales.payments.create',
                 'module.vehicles.sales.payments.void',
+                'module.vehicles.sales.completion.view',
+                'module.vehicles.sales.completion.confirm',
                 'module.receivables.view',
                 'module.receivables.create',
                 'module.receivables.void',
@@ -442,6 +446,7 @@ class RolePermissionSeeder extends Seeder
                 'module.vehicles.sales.view',
                 'module.vehicles.sales.create',
                 'module.vehicles.sales.update',
+                'module.vehicles.sales.completion.view',
                 // 技術註解：業務角色可建立銷售並查看收款狀態，但不給收款新增/作廢/成交確認，降低現金紀錄遭誤改的風險。
                 'module.receivables.view',
             ],
@@ -459,6 +464,7 @@ class RolePermissionSeeder extends Seeder
                 'module.customers.view',
                 'module.vehicles.view',
                 'module.vehicles.sales.view',
+                'module.vehicles.sales.completion.view',
                 'module.receivables.view',
                 'module.receivables.create',
                 'module.receivables.void',
@@ -472,6 +478,7 @@ class RolePermissionSeeder extends Seeder
                 'module.vehicles.update',
                 // 技術註解：庫存需檢視成本以維護車況與整備資訊，但不預設建立/修改成本，避免非財務流程更動金額紀錄。
                 'module.vehicles.costs.view',
+                'module.vehicles.sales.completion.view',
             ],
             'viewer' => [
                 'module.dashboard.view',

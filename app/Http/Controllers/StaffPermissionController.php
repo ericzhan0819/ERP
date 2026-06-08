@@ -36,6 +36,7 @@ class StaffPermissionController extends Controller
         'vehicles.costs' => '車輛成本',
         'vehicles.sales' => '車輛銷售',
         'vehicles.sales.payments' => '車輛銷售收款',
+        'vehicles.sales.completion' => '交易完成',
         'receivables' => '收款管理',
         'customers.sensitive' => '客戶個資',
     ];
@@ -65,7 +66,7 @@ class StaffPermissionController extends Controller
             403
         );
 
-        $actions = ['view', 'create', 'update', 'delete', 'export', 'approve', 'void', 'mark-sold', 'manage'];
+        $actions = ['view', 'create', 'update', 'delete', 'export', 'approve', 'post', 'void', 'mark-sold', 'confirm', 'complete', 'manage'];
 
         $roles = Role::query()
             ->withCount('users')
@@ -157,8 +158,11 @@ class StaffPermissionController extends Controller
                 'delete' => '刪除',
                 'export' => '匯出',
                 'approve' => '核准',
+                'post' => '過帳',
                 'void' => '作廢',
                 'mark-sold' => '標記成交',
+                'confirm' => '確認',
+                'complete' => '完成',
                 'manage' => '管理',
             ],
             'moduleLabels' => $moduleLabels,
