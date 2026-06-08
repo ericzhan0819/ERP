@@ -81,6 +81,7 @@ function registerAccountingEventWorkspaceModule(): void
     );
 
     Permission::findOrCreate('module.accounting.events.view', 'web');
+    Permission::findOrCreate('module.accounting.events.review', 'web');
 }
 
 function registerAccountingEventWorkspaceVehiclesModule(): void
@@ -323,6 +324,8 @@ it('有權限可看 show 與 converted journal allowlist', function (): void {
             ->where('event.amount', '100000.00')
             ->where('event.converted_journal_entry.id', $journal->id)
             ->where('event.converted_journal_entry.journal_number', $journal->journal_number)
+            ->where('can.review', false)
+            ->has('event.reviewed_at')
             ->missing('event.company_id')
             ->missing('event.branch_id')
         );
@@ -388,9 +391,12 @@ it('RolePermissionSeeder 註冊 accounting-events module 與 view permission', f
         ->and($admin->hasPermissionTo('module.accounting.events.view'))->toBeTrue()
         ->and($accounting->hasPermissionTo('module.accounting.events.view'))->toBeTrue()
         ->and($viewer->hasPermissionTo('module.accounting.events.view'))->toBeFalse()
+        ->and(Permission::query()->where('name', 'module.accounting.events.review')->exists())->toBeTrue()
+        ->and($admin->hasPermissionTo('module.accounting.events.review'))->toBeTrue()
+        ->and($accounting->hasPermissionTo('module.accounting.events.review'))->toBeTrue()
+        ->and($viewer->hasPermissionTo('module.accounting.events.review'))->toBeFalse()
         ->and(Permission::query()->whereIn('name', [
             'module.accounting.events.create',
-            'module.accounting.events.review',
             'module.accounting.events.convert',
             'module.accounting.events.void',
         ])->exists())->toBeFalse();
@@ -419,14 +425,15 @@ it('Staff Permission matrix 顯示 accounting.events', function (): void {
 
             return isset($matrix['accounting.events'])
                 && ($matrix['accounting.events']['label'] ?? null) === '會計事件'
-                && ($matrix['accounting.events']['actions']['view']['permission'] ?? null) === 'module.accounting.events.view';
+                && ($matrix['accounting.events']['actions']['view']['permission'] ?? null) === 'module.accounting.events.view'
+                && ($matrix['accounting.events']['actions']['review']['permission'] ?? null) === 'module.accounting.events.review';
         }));
 });
 
-it('不提供 accounting event mutation routes', function (): void {
+it('只提供 accounting event review mutation route', function (): void {
     expect(Route::has('employee-system.accounting.events.create'))->toBeFalse()
         ->and(Route::has('employee-system.accounting.events.store'))->toBeFalse()
-        ->and(Route::has('employee-system.accounting.events.review'))->toBeFalse()
+        ->and(Route::has('employee-system.accounting.events.review'))->toBeTrue()
         ->and(Route::has('employee-system.accounting.events.convert'))->toBeFalse()
         ->and(Route::has('employee-system.accounting.events.void'))->toBeFalse();
 });

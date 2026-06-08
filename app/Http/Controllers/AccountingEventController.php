@@ -2,16 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ReviewAccountingEventRequest;
 use App\Models\AccountingEvent;
+use App\Services\AuditLogService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AccountingEventController extends Controller
 {
+    public function __construct(
+        private readonly AuditLogService $auditLogService,
+    ) {}
+
     /**
      * 技術註解：只讀列表只輸出畫面必要 allowlist，不回傳 payload JSON 或 tenant/actor 原始欄位，避免候選會計摘要外洩敏感資訊。
      */
@@ -73,6 +81,7 @@ class AccountingEventController extends Controller
             'statuses' => $statuses,
             'can' => [
                 'view' => $request->user()?->can('module.accounting.events.view') ?? false,
+                'review' => $request->user()?->can('module.accounting.events.review') ?? false,
             ],
         ]);
     }
@@ -107,8 +116,54 @@ class AccountingEventController extends Controller
             'statuses' => $statuses,
             'can' => [
                 'view' => $request->user()?->can('module.accounting.events.view') ?? false,
+                'review' => $request->user()?->can('review', $event) ?? false,
             ],
         ]);
+    }
+
+    /**
+     * 技術註解：覆核路由先做 tenant scoped 查詢再授權，跨租戶 ID 一律 404，避免 IDOR 存在性探測與跨分店狀態竄改。
+     */
+    public function review(ReviewAccountingEventRequest $request, int $accountingEvent): RedirectResponse
+    {
+        $event = $this->scopedEventQuery($request->user())
+            ->with('reviewer:id,name')
+            ->whereKey($accountingEvent)
+            ->firstOrFail();
+
+        $this->authorize('review', $event);
+        abort_unless($event->status === 'pending', 403);
+
+        $validated = $request->validated();
+        $oldValues = $this->reviewAuditSnapshot($event, 'old_status');
+
+        DB::transaction(function () use ($request, $event, $validated, $oldValues): void {
+            // 技術註解：只更新覆核 allowlist 欄位，不接收前端狀態、金額、payload、tenant 或 journal 欄位，避免權限提升與會計認列被注入。
+            $event->forceFill([
+                'status' => 'reviewed',
+                'review_note' => $validated['review_note'] ?? null,
+                'reviewed_by' => (int) $request->user()->id,
+                'reviewed_at' => now(),
+            ])->save();
+
+            $event->load('reviewer:id,name');
+
+            $this->auditLogService->log(
+                $request->user(),
+                'accounting_event.reviewed',
+                'Accounting event reviewed',
+                null,
+                ['module' => 'accounting_events'],
+                $event,
+                $oldValues,
+                $this->reviewAuditSnapshot($event, 'new_status'),
+                $request,
+                'accounting_event.reviewed',
+            );
+        });
+
+        return redirect()->route('employee-system.accounting.events.show', $event->id)
+            ->with('success', '會計事件已覆核');
     }
 
     private function scopedEventQuery(?Authenticatable $user): Builder
@@ -177,6 +232,7 @@ class AccountingEventController extends Controller
             'amount' => (string) $event->amount,
             'payload' => $this->sanitizePayload($event->payload ?? []),
             'review_note' => $event->review_note,
+            'reviewed_at' => optional($event->reviewed_at)->toISOString(),
             'company' => $event->company ? ['id' => $event->company->id, 'name' => $event->company->name] : null,
             'branch' => $event->branch ? ['id' => $event->branch->id, 'name' => $event->branch->name] : null,
             'creator' => $event->creator ? ['id' => $event->creator->id, 'name' => $event->creator->name] : null,
@@ -204,6 +260,24 @@ class AccountingEventController extends Controller
             'journal_number' => $event->convertedJournalEntry->journal_number,
             'status' => $event->convertedJournalEntry->status,
             'entry_date' => optional($event->convertedJournalEntry->entry_date)->toDateString(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function reviewAuditSnapshot(AccountingEvent $event, string $statusKey): array
+    {
+        return [
+            'id' => $event->id,
+            'source_type' => $event->source_type,
+            'source_id' => $event->source_id,
+            'source_number' => $event->source_number,
+            'event_type' => $event->event_type,
+            $statusKey => $event->status,
+            'review_note' => $event->review_note,
+            'reviewed_by_name' => $event->reviewer?->name,
+            'reviewed_at' => optional($event->reviewed_at)->toISOString(),
         ];
     }
 

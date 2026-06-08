@@ -24,6 +24,18 @@ class AccountingEventPolicy
             && $this->isSameTenant($user, $event);
     }
 
+    /**
+     * 技術註解：覆核是財務狀態轉換，只接受獨立 review 權限與 pending 狀態，避免 view 或相容 accounting 權限被擴張成 mutation 能力。
+     */
+    public function review(User $user, AccountingEvent $event): bool
+    {
+        return $user->can('module.accounting.events.review')
+            && $this->isSameTenant($user, $event)
+            && $event->status === 'pending'
+            && $event->voided_at === null
+            && $event->converted_journal_entry_id === null;
+    }
+
     private function isSameTenant(User $user, AccountingEvent $event): bool
     {
         $userCompanyId = (int) ($user->company_id ?? 0);
