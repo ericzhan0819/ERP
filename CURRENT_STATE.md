@@ -2,9 +2,9 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 completed；Accounting Phase 2 completed；Accounting Phase 3 completed。
-- 穩定節點：Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 completed；Accounting Phase 2 completed；Accounting Phase 3 completed。
-- 最新驗證狀態：最近分段驗證包含 `CustomerTest + ReceivableTest：27 passed / 359 assertions`、`VehicleSaleTest + VehicleSalePaymentTest：30 passed / 407 assertions`、`npm run build` 通過；最新完整測試待重新執行 full test。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Confirm Delivery / Transaction Completion Spec completed；Sales / Payments / Delivery semantics UI hints completed。
+- 穩定節點：Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Confirm Delivery / Transaction Completion Spec completed；Sales / Payments / Delivery semantics UI hints completed。
+- 最新驗證狀態：最近分段驗證包含 `CustomerTest + ReceivableTest：27 passed / 359 assertions`、`VehicleSaleTest + VehicleSalePaymentTest：30 passed / 407 assertions`、`npm run build` 通過；最新完整測試曾通過 `./vendor/bin/sail artisan test`，full test passed without count。
 - 本文件為目前穩定節點同步整理；目前不實作退款、不做 AR / AP / cash / invoice / reports 整合、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
 
 ## 技術棧
@@ -40,6 +40,10 @@
 - Accounting Phase 2：Journal Draft Foundation
 - Accounting Phase 3：Journal Posting / Voiding
 - Accounting Module Boundary Polish：會計科目與會計傳票已拆成獨立 module entries
+- Accounting Journal Workbench UI Polish
+- Vehicle Cost Accounting Treatment Spec
+- Confirm Delivery / Transaction Completion Spec
+- Sales / Payments / Delivery semantics UI hints
 
 ## Accounting Phase 1
 
@@ -78,6 +82,17 @@
 - No AR/AP/cash/invoice/report integration yet。
 - No automatic journals from sales/costs yet。
 - No profit / gross margin payload added。
+
+## Accounting Journal Workbench UI Polish
+
+- Accounting Journal Workbench UI Polish completed。
+- 傳票列表、建立、編輯、明細、分錄表格、status bar、actions、totals / difference 顯示已往 workbench 操作模式整理。
+- 這是前端 UI polish，不改 journal backend、routes、policies、migrations。
+- Journal posting / voiding 規則仍由後端控制。
+- Posted / voided journals 仍不可修改。
+- No accounting event / journal draft generation from business documents yet。
+- No automatic revenue recognition。
+- No automatic COGS recognition。
 
 ## Accounting Module Boundaries
 
@@ -125,6 +140,27 @@
 - Audit events：車輛、成本、銷售與公司設定異動已記錄 operation audit。
 - Show / Edit UI split：Show 偏只讀展示；Edit 承載可編輯流程與 mutation UI 所需選項。
 
+## Vehicle Cost Accounting Treatment Spec
+
+- `docs/vehicle-cost-accounting-treatment-spec.md` 已建立。
+- 該文件只定義 `vehicle_costs.cost_type` 對應 accounting treatment 方向。
+- `purchase_price` / `repair` / `detailing` / `inspection` 傾向 capitalized vehicle cost。
+- `transport` / `tax` / `other` 需要 review。
+- `management` 通常是 period expense。
+- 本階段沒有新增欄位、沒有自動分錄、沒有 COGS、沒有 profit / gross margin payload。
+- Vehicle Cost Management 仍不是 AR / AP、Cash / Bank、Invoice 或 Reports。
+
+## Confirm Delivery / Transaction Completion Spec
+
+- `docs/confirm-delivery-transaction-completion-spec.md` 已建立。
+- Confirm Delivery / Complete Transaction 目前只是規格，尚未實作。
+- `mark sold` 不等於收入認列。
+- `payment received` 不等於收入認列。
+- `vehicle cost created` 不等於 COGS。
+- `sold` lifecycle status 不等於完整交易完成。
+- 未來 Confirm Delivery / Complete Transaction 才可能成為 revenue / COGS recognition 的候選節點。
+- 未來可能產生 accounting event 或 journal draft，但目前不做。
+
 ## 車輛流程
 
 - 主要流程：`in_stock` → `reserved` → `sold`。
@@ -145,6 +181,28 @@ Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Customer 
 - Receivables mark-sold action 可在收款 / 應收流程中完成售出狀態銜接。
 - Customer Transaction History 顯示客戶關聯銷售與收款摘要，並受 tenant scope 與後端權限控制。
 - Audit Logs 已支援主要業務事件與顯示標籤在地化，便於營運人員閱讀。
+
+未來規格方向：
+
+```txt
+Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Confirm Delivery / Complete Transaction → Accounting Event / Journal Draft → Revenue / COGS Recognition
+```
+
+- 後半段目前只是規格 / backlog，尚未實作。
+- Confirm Delivery / Complete Transaction remains spec only, not implemented。
+- No accounting event / journal draft generation yet。
+- No automatic revenue recognition。
+- No automatic COGS recognition。
+
+## Receivables / Vehicle Sale / UI Hints
+
+- Receivables / Vehicle pages 已加入 sales / payments / delivery semantics UI hints。
+- 這些提示只作為 UX 說明，不改資料模型、不新增 action、不新增 permission。
+- 收款完成只代表款項已記錄。
+- `mark sold` 只代表銷售與車輛售出狀態銜接。
+- 交車完成 / 完成交易未來會獨立處理。
+- 收入與 COGS 認列目前不會自動產生。
+- Sales / Payments / Delivery semantics hints are frontend UX only；正式權限、狀態、tenant scope、資料一致性仍由後端負責。
 
 ## 車輛權限清單
 
@@ -239,6 +297,18 @@ Audit 資料原則：
 ## 已知限制
 
 - 尚未做完整會計。
+- 尚未實作 Confirm Delivery / Complete Transaction。
+- 尚未實作 Accounting Event。
+- 尚未由 business document 自動產生 journal draft。
+- 尚未自動 revenue recognition。
+- 尚未自動 COGS recognition。
+- 尚未計算 profit / gross margin。
+- 尚未做 AR / AP。
+- 尚未做 Cash / Bank。
+- 尚未做 Invoice。
+- 尚未做 Reports。
+- 尚未做 full accounting automation。
+- 尚未做 full security hardening。
 - 車輛成本管理目前為 Phase 2 獨立列表與 create / edit 工作台，不是完整會計；不做應付帳款、付款沖帳、成本報表、PDF / Excel 或 profit / gross margin payload。
 - 尚未做租賃模組。
 - 客戶模組已完成 MVP 與交易紀錄；尚未串接合約或完整 CRM。
@@ -262,6 +332,14 @@ Audit 資料原則：
 
 ### B. 業務模組
 
+- Phase B 已完成：Sales / Payments / Delivery semantics UI hints。
+- 後續可做：Confirm Delivery / Complete Transaction 權限命名與 UI 草圖。
+- 後續可做：Confirm Delivery / Complete Transaction 資料模型決策。
+- 後續可做：delivery / completion 欄位或獨立 event table。
+- 後續可做：Accounting Event draft。
+- 後續可做：由 accounting event 產生 journal draft。
+- 後續可做：Revenue / COGS recognition。
+- 後續可做：profit / gross margin reports。
 - 租賃流程。
 - 合約與完整 CRM 延伸。
 - 退車 / 退款 / 作廢流程。
