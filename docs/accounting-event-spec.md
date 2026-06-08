@@ -1,8 +1,8 @@
 # Accounting Event Foundation Spec
 
-> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed.
+> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed + Phase 4A review workflow completed.
 > Scope: define Accounting Event product semantics, current foundation state, future data direction, status flow, source documents, tenant / permission / audit principles, and future Journal Draft / Revenue / COGS integration direction.
-> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. It does not implement mutation routes, create / review / convert / void workflows, journal draft generation, or accounting recognition runtime behavior.
+> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. Phase 4A has implemented pending -> reviewed. It does not implement create / convert / void workflows, journal draft generation, or accounting recognition runtime behavior.
 
 ## 1. Purpose
 
@@ -65,6 +65,13 @@ config/accounting_events.php
 AccountingEventTest
 AccountingEventService
 AccountingEventCompletionIntegrationTest
+accounting_events.reviewed_at
+module.accounting.events.review
+review route
+ReviewAccountingEventRequest
+AccountingEventPolicy::review
+AccountingEventController::review
+AccountingEventReviewTest
 ```
 
 `AccountingEventTest` covers schema, casts, relationships, config, tenant scoped query, and completion regression. The completion regression confirms a successful completion action creates one pending Accounting Event.
@@ -75,12 +82,15 @@ The current Accounting Event readonly workspace includes:
 accounting-events module exists
 module.accounting.events.view exists
 Accounting Event readonly index/show routes exist
-AccountingEventController exists with index/show only
-AccountingEventPolicy exists with viewAny/view only
+AccountingEventController exists with index/show/review
+AccountingEventPolicy exists with viewAny/view/review
 React readonly Index / Show pages exist
+Accounting Event Show page has review UI for pending events when can.review = true
 ```
 
 `AccountingEventWorkspaceTest` covers route access, tenant scope, filters, payload sanitizer, module registry, staff permission matrix, no mutation routes, and completion regression.
+
+`AccountingEventReviewTest` covers authorized review, view-only denied, `module.accounting.view` denied, cross-tenant 404, only pending, deny-list, audit safe payload, `can.review` props, seeder permission, permission matrix, and no journal draft/lines.
 
 `AccountingEventService` exists. Successful completion creates one pending Accounting Event. Completion integration is backend-only and does not require `module.accounting.events.view`.
 
@@ -90,6 +100,8 @@ The following are not completed yet:
 
 ```txt
 Accounting Event -> Journal Draft
+Accounting Event convert
+Accounting Event void
 Automatic Revenue Recognition
 Automatic COGS Recognition
 Profit / Gross Margin Payload
@@ -149,6 +161,7 @@ Important boundaries:
 - Phase 1 has now added the minimal table / model / config / tests foundation.
 - Phase 2 has now added readonly index/show workspace routes, controller, policy, permission, module registry entry, React pages, and focused tests.
 - Phase 3 has now added successful completion -> one pending Accounting Event.
+- Phase 4A has now added pending Accounting Event -> reviewed workflow.
 - Future phases still must not assume journal draft or accounting recognition runtime exists.
 - `payload` must not store sensitive personal data.
 - `payload` must not store profit / gross margin.
@@ -211,6 +224,15 @@ Status semantics:
 - `converted`: journal draft has been generated and the relationship is retained.
 - `voided`: event has been voided and must retain a reason.
 
+Implemented flow:
+
+- `pending` -> `reviewed` has been implemented.
+- `reviewed` -> `converted` has not been implemented.
+- `voided` has not been implemented.
+- `reviewed` does not mean journal draft exists.
+- `reviewed` does not mean posted.
+- Review only marks the event as an accounting-reviewed candidate.
+
 Important boundaries:
 
 - `converted` does not mean journal posted.
@@ -256,6 +278,15 @@ Vehicle Sale sold + paid / overpaid + completed
 ## 9. Relationship with Journal Draft
 
 Future Accounting Event can be converted into an Accounting Journal Draft, but this phase does not implement conversion.
+
+Current review boundaries:
+
+- Review does not generate journal draft.
+- Review does not generate `accounting_journal_entry_lines`.
+- Review does not post journal.
+- Review does not recognize revenue.
+- Review does not recognize COGS.
+- Review does not add profit / gross margin payload.
 
 Future conversion direction:
 
@@ -317,17 +348,17 @@ Vehicle Cost Management remains a business cost workflow until a future accounti
 
 ## 12. Permissions
 
-Current implemented permission:
+Current implemented permissions:
 
 ```txt
 module.accounting.events.view
+module.accounting.events.review
 ```
 
 Future permission direction may include:
 
 ```txt
 module.accounting.events.create
-module.accounting.events.review
 module.accounting.events.convert
 module.accounting.events.void
 ```
@@ -336,10 +367,13 @@ Permission boundaries:
 
 - `module.accounting.events.view` is implemented.
 - `module.accounting.events.view` only controls readonly workspace access.
+- `module.accounting.events.review` is implemented.
+- `module.accounting.events.review` controls pending Accounting Event review only.
 - Completion side effect does not require `module.accounting.events.view`.
-- `module.accounting.events.create/review/convert/void` remain future direction only and are not implemented.
+- `module.accounting.events.convert` is not implemented.
+- `module.accounting.events.void` is not implemented.
 - `accounting-events` module is independent from `accounting-accounts` and `accounting-journals`.
-- `module.accounting.view` must not be used as the only permission for accounting events.
+- `module.accounting.view` must not be used as the only permission for accounting events or any Accounting Event operation.
 
 ## 13. Tenant Scope
 
@@ -386,13 +420,12 @@ Audit payloads should use explicit allowlists and only include fields needed to 
 This phase does not do:
 
 ```txt
-No request.
 No create route.
 No store route.
-No review route.
 No convert route.
 No void route.
-No mutation form.
+No convert implementation.
+No void implementation.
 No journal draft generation.
 No accounting_journal_entry_lines generation.
 No automatic journal posting.
@@ -416,8 +449,11 @@ Suggested future small-step sequence:
 Phase 0: Spec completed.
 Phase 1: AccountingEvent table + model + config + tests completed.
 Phase 2: Accounting Event index/show readonly workspace completed.
-Phase 3: Completion -> pending Accounting Event completed, still no journal draft.
-Phase 4: Reviewed accounting event -> manual journal draft generation.
+Phase 3: Completion -> pending Accounting Event completed.
+Phase 4A: Pending Accounting Event -> reviewed completed.
+Phase 4B: Void pending / reviewed Accounting Event.
+Phase 4C: Account mapping config design before convert.
+Phase 4D: Reviewed Accounting Event -> manual journal draft generation.
 Phase 5: Revenue / COGS draft mapping after account configuration exists.
 Phase 6: Reversal / refund / return flow.
 ```
@@ -430,8 +466,10 @@ Phase 3 directly connects successful completion to one pending Accounting Event 
 - Accounting Event Foundation Phase 1 exists.
 - Accounting Event Phase 2 readonly workspace exists.
 - Accounting Event Phase 3 completion integration exists.
+- Accounting Event Phase 4A review workflow exists.
 - Successful completion creates one pending Accounting Event.
-- No Accounting Event mutation workflow exists.
+- Only pending Accounting Events can be reviewed.
+- No Accounting Event convert / void workflow exists.
 - No Journal Draft generation exists.
 - No revenue / COGS / profit / gross margin runtime exists.
 - Current accounting module boundaries remain unchanged.

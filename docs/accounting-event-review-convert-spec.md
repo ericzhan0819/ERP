@@ -1,8 +1,8 @@
 # Accounting Event Review / Convert Workflow Spec
 
-Status: Spec only.
-Scope: define future Accounting Event review and convert workflow boundaries.
-This document does not implement routes, controllers, requests, policies, permissions, React pages, journal draft generation, revenue recognition, COGS recognition, posting, or runtime behavior.
+Status: Spec completed + Phase 4A review workflow completed.
+Scope: define current Accounting Event review workflow state and future convert / void workflow boundaries.
+This document reflects the implemented review workflow. It does not implement convert routes, void routes, journal draft generation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
 
 ## 1. Purpose
 
@@ -31,7 +31,7 @@ Accounting Event is an accounting candidate event. It is not an official journal
 - `reviewed` does not mean posted.
 - `converted` does not mean posted.
 - Journal posting must continue through the existing Accounting Journal post workflow.
-- This document implements no behavior. It only defines future direction and safety boundaries.
+- Phase 4A implemented pending -> reviewed. Future convert / void behavior remains direction and safety boundaries only.
 
 ## 2. Current Repo State
 
@@ -61,6 +61,13 @@ Accounting Event Phase 3 completed:
 - `status = pending`
 - `AccountingEventCompletionIntegrationTest`
 
+Accounting Event Phase 4A completed:
+
+- reviewed_at migration added
+- `module.accounting.events.review` added
+- review route added
+- review request / policy / controller / UI / tests added
+
 Current business flow:
 
 ```txt
@@ -75,7 +82,6 @@ Customer
 
 Currently not completed:
 
-- Accounting Event review
 - Accounting Event convert
 - Accounting Event void
 - Accounting Event -> Journal Draft
@@ -131,11 +137,11 @@ Boundaries:
 - No workflow should automatically move directly from `pending` to `converted`.
 - No status should directly create a posted journal.
 
-## 5. Future Review Workflow
+## 5. Current Review Workflow
 
-Future review behavior should be implemented as a human-controlled accounting action, not as an automatic completion side effect.
+Review behavior is implemented as a human-controlled accounting action, not as an automatic completion side effect.
 
-Suggested flow:
+Current implementation:
 
 ```txt
 pending Accounting Event
@@ -143,24 +149,19 @@ pending Accounting Event
 -> accountant checks source, amount, receivable status, payload
 -> accountant enters review_note
 -> status becomes reviewed
--> reviewed_by / reviewed_at should be recorded in future schema or existing reviewed_by if enough
+-> review_note / reviewed_by / reviewed_at are recorded
+-> accounting_event.reviewed audit log is written
 ```
 
-Current table state:
+Current table state includes:
 
 ```txt
 review_note
 reviewed_by
+reviewed_at
 ```
 
-Current table does not have `reviewed_at`.
-
-Future timestamp options:
-
-- Option A: use `updated_at` as review timestamp for MVP.
-- Option B: add `reviewed_at` migration before implementing review workflow.
-
-If the future implementation needs a clear audit trail, it should consider adding `reviewed_at`. This document does not add a migration.
+Current implementation does not generate journal draft.
 
 Review conditions:
 
@@ -168,9 +169,9 @@ Review conditions:
 - Reviewed event must remain same tenant.
 - Voided event cannot be reviewed.
 - Converted event cannot be reviewed again unless future rollback exists.
-- `review_note` should be optional or required depending on UI decision, but future implementation must define validation explicitly.
+- `review_note` is the only allowed review form field.
 
-Suggested future permission:
+Implemented permission:
 
 ```txt
 module.accounting.events.review
@@ -178,8 +179,7 @@ module.accounting.events.review
 
 Permission boundaries:
 
-- This permission is not implemented.
-- This document does not modify `RolePermissionSeeder`.
+- This permission is implemented.
 - `module.accounting.events.view` can only view and must not allow review.
 - `module.accounting.view` must not be used as review permission.
 
@@ -403,25 +403,27 @@ Receivable summary rules:
 
 ## 11. Permissions Direction
 
-Current implemented permission:
+Current implemented permissions:
 
 ```txt
 module.accounting.events.view
+module.accounting.events.review
 ```
 
 Future possible permissions:
 
 ```txt
-module.accounting.events.review
 module.accounting.events.convert
 module.accounting.events.void
 ```
 
 Permission boundaries:
 
-- This document does not add permissions.
+- `module.accounting.events.view` is implemented.
+- `module.accounting.events.review` is implemented.
+- `module.accounting.events.convert` is not implemented.
+- `module.accounting.events.void` is not implemented.
 - `module.accounting.events.view` only views readonly workspace.
-- `module.accounting.events.review` should be required to review.
 - `module.accounting.events.convert` should be required to generate journal draft.
 - `module.accounting.events.void` should be required to void.
 - `module.accounting.view` must not be the only entry or operation permission for Accounting Events.
@@ -502,7 +504,7 @@ Void UI:
 Suggested future implementation sequence:
 
 ```txt
-Phase 4A: add review permission + review route/controller action/request/policy/tests
+Phase 4A: completed review permission + review route/controller action/request/policy/tests
 Phase 4B: add void permission + void route/controller action/request/policy/tests for pending/reviewed only
 Phase 4C: design account mapping config before convert
 Phase 4D: convert reviewed event to journal draft after account mapping exists
@@ -511,7 +513,7 @@ Phase 4E: revenue / COGS draft mapping only after accounting rules are confirmed
 
 Phase boundaries:
 
-- Phase 4A must not do convert.
+- Phase 4A completed and did not do convert.
 - Phase 4B must not touch converted event reversal.
 - Phase 4C designs mapping first and must not hard-code accounts.
 - Phase 4D only creates draft and must not post.
@@ -522,15 +524,6 @@ Phase boundaries:
 This document does not do:
 
 - No code changes.
-- No migration.
-- No model change.
-- No controller change.
-- No request.
-- No policy.
-- No route.
-- No React page.
-- No permission seeding.
-- No review implementation.
 - No convert implementation.
 - No void implementation.
 - No journal draft generation.
@@ -550,12 +543,9 @@ This document does not do:
 
 ## 16. Acceptance Criteria
 
-- This spec adds no runtime behavior.
-- This spec does not change database schema.
-- This spec does not change routes.
-- This spec does not change permissions.
-- This spec does not change React pages.
+- This spec reflects Phase 4A review workflow completed.
+- This spec adds no new runtime behavior.
 - This spec preserves current completion -> pending Accounting Event behavior.
 - This spec preserves current readonly workspace behavior.
-- This spec defines future review / convert / void workflow boundaries.
-- This spec explicitly prevents automatic posting, revenue recognition, COGS recognition, and profit / gross margin payload in the next implementation step.
+- This spec still defines future convert / void boundaries.
+- This spec preserves no automatic posting, revenue recognition, COGS recognition, and profit / gross margin payload.
