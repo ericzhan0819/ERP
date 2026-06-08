@@ -38,6 +38,7 @@ class StaffPermissionController extends Controller
         'vehicles.sales.payments' => '車輛銷售收款',
         'vehicles.sales.completion' => '交易完成',
         'receivables' => '收款管理',
+        'accounting.events' => '會計事件',
         'customers.sensitive' => '客戶個資',
     ];
 
@@ -47,6 +48,7 @@ class StaffPermissionController extends Controller
     private const MODULE_LABELS = [
         'customers' => '客戶管理',
         'receivables' => '收款管理',
+        'accounting' => '會計管理',
         'vehicles' => '車輛管理',
     ];
 

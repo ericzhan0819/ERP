@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AccountingAccountController;
+use App\Http\Controllers\AccountingEventController;
 use App\Http\Controllers\AccountingJournalEntryController;
 use App\Http\Controllers\CompanySettingController;
 use App\Http\Controllers\CustomerController;
@@ -253,6 +254,15 @@ Route::patch('/employee-system/accounting/accounts/{account}', [AccountingAccoun
     ->middleware(['auth', 'module.access:accounting-accounts'])
     ->whereNumber('account')
     ->name('employee-system.accounting.accounts.update');
+
+Route::get('/employee-system/accounting/events', [AccountingEventController::class, 'index'])
+    ->middleware(['auth', 'module.access:accounting-events'])
+    ->name('employee-system.accounting.events.index');
+
+Route::get('/employee-system/accounting/events/{accountingEvent}', [AccountingEventController::class, 'show'])
+    ->middleware(['auth', 'module.access:accounting-events'])
+    ->whereNumber('accountingEvent')
+    ->name('employee-system.accounting.events.show');
 
 Route::get('/employee-system/accounting/journal-entries', [AccountingJournalEntryController::class, 'index'])
     ->middleware(['auth', 'module.access:accounting-journals'])
