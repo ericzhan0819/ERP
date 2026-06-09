@@ -9,17 +9,21 @@
 - Phase 4D-2A-2 Database-backed Mapping Foundation completed
 - Phase 4D-2B Revenue-side Journal Draft Generation completed
 - Phase 4D-2B Manual QA Checklist completed
+- Phase 4D-2B UI Polish completed
 - Added `docs/accounting-event-journal-draft-manual-qa-checklist.md`
 - This checklist update is docs-only; no runtime code changed
 - 4D-2B runtime already completed in commit `1cb20ee`
 - COGS / tax / refund / reversal remain backlog
-- 4D-2B UI polish or Phase 5 decision spec remains next
+- Accounting Event show now has clear convert draft action / status hints
+- Journal show now displays source Accounting Event reference when allowed
+- Phase 5 COGS / vehicle cost basis decision spec remains backlog
 
 ## Scope
 
 - Define future reviewed Accounting Event -> Accounting Journal Draft generation rules
 - Runtime converts reviewed Accounting Event to draft journal only when config is enabled and DB-backed AR / Sales Revenue mappings exist
 - Runtime creates draft journal header, two revenue-side lines, converted status, `converted_journal_entry_id`, and `accounting_event.converted` audit
+- UI polish improves draft conversion visibility and source reference navigation only; no accounting behavior changed
 
 ## Current Repo State
 

@@ -10,6 +10,7 @@ export default function AccountingJournalEntriesShow({ auth, journal, journalSta
     const totalDebit = Number(journal.total_debit || 0);
     const totalCredit = Number(journal.total_credit || 0);
     const difference = Number((totalDebit - totalCredit).toFixed(2));
+    const sourceLabel = journal.source_type === 'accounting_event' ? '會計事件' : (journal.source_type || '手動建立或未指定來源');
 
     const postJournal = () => {
         if (!window.confirm('已過帳傳票不可修改。')) {
@@ -45,6 +46,12 @@ export default function AccountingJournalEntriesShow({ auth, journal, journalSta
                             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Journal Entry Workbench</p>
                             <h1 className="mt-1 font-mono text-2xl font-semibold text-primary">{journal.journal_number}</h1>
                             <p className="mt-1 text-sm text-secondary">唯讀傳票工作台；草稿可編輯或過帳，已過帳僅可作廢，已作廢只能查看。</p>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <span className="rounded-full border border-default bg-slate-50 px-3 py-1 text-xs font-semibold text-secondary dark:bg-slate-900/30">{journal.source_type === 'accounting_event' ? '來源：會計事件' : '手動建立或未指定來源'}</span>
+                                {journal.source_accounting_event && (
+                                    <Link href={route('employee-system.accounting.events.show', journal.source_accounting_event.id)} className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white transition hover:opacity-90">查看來源會計事件</Link>
+                                )}
+                            </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             <Link href={route('employee-system.accounting.journal-entries.index')} className="rounded-md border border-default px-3 py-2 text-sm font-medium text-secondary transition hover:bg-slate-50 dark:hover:bg-slate-900/40">返回列表</Link>
@@ -97,10 +104,38 @@ export default function AccountingJournalEntriesShow({ auth, journal, journalSta
                     </div>
                 </section>
 
+                <section className="rounded-2xl border border-default bg-surface p-4">
+                    <div className="mb-4 border-b border-default pb-3">
+                        <h2 className="text-base font-semibold text-primary">來源文件</h2>
+                        <p className="mt-1 text-xs text-secondary">此來源連結只表示草稿由 Accounting Event 產生，不代表已過帳或已完成 COGS / tax recognition。</p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <InfoCard label="來源類型" value={sourceLabel} />
+                        <InfoCard label="來源 ID" value={journal.source_id ?? '—'} mono />
+                        <InfoCard label="傳票狀態" value={journal.status === 'draft' ? '此傳票仍為草稿，尚未過帳。' : statusLabel} />
+                    </div>
+                    {journal.source_accounting_event ? (
+                        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                            <InfoCard label="來源編號" value={journal.source_accounting_event.source_number ?? '—'} mono />
+                            <InfoCard label="事件類型" value={journal.source_accounting_event.event_type_label ?? journal.source_accounting_event.event_type ?? '—'} />
+                            <InfoCard label="事件狀態" value={journal.source_accounting_event.status_label ?? journal.source_accounting_event.status ?? '—'} />
+                            <InfoCard label="事件日期" value={journal.source_accounting_event.event_date ?? '—'} />
+                            <InfoCard label="金額" value={formatMoney(journal.source_accounting_event.amount, journal.source_accounting_event.currency)} mono />
+                            <div className="rounded-lg border border-default bg-slate-50 p-3 dark:bg-slate-900/30">
+                                <p className="text-xs uppercase tracking-[0.18em] text-muted">Source Link</p>
+                                <Link href={route('employee-system.accounting.events.show', journal.source_accounting_event.id)} className="mt-2 inline-flex rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90">查看來源會計事件</Link>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="mt-4 rounded-xl border border-default bg-slate-50 p-4 text-sm text-secondary dark:bg-slate-900/30">沒有可連結的來源會計事件，或目前帳號沒有會計事件檢視權限。</div>
+                    )}
+                </section>
+
                 <section className="space-y-4 rounded-2xl border border-default bg-surface p-4">
                     <div>
                         <h2 className="text-base font-semibold text-primary">分錄明細</h2>
                         <p className="mt-1 text-xs text-secondary">此頁為唯讀檢視，草稿需進入編輯頁才能修改分錄。</p>
+                        <p className="mt-1 text-xs text-secondary">目前 4D-2B 只產生 AR debit / Sales Revenue credit。COGS / tax / refund / reversal 不在本階段。</p>
                     </div>
                     <div className="overflow-x-auto rounded-xl border border-default">
                         <table className="min-w-full text-sm">
@@ -141,6 +176,12 @@ export default function AccountingJournalEntriesShow({ auth, journal, journalSta
             </div>
         </DashboardLayout>
     );
+}
+
+function formatMoney(value, currency) {
+    const amount = Number(value || 0).toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    return `${currency || 'TWD'} ${amount}`;
 }
 
 function StatusBar({ currentStatus }) {

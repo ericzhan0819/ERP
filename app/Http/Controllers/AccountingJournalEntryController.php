@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreAccountingJournalEntryRequest;
 use App\Http\Requests\UpdateAccountingJournalEntryRequest;
 use App\Models\AccountingAccount;
+use App\Models\AccountingEvent;
 use App\Models\AccountingJournalEntry;
 use App\Services\AccountingJournalNumberService;
 use App\Services\AccountingJournalValidator;
@@ -152,7 +153,7 @@ class AccountingJournalEntryController extends Controller
         $this->authorize('view', $journal);
 
         return Inertia::render('Accounting/JournalEntries/Show', [
-            'journal' => $this->journalDetailPayload($journal),
+            'journal' => $this->journalDetailPayload($journal, $request->user()),
             'journalStatuses' => config('accounting.journal_statuses', []),
             'can' => [
                 'view' => $request->user()?->can('module.accounting.journals.view') ?? false,
@@ -408,7 +409,7 @@ class AccountingJournalEntryController extends Controller
         ];
     }
 
-    private function journalDetailPayload(AccountingJournalEntry $journal): array
+    private function journalDetailPayload(AccountingJournalEntry $journal, ?Authenticatable $user): array
     {
         return [
             'id' => $journal->id,
@@ -416,6 +417,9 @@ class AccountingJournalEntryController extends Controller
             'entry_date' => optional($journal->entry_date)->toDateString(),
             'summary' => $journal->summary,
             'status' => $journal->status,
+            'source_type' => $journal->source_type,
+            'source_id' => $journal->source_id,
+            'source_accounting_event' => $this->sourceAccountingEventPayload($journal, $user),
             'posted_at' => optional($journal->posted_at)->toISOString(),
             'voided_at' => optional($journal->voided_at)->toISOString(),
             'void_reason' => $journal->void_reason,
@@ -435,6 +439,46 @@ class AccountingJournalEntryController extends Controller
                 'memo' => $line->memo,
                 'sort_order' => $line->sort_order,
             ])->all(),
+        ];
+    }
+
+    /**
+     * 技術註解：來源事件連結必須再次檢查 events.view 與 tenant 範圍，避免 journal 檢視者藉 source_id 推測跨租戶或敏感會計事件內容。
+     *
+     * @return array<string, mixed>|null
+     */
+    private function sourceAccountingEventPayload(AccountingJournalEntry $journal, ?Authenticatable $user): ?array
+    {
+        if ($journal->source_type !== 'accounting_event' || $journal->source_id === null || ! $user?->can('module.accounting.events.view')) {
+            return null;
+        }
+
+        $event = AccountingEvent::query()
+            ->where('company_id', (int) ($user->company_id ?? 0))
+            ->when($user->branch_id !== null, fn (Builder $query) => $query->where(function (Builder $branchQuery) use ($user): void {
+                $branchQuery->whereNull('branch_id')
+                    ->orWhere('branch_id', (int) $user->branch_id);
+            }))
+            ->whereKey((int) $journal->source_id)
+            ->first();
+
+        if (! $event) {
+            return null;
+        }
+
+        $eventTypes = config('accounting_events.event_types', []);
+        $statuses = config('accounting_events.statuses', []);
+
+        return [
+            'id' => $event->id,
+            'source_number' => $event->source_number,
+            'event_type' => $event->event_type,
+            'event_type_label' => $eventTypes[$event->event_type] ?? $event->event_type,
+            'status' => $event->status,
+            'status_label' => $statuses[$event->status] ?? $event->status,
+            'amount' => (string) $event->amount,
+            'currency' => $event->currency,
+            'event_date' => optional($event->event_date)->toDateString(),
         ];
     }
 

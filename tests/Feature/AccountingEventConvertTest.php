@@ -408,6 +408,79 @@ it('show page exposes can.convert only for reviewed event with convert permissio
         ->assertInertia(fn (AssertableInertia $page) => $page->where('can.convert', false));
 });
 
+it('reviewed event show exposes convert availability without converted journal payload', function (): void {
+    aeConvertRegisterAccountingEventsModule();
+    $user = aeConvertMakeUser('aec-show-reviewed-payload@example.com');
+    $user->givePermissionTo(['module.accounting.events.view', 'module.accounting.events.convert']);
+    $event = aeConvertMakeReviewedEvent($user, ['source_number' => 'AEC-SHOW-REVIEWED']);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.accounting.events.show', $event->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('can.convert', true)
+            ->where('event.status', 'reviewed')
+            ->where('event.converted_journal_entry', null)
+        );
+});
+
+it('converted event show payload includes converted journal draft reference', function (): void {
+    aeConvertRegisterAccountingEventsModule();
+    $user = aeConvertMakeUser('aec-show-converted-payload@example.com');
+    $user->givePermissionTo('module.accounting.events.view');
+    $journal = AccountingJournalEntry::create([
+        'company_id' => $user->company_id,
+        'branch_id' => $user->branch_id,
+        'journal_number' => 'JE-AEC-SHOW-LINK',
+        'entry_date' => '2026-06-08',
+        'summary' => 'Converted link payload',
+        'status' => 'draft',
+        'created_by' => $user->id,
+        'updated_by' => $user->id,
+    ]);
+    $event = aeConvertMakeReviewedEvent($user, ['status' => 'converted', 'converted_journal_entry_id' => $journal->id]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.accounting.events.show', $event->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('can.convert', false)
+            ->where('event.converted_journal_entry.id', $journal->id)
+            ->where('event.converted_journal_entry.journal_number', 'JE-AEC-SHOW-LINK')
+            ->where('event.converted_journal_entry.status', 'draft')
+            ->where('event.converted_journal_entry.entry_date', '2026-06-08')
+        );
+});
+
+it('successful convert exposes converted journal link payload on event show', function (): void {
+    aeConvertRegisterAccountingEventsModule();
+    Permission::findOrCreate('module.accounting.journals.create', 'web');
+    $user = aeConvertMakeUser('aec-show-after-convert@example.com');
+    $user->givePermissionTo(['module.accounting.events.view', 'module.accounting.events.convert', 'module.accounting.journals.create']);
+    $event = aeConvertMakeReviewedEvent($user, ['amount' => 210000]);
+    $receivable = aeConvertMakeAccount($user, 'asset');
+    $revenue = aeConvertMakeAccount($user, 'revenue');
+    aeConvertCreateRequiredMappings($event, $receivable, $revenue);
+
+    $this->actingAs($user)
+        ->patch(aeConvertRoute($event))
+        ->assertRedirect(route('employee-system.accounting.events.show', $event->id));
+
+    $event->refresh();
+    $journal = AccountingJournalEntry::query()->findOrFail($event->converted_journal_entry_id);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.accounting.events.show', $event->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('event.status', 'converted')
+            ->where('event.converted_journal_entry.id', $journal->id)
+            ->where('event.converted_journal_entry.journal_number', $journal->journal_number)
+            ->where('event.converted_journal_entry.status', 'draft')
+            ->where('event.converted_journal_entry.entry_date', '2026-06-08')
+        );
+});
+
 it('RolePermissionSeeder registers accounting events convert permission', function (): void {
     $this->seed(RolePermissionSeeder::class);
 

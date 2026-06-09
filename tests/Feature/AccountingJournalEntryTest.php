@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AccountingAccount;
+use App\Models\AccountingEvent;
 use App\Models\AccountingJournalEntry;
 use App\Models\ActivityLog;
 use App\Models\Module;
@@ -77,6 +78,36 @@ function validJournalPayload(AccountingAccount $debitAccount, AccountingAccount 
             ['account_id' => $creditAccount->id, 'debit' => 0, 'credit' => 1000, 'memo' => '貸方測試', 'sort_order' => 1],
         ],
     ], $overrides);
+}
+
+function makeJournalSourceEvent(User $user, array $overrides = []): AccountingEvent
+{
+    return AccountingEvent::create(array_merge([
+        'company_id' => $user->company_id,
+        'branch_id' => $user->branch_id,
+        'source_type' => 'vehicle_sale_completion',
+        'source_id' => 9001,
+        'source_number' => 'SALE-JE-SRC-001',
+        'event_type' => 'vehicle_sale_completed',
+        'event_date' => '2026-06-08',
+        'status' => 'converted',
+        'currency' => 'TWD',
+        'amount' => 168000,
+        // 技術註解：放入敏感與成本鍵以確認 journal source allowlist 不會把 event payload 或毛利資訊洩漏到傳票頁。
+        'payload' => [
+            'profit' => 999,
+            'gross_margin' => 0.5,
+            'purchase_cost' => 1,
+            'cogs_amount' => 1,
+            'customer_phone' => '0900000000',
+            'id_number' => 'A123456789',
+            'birthday' => '1990-01-01',
+            'address' => 'Hidden',
+        ],
+        'created_by' => $user->id,
+        'reviewed_by' => $user->id,
+        'reviewed_at' => now()->subHour(),
+    ], $overrides));
 }
 
 it('有 journals.view 可進 index', function (): void {
@@ -507,6 +538,120 @@ it('payload 不包含 profit gross_margin margin net_profit', function (): void 
             ->missing('journal.gross_margin')
             ->missing('journal.margin')
             ->missing('journal.net_profit')
+        );
+});
+
+it('journal show exposes source type and source id allowlist', function (): void {
+    $user = makeJournalUser('journal-source-basic@example.com');
+    $user->givePermissionTo('module.accounting.journals.view', 'module.accounting.journals.create');
+    $debitAccount = makeJournalAccount($user);
+    $creditAccount = makeJournalAccount($user, ['type' => 'liability']);
+
+    $this->actingAs($user)->post(route('employee-system.accounting.journal-entries.store'), validJournalPayload($debitAccount, $creditAccount));
+    $journal = AccountingJournalEntry::query()->firstOrFail();
+    $journal->update(['source_type' => 'external_source', 'source_id' => 12345]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.accounting.journal-entries.show', $journal->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('journal.source_type', 'external_source')
+            ->where('journal.source_id', 12345)
+            ->where('journal.source_accounting_event', null)
+        );
+});
+
+it('journal generated from accounting event exposes safe source accounting event payload when allowed', function (): void {
+    $user = makeJournalUser('journal-source-event-allowed@example.com');
+    $user->givePermissionTo('module.accounting.journals.view', 'module.accounting.journals.create', 'module.accounting.events.view');
+    $event = makeJournalSourceEvent($user);
+    $debitAccount = makeJournalAccount($user);
+    $creditAccount = makeJournalAccount($user, ['type' => 'revenue']);
+
+    $this->actingAs($user)->post(route('employee-system.accounting.journal-entries.store'), validJournalPayload($debitAccount, $creditAccount));
+    $journal = AccountingJournalEntry::query()->firstOrFail();
+    $journal->update(['source_type' => 'accounting_event', 'source_id' => $event->id]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.accounting.journal-entries.show', $journal->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('journal.source_type', 'accounting_event')
+            ->where('journal.source_id', $event->id)
+            ->where('journal.source_accounting_event', function ($source): bool {
+                $source = is_array($source) ? $source : $source->all();
+                $safeKeys = ['id', 'source_number', 'event_type', 'event_type_label', 'status', 'status_label', 'amount', 'currency', 'event_date'];
+                $blockedKeys = ['payload', 'company_id', 'branch_id', 'created_by', 'reviewed_by', 'converted_journal_entry_id', 'profit', 'gross_margin', 'purchase_cost', 'cogs_amount', 'customer_phone', 'id_number', 'birthday', 'address'];
+
+                return array_keys($source) === $safeKeys
+                    && ($source['source_number'] ?? null) === 'SALE-JE-SRC-001'
+                    && ($source['event_type'] ?? null) === 'vehicle_sale_completed'
+                    && ($source['status'] ?? null) === 'converted'
+                    && ($source['amount'] ?? null) === '168000.00'
+                    && collect($blockedKeys)->every(fn (string $key): bool => ! array_key_exists($key, $source));
+            })
+        );
+});
+
+it('journal viewer without accounting events view does not receive source accounting event link payload', function (): void {
+    $user = makeJournalUser('journal-source-event-denied@example.com');
+    $user->givePermissionTo('module.accounting.journals.view', 'module.accounting.journals.create');
+    $event = makeJournalSourceEvent($user);
+    $debitAccount = makeJournalAccount($user);
+    $creditAccount = makeJournalAccount($user, ['type' => 'revenue']);
+
+    $this->actingAs($user)->post(route('employee-system.accounting.journal-entries.store'), validJournalPayload($debitAccount, $creditAccount));
+    $journal = AccountingJournalEntry::query()->firstOrFail();
+    $journal->update(['source_type' => 'accounting_event', 'source_id' => $event->id]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.accounting.journal-entries.show', $journal->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('journal.source_type', 'accounting_event')
+            ->where('journal.source_id', $event->id)
+            ->where('journal.source_accounting_event', null)
+        );
+});
+
+it('cross tenant source accounting event is not exposed on journal show', function (): void {
+    $user = makeJournalUser('journal-source-cross-user@example.com', 1, 10);
+    $owner = makeJournalUser('journal-source-cross-owner@example.com', 2, 20);
+    $user->givePermissionTo('module.accounting.journals.view', 'module.accounting.journals.create', 'module.accounting.events.view');
+    $event = makeJournalSourceEvent($owner);
+    $debitAccount = makeJournalAccount($user);
+    $creditAccount = makeJournalAccount($user, ['type' => 'revenue']);
+
+    $this->actingAs($user)->post(route('employee-system.accounting.journal-entries.store'), validJournalPayload($debitAccount, $creditAccount));
+    $journal = AccountingJournalEntry::query()->firstOrFail();
+    $journal->update(['source_type' => 'accounting_event', 'source_id' => $event->id]);
+
+    $this->actingAs($user)
+        ->get(route('employee-system.accounting.journal-entries.show', $journal->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('journal.source_type', 'accounting_event')
+            ->where('journal.source_id', $event->id)
+            ->where('journal.source_accounting_event', null)
+        );
+});
+
+it('manual journal show exposes null source fields safely', function (): void {
+    $user = makeJournalUser('journal-source-manual@example.com');
+    $user->givePermissionTo('module.accounting.journals.view', 'module.accounting.journals.create');
+    $debitAccount = makeJournalAccount($user);
+    $creditAccount = makeJournalAccount($user, ['type' => 'liability']);
+
+    $this->actingAs($user)->post(route('employee-system.accounting.journal-entries.store'), validJournalPayload($debitAccount, $creditAccount));
+    $journal = AccountingJournalEntry::query()->firstOrFail();
+
+    $this->actingAs($user)
+        ->get(route('employee-system.accounting.journal-entries.show', $journal->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('journal.source_type', null)
+            ->where('journal.source_id', null)
+            ->where('journal.source_accounting_event', null)
         );
 });
 

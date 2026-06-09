@@ -6,6 +6,9 @@
 - This checklist is docs-only。
 - Runtime now creates draft journal and two revenue-side lines。
 - Journal remains draft and unposted。
+- Accounting Event Phase 4D-2B UI Polish completed。
+- Accounting Event show now has clear convert draft action / status hints。
+- Journal show now displays source Accounting Event reference when allowed。
 - COGS / tax / refund / reversal remain backlog。
 
 ## Preconditions
@@ -31,13 +34,14 @@
 - [ ] 進入 Accounting Event show。
 - [ ] 點擊 review / 覆核。
 - [ ] 確認 status 變為 reviewed。
-- [ ] 點擊 convert / 轉傳票。
+- [ ] 點擊「產生傳票草稿」。
 - [ ] 系統顯示成功訊息：會計事件已產生傳票草稿。
 - [ ] Accounting Event status 變為 converted。
 - [ ] Accounting Event 顯示 `converted_journal_entry`。
 - [ ] `converted_journal_entry` 顯示 `journal_number`。
 - [ ] `converted_journal_entry` status = draft。
 - [ ] `converted_journal_entry` entry_date 正確。
+- [ ] Accounting Event show 顯示「轉傳票草稿」區塊與 converted journal link。
 
 ## Journal Draft QA
 
@@ -46,6 +50,9 @@
 - [ ] Journal status = draft。
 - [ ] Journal source_type = accounting_event。
 - [ ] Journal source_id 對應 Accounting Event id。
+- [ ] Journal show 顯示「來源文件」。
+- [ ] 有 `module.accounting.events.view` 時可點擊回來源 Accounting Event。
+- [ ] 沒有 `module.accounting.events.view` 時不顯示可點擊 Accounting Event source payload。
 - [ ] Journal entry_date 等於 Accounting Event event_date。
 - [ ] Journal summary 類似：車輛交易完成轉傳票：`{source_number}`。
 - [ ] Journal 不應自動 posted。
@@ -183,11 +190,10 @@
 
 ## Next Step After QA
 
-- 若 QA pass，下一步可以做 Phase 4D-2B UI polish 或 Phase 5 COGS / vehicle cost basis decision spec。
-- 建議先做 Phase 4D-2B UI polish。
-- Accounting Event show 加強 converted journal link / status hint。
-- Journal show 顯示 source accounting event reference。
-- 不新增會計邏輯。
+- Phase 4D-2B UI polish completed。
+- Accounting Event show 已加強 converted journal link / status hint。
+- Journal show 已顯示 source accounting event reference。
+- 本階段不新增會計邏輯。
 - Phase 5 才討論 vehicle cost basis。
 - Phase 5 才討論 COGS。
 - Phase 5 才討論 inventory。

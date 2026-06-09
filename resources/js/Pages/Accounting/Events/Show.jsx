@@ -9,12 +9,14 @@ export default function AccountingEventsShow({ auth, event, sourceTypes = {}, ev
     const title = event.source_number || `AE-${event.id}`;
     const canReview = event.status === 'pending' && Boolean(can.review);
     const canVoid = ['pending', 'reviewed'].includes(event.status) && Boolean(can.void);
+    const canConvert = event.status === 'reviewed' && Boolean(can.convert);
     const reviewForm = useForm({
         review_note: event.review_note ?? '',
     });
     const voidForm = useForm({
         void_reason: '',
     });
+    const convertForm = useForm({});
 
     const submitReview = (submitEvent) => {
         submitEvent.preventDefault();
@@ -30,6 +32,16 @@ export default function AccountingEventsShow({ auth, event, sourceTypes = {}, ev
         });
     };
 
+    const submitConvert = () => {
+        if (!window.confirm('確認要依目前映射設定產生草稿傳票？系統不會自動過帳。')) {
+            return;
+        }
+
+        convertForm.patch(route('employee-system.accounting.events.convert', event.id), {
+            preserveScroll: true,
+        });
+    };
+
     return (
         <DashboardLayout user={auth.user}>
             <div className="space-y-5 p-4 md:p-6">
@@ -38,14 +50,20 @@ export default function AccountingEventsShow({ auth, event, sourceTypes = {}, ev
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">Accounting Event Detail</p>
                             <h1 className="mt-1 font-mono text-2xl font-semibold text-primary">{title}</h1>
-                            <p className="mt-2 max-w-3xl text-sm text-secondary">此頁不會轉傳票、產生分錄、過帳或自動認列 revenue / COGS。</p>
+                            <p className="mt-2 max-w-3xl text-sm text-secondary">此頁可在 reviewed 狀態下產生草稿傳票；系統只建立 revenue-side draft journal，不會自動過帳，也不會認列 COGS / tax。</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Link href={route('employee-system.accounting.events.index')} className="rounded-md border border-default px-3 py-2 text-sm font-medium text-secondary transition hover:bg-slate-50 dark:hover:bg-slate-900/40">返回列表</Link>
+                            {canConvert && (
+                                <button type="button" onClick={submitConvert} disabled={convertForm.processing} className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">產生傳票草稿</button>
+                            )}
                             {event.converted_journal_entry?.id && (
                                 <Link href={route('employee-system.accounting.journal-entries.show', event.converted_journal_entry.id)} className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90">查看傳票草稿</Link>
                             )}
                         </div>
+                    </div>
+                    <div className="mt-4 rounded-xl border border-default bg-slate-50 p-3 text-sm text-secondary dark:bg-slate-900/30">
+                        {convertHint(event, canConvert)}
                     </div>
                     <StatusBar currentStatus={event.status} statuses={statuses} />
                 </section>
@@ -62,6 +80,30 @@ export default function AccountingEventsShow({ auth, event, sourceTypes = {}, ev
                     <InfoCard label="覆核時間" value={formatDateTime(event.reviewed_at)} />
                     <InfoCard label="作廢時間" value={formatDateTime(event.voided_at)} />
                     <InfoCard label="已轉傳票" value={event.converted_journal_entry?.journal_number ?? '—'} mono />
+                </section>
+
+                <section className="rounded-2xl border border-default bg-surface p-4">
+                    <div className="mb-4 border-b border-default pb-3">
+                        <h2 className="text-base font-semibold text-primary">轉傳票草稿</h2>
+                        <p className="mt-1 text-xs text-secondary">reviewed event 可依 DB-backed AR / Sales Revenue mapping 產生 draft journal；產生後 event 會變成 converted，journal 仍是 draft，需人工檢查後另行過帳。</p>
+                        <p className="mt-1 text-xs text-secondary">本階段不會自動建立 COGS / tax / refund / reversal。</p>
+                    </div>
+                    {event.converted_journal_entry ? (
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                            <InfoCard label="傳票編號" value={event.converted_journal_entry.journal_number ?? '—'} mono />
+                            <InfoCard label="狀態" value={event.converted_journal_entry.status ?? '—'} />
+                            <InfoCard label="傳票日期" value={event.converted_journal_entry.entry_date ?? '—'} />
+                            <div className="rounded-2xl border border-default bg-slate-50 p-4 dark:bg-slate-900/30">
+                                <p className="text-xs uppercase tracking-[0.18em] text-muted">Journal Link</p>
+                                <Link href={route('employee-system.accounting.journal-entries.show', event.converted_journal_entry.id)} className="mt-2 inline-flex rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90">查看傳票草稿</Link>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-default bg-slate-50 p-4 text-sm text-secondary dark:bg-slate-900/30">
+                            <p>目前可產生傳票：{canConvert ? '是' : '否'}</p>
+                            <p className="mt-2">{convertHint(event, canConvert)}</p>
+                        </div>
+                    )}
                 </section>
 
                 <section className="rounded-2xl border border-default bg-surface p-4">
@@ -128,11 +170,31 @@ export default function AccountingEventsShow({ auth, event, sourceTypes = {}, ev
                 </section>
 
                 <section className="rounded-2xl border border-dashed border-default bg-slate-50 p-4 text-sm text-secondary dark:bg-slate-900/30">
-                    Accounting Event 目前不會自動產生 Journal Draft，也不會自動認列 revenue 或 COGS。
+                    Accounting Event 轉傳票目前只會產生 draft journal 與兩條 revenue-side lines；不會自動過帳、不會認列 COGS / tax、不處理 refund / reversal。
                 </section>
             </div>
         </DashboardLayout>
     );
+}
+
+function convertHint(event, canConvert) {
+    if (event.converted_journal_entry?.id || event.status === 'converted') {
+        return '此會計事件已產生傳票草稿。';
+    }
+
+    if (event.status === 'pending') {
+        return '需先覆核，才能產生傳票草稿。';
+    }
+
+    if (event.status === 'voided') {
+        return '已作廢事件不可產生傳票。';
+    }
+
+    if (canConvert) {
+        return '可依目前映射設定產生草稿傳票，系統不會自動過帳。';
+    }
+
+    return '目前狀態或權限不可產生傳票草稿。';
 }
 
 function StatusBar({ currentStatus, statuses }) {
