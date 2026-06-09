@@ -1,6 +1,6 @@
 # Accounting Event Account Mapping Spec
 
-Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed.
+Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed.
 Scope: config-based mapping foundation, convert skeleton, and preflight preview exist; mapping runtime journal generation remains disabled.
 This document does not implement mapping management migrations, models, React pages, journal draft creation, journal lines creation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or successful runtime conversion.
 
@@ -35,6 +35,7 @@ Boundaries:
 - Config-based mapping foundation now exists as disabled metadata only.
 - This document defines runtime draft generation direction. Phase 4D-1 convert skeleton exists but mapping remains disabled and does not produce a draft.
 - Detailed draft generation runtime boundary is defined in `docs/accounting-event-journal-draft-generation-spec.md`.
+- Runtime mapping decision is defined in `docs/accounting-event-runtime-mapping-decision-spec.md`.
 
 ## 2. Current Repo State
 
@@ -115,6 +116,14 @@ Accounting Event Phase 4D-2A:
 - mapping config default remains disabled and no actual runtime account IDs in committed config
 - 4D-2B revenue-side draft generation remains backlog
 - COGS / tax / overpayment / refund / reversal remains backlog
+
+Accounting Event Phase 4D-2A-1:
+
+- `docs/accounting-event-runtime-mapping-decision-spec.md` exists
+- committed config remains metadata only
+- formal account IDs must not be committed to repo config
+- config override must not be treated as production runtime setup
+- next runtime implementation should be database-backed mapping foundation before 4D-2B draft generation
 
 Currently not completed:
 
@@ -252,11 +261,11 @@ Cons:
 Current recommendation:
 
 ```txt
-Short-term: config-based mapping foundation exists, metadata only, no runtime.
-Medium-term: database-backed mapping before SaaS multi-tenant accounting customization.
+Short-term: committed config remains event type / mapping key / line template metadata only.
+Next runtime step: database-backed mapping foundation before revenue-side draft generation.
 ```
 
-It remains disabled for runtime conversion and does not contain account IDs. Database-backed mapping remains future direction.
+It remains disabled for runtime conversion and does not contain account IDs. Database-backed mapping is now the recommended prerequisite before 4D-2B draft generation.
 
 ## 7. Suggested Mapping Keys
 
@@ -511,12 +520,18 @@ If future implementation uses database-backed mapping, table direction may inclu
 - `company_id`
 - `branch_id` nullable
 - `event_type`
+- `source_type`
 - `mapping_key`
 - `account_id`
 - `is_active`
+- `notes` nullable
 - `created_by`
 - `updated_by`
 - timestamps
+
+Suggested unique key is `company_id + branch_id + event_type + mapping_key`. `branch_id = null` means company default, and branch-specific mapping may override company default later.
+
+Future resolver should first try exact branch mapping, then fallback to company-level mapping where `branch_id` is null. It must reject cross-company accounts, inactive mappings, inactive accounts, and wrong account types.
 
 This is future direction only and does not add a migration.
 
@@ -617,6 +632,9 @@ Phase 4C-3: If database-backed, add mapping table/model/policy/settings UI later
 Phase 4D-1: Convert permission / route / request / policy / controller skeleton completed, no journal generation.
 Phase 4D-2-spec: Journal draft generation design spec completed, docs-only.
 Phase 4D-2A: Future convert preflight service only, no writes.
+Phase 4D-2A-1: Runtime mapping decision spec completed.
+Phase 4D-2A-2: Future database-backed mapping foundation, no UI, no draft generation.
+Phase 4D-2A-3: Future mapping admin UI, optional.
 Phase 4D-2B: Future revenue-side draft generation only.
 Phase 4D-2C: Future preview UI / backend preview endpoint if needed.
 Phase 5: COGS / vehicle cost basis / inventory mapping after cost capitalization rules are reliable.
@@ -633,11 +651,15 @@ Phase 4D-2-spec completed.
 
 Next runtime step should be Phase 4D-2A preflight service only.
 
-Convert must fail safely while mapping `enabled = false`.
+Phase 4D-2A is completed. Next runtime step should be Phase 4D-2A-2 database-backed mapping foundation, no UI, no draft generation.
+
+Convert must fail safely while committed mapping `enabled = false` and runtime mapping source is not implemented.
 
 Actual draft generation must wait for mapping activation / validation decision.
 
 Detailed draft generation runtime boundary is defined in `docs/accounting-event-journal-draft-generation-spec.md`.
+
+Runtime mapping decision is defined in `docs/accounting-event-runtime-mapping-decision-spec.md`.
 
 ## 22. Explicit Non-goals
 

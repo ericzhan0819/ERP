@@ -17,9 +17,9 @@
 
 # System Status
 
-目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed；Accounting Event Phase 4C Account Mapping Spec completed；Accounting Event Phase 4C-2 Config-based Mapping Foundation completed；Accounting Event Phase 4D-1 Convert Skeleton completed；Accounting Event Phase 4D-2 Journal Draft Generation Spec completed；Accounting Event Phase 4D-2A Convert Preflight Service completed。
+目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed；Accounting Event Phase 4C Account Mapping Spec completed；Accounting Event Phase 4C-2 Config-based Mapping Foundation completed；Accounting Event Phase 4D-1 Convert Skeleton completed；Accounting Event Phase 4D-2 Journal Draft Generation Spec completed；Accounting Event Phase 4D-2A Convert Preflight Service completed；Accounting Event Phase 4D-2A-1 Runtime Mapping Decision Spec completed。
 
-目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 2 獨立入口與 create / edit 工作台、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、Transaction Completion MVP through UI、客戶管理 MVP、客戶交易紀錄、Audit log display localization、Accounting Phase 1 Chart of Accounts、Accounting Phase 2 Journal Draft Foundation、Accounting Phase 3 Journal Posting / Voiding、Accounting Journal Workbench UI Polish、Vehicle Cost Accounting Treatment Spec、Accounting Event Foundation Phase 1、Accounting Event Phase 2 readonly workspace、Accounting Event Phase 3 completion integration、Accounting Event Phase 4A Review Workflow、Accounting Event Phase 4B Void Workflow、Accounting Event Phase 4C Account Mapping Spec、Accounting Event Phase 4C-2 Config-based Mapping Foundation、Accounting Event Phase 4D-1 Convert Skeleton、Accounting Event Phase 4D-2 Journal Draft Generation Spec、Accounting Event Phase 4D-2A Convert Preflight Service、Sales / Payments / Delivery semantics UI hints、系統稽核紀錄與登入紀錄。
+目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 2 獨立入口與 create / edit 工作台、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、Transaction Completion MVP through UI、客戶管理 MVP、客戶交易紀錄、Audit log display localization、Accounting Phase 1 Chart of Accounts、Accounting Phase 2 Journal Draft Foundation、Accounting Phase 3 Journal Posting / Voiding、Accounting Journal Workbench UI Polish、Vehicle Cost Accounting Treatment Spec、Accounting Event Foundation Phase 1、Accounting Event Phase 2 readonly workspace、Accounting Event Phase 3 completion integration、Accounting Event Phase 4A Review Workflow、Accounting Event Phase 4B Void Workflow、Accounting Event Phase 4C Account Mapping Spec、Accounting Event Phase 4C-2 Config-based Mapping Foundation、Accounting Event Phase 4D-1 Convert Skeleton、Accounting Event Phase 4D-2 Journal Draft Generation Spec、Accounting Event Phase 4D-2A Convert Preflight Service、Accounting Event Phase 4D-2A-1 Runtime Mapping Decision Spec、Sales / Payments / Delivery semantics UI hints、系統稽核紀錄與登入紀錄。
 
 Transaction Completion remains non-recognition。完成交易目前會記錄交易完成狀態、建立一筆 pending Accounting Event、寫入 audit event，但不會自動產生 revenue / COGS / journal behavior。
 
@@ -47,6 +47,7 @@ Accounting Event Phase 4C-2 Config-based Mapping Foundation completed
 Accounting Event Phase 4D-1 Convert Skeleton completed
 Accounting Event Phase 4D-2 Journal Draft Generation Spec completed
 Accounting Event Phase 4D-2A Convert Preflight Service completed
+Accounting Event Phase 4D-2A-1 Runtime Mapping Decision Spec completed
 Sales / Payments / Delivery semantics UI hints completed
 ```
 
@@ -496,6 +497,15 @@ archived   已封存
 - COGS / tax / overpayment / refund / reversal remains backlog。
 - Mapping config default remains disabled and no actual runtime account IDs in committed config。
 
+## Accounting Event Phase 4D-2A-1 Runtime Mapping Decision Spec
+
+- Accounting Event Runtime Mapping Decision Spec completed：`docs/accounting-event-runtime-mapping-decision-spec.md`。
+- Decision：committed `config/accounting_event_mappings.php` 短期只保留 event type / mapping key / line template metadata。
+- Decision：正式 account IDs 不寫死在 committed config，config override 不作為 production runtime 設定。
+- 4D-2B draft generation 的真正阻塞點是 runtime account mapping 來源。
+- Next runtime recommendation：先做 database-backed mapping foundation，再做 4D-2B revenue-side journal draft generation。
+- No journal draft generation、journal lines、converted status、`converted_journal_entry_id` write、`accounting_event.converted` audit、automatic posting、revenue / COGS / tax / refund / reversal runtime、profit / gross margin payload、mapping UI、route / permission / migration / model / policy / controller / request / seeder changes。
+
 ## Delivery / Accounting Specs
 
 - Vehicle Cost Accounting Treatment Spec completed：`docs/vehicle-cost-accounting-treatment-spec.md` 已文件化成本類型與會計處理方向。
@@ -504,9 +514,9 @@ archived   已封存
 - Transaction Completion remains non-accounting。
 - No automatic revenue recognition。
 - No automatic COGS recognition。
-- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow、Phase 4B Void Workflow、Phase 4C Account Mapping Spec、Phase 4C-2 Config-based Mapping Foundation、Phase 4D-1 Convert Skeleton 與 Phase 4D-2 Journal Draft Generation Spec 已存在。
+- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow、Phase 4B Void Workflow、Phase 4C Account Mapping Spec、Phase 4C-2 Config-based Mapping Foundation、Phase 4D-1 Convert Skeleton、Phase 4D-2 Journal Draft Generation Spec、Phase 4D-2A Convert Preflight Service 與 Phase 4D-2A-1 Runtime Mapping Decision Spec 已存在。
 - Phase 4D-2 spec exists at `docs/accounting-event-journal-draft-generation-spec.md`；actual Accounting Event -> Journal Draft runtime remains backlog。
-- Future implementation should split into Phase 4D-2A preflight service and Phase 4D-2B revenue-side draft generation。
+- Future implementation should do database-backed mapping foundation before Phase 4D-2B revenue-side draft generation。
 - Completion → pending Accounting Event 已完成；pending → reviewed 已完成；pending / reviewed → voided 已完成；convert skeleton 已完成；mapping config metadata 已完成但 disabled；mapping disabled fail-safe exists；No journal draft generation yet。
 - No AR / AP / Cash / Bank / Invoice / Reports integration yet。
 
@@ -533,8 +543,8 @@ Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Complete 
 Customer → Vehicle Sale → Receivables / Payments → Mark Sold → Complete Transaction / Confirm Delivery → Accounting Event / Journal Draft → Revenue / COGS Recognition
 ```
 
-- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow、Phase 4B Void Workflow、Phase 4C Account Mapping Spec、Phase 4C-2 Config-based Mapping Foundation、Phase 4D-1 Convert Skeleton 與 Phase 4D-2 Journal Draft Generation Spec 已存在；`Accounting Event → Journal Draft → Revenue / COGS Recognition` 目前仍是 backlog。
-- Actual Accounting Event -> Journal Draft runtime remains backlog；future implementation should split into preflight service and revenue-side draft generation。
+- Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow、Phase 4B Void Workflow、Phase 4C Account Mapping Spec、Phase 4C-2 Config-based Mapping Foundation、Phase 4D-1 Convert Skeleton、Phase 4D-2 Journal Draft Generation Spec、Phase 4D-2A Convert Preflight Service 與 Phase 4D-2A-1 Runtime Mapping Decision Spec 已存在；`Accounting Event → Journal Draft → Revenue / COGS Recognition` 目前仍是 backlog。
+- Actual Accounting Event -> Journal Draft runtime remains backlog；future implementation should add database-backed mapping foundation before revenue-side draft generation。
 - 收款完成只代表款項已記錄，mark sold 只代表銷售與車輛售出狀態銜接。
 - 交車完成 / 完成交易目前已作為 completion 狀態節點；收入與 COGS 認列目前不會自動產生。
 
@@ -737,7 +747,7 @@ refactor: 不改行為的重構
 
 1. 維持 Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP 穩定。
 2. 維持 RBAC / tenant scope / audit foundation 穩定。
-3. Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow、Phase 4B Void Workflow、Phase 4C Account Mapping Spec、Phase 4C-2 Config-based Mapping Foundation、Phase 4D-1 Convert Skeleton 與 Phase 4D-2 Journal Draft Generation Spec 已完成；Journal Draft generation runtime、Revenue Recognition、COGS Recognition 仍待後續小步實作。
+3. Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow、Phase 4B Void Workflow、Phase 4C Account Mapping Spec、Phase 4C-2 Config-based Mapping Foundation、Phase 4D-1 Convert Skeleton、Phase 4D-2 Journal Draft Generation Spec、Phase 4D-2A Convert Preflight Service 與 Phase 4D-2A-1 Runtime Mapping Decision Spec 已完成；Database-backed mapping foundation、Journal Draft generation runtime、Revenue Recognition、COGS Recognition 仍待後續小步實作。
 4. 後續再選擇租賃 / 合約 / 完整 CRM / 報表 / 圖片等模組。
 5. 完整資安 hardening 待核心 workflows 更完整後再做。
 

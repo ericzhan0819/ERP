@@ -5,6 +5,7 @@
 - Spec completed only
 - Phase 4D-1 Convert Skeleton completed
 - Phase 4D-2A Convert Preflight Service completed
+- Phase 4D-2A-1 Runtime Mapping Decision Spec completed
 - Runtime journal draft generation not implemented
 
 ## Scope
@@ -55,6 +56,8 @@ Current mapping state:
 - `enabled = false`.
 - Runtime account IDs remain null.
 - Journal line templates remain disabled metadata.
+- Runtime mapping decision is documented in `docs/accounting-event-runtime-mapping-decision-spec.md`.
+- 4D-2B draft generation remains blocked by runtime account mapping source.
 
 ## Phase 4D-2A Runtime Boundary
 
@@ -68,6 +71,15 @@ Current mapping state:
 - 4D-2B revenue-side draft generation remains backlog。
 - COGS / tax / overpayment / refund / reversal remains backlog。
 - Mapping config default remains disabled and no actual runtime account IDs in committed config。
+
+## Phase 4D-2A-1 Runtime Mapping Decision
+
+- Accounting Event Runtime Mapping Decision Spec completed：`docs/accounting-event-runtime-mapping-decision-spec.md`。
+- Committed `config/accounting_event_mappings.php` remains short-term metadata only for event type / mapping key / line template metadata。
+- Formal account IDs must not be hard-coded into committed config。
+- Config override must not be treated as production runtime setup。
+- The next runtime implementation should be database-backed mapping foundation before 4D-2B revenue-side journal draft generation。
+- Database-backed mapping is preferred because this project is SaaS / tenant scoped, company / branch mappings may differ, account IDs are database data, mapping changes need audit trail, and mapping validation must align with AccountingAccount company / branch / active / type rules。
 
 ## Non-goals
 
@@ -89,6 +101,7 @@ Current mapping state:
 - No refund / reversal
 - No mapping UI
 - No database-backed mapping table
+- No route / permission / migration / model / policy / controller / request / seeder changes
 - No Odoo code / CSS / XML / Python copy
 
 ## Journal Draft Generation Positioning
@@ -213,9 +226,12 @@ The first actual draft generation runtime should not include COGS.
 Recommended split:
 
 ```txt
-Phase 4D-2A: Convert Preflight Service only
-Phase 4D-2B: Revenue-side Draft Generation only
-Phase 4D-2C or Phase 5: COGS / inventory / tax / overpayment / refund decisions
+Phase 4D-2A: Convert Preflight Service only, completed
+Phase 4D-2A-1: Runtime Mapping Decision Spec, completed
+Phase 4D-2A-2: Database-backed Mapping Foundation, future, no UI, no draft generation
+Phase 4D-2A-3: Mapping Admin UI, future, optional
+Phase 4D-2B: Revenue-side Draft Generation only, future
+Phase 5: COGS / inventory / tax / overpayment / refund decisions
 ```
 
 Phase 4D-2A: Convert Preflight Service only completed:
@@ -276,10 +292,11 @@ Current config state:
 
 Before enabling runtime, the project must decide:
 
-- How config-based mapping receives actual account IDs.
-- Or whether to switch to database-backed mapping.
+- Implement database-backed mapping foundation.
 - Mapping account type validation.
 - Branch behavior.
+
+Database-backed mapping shape is defined in `docs/accounting-event-runtime-mapping-decision-spec.md`. First supported event type remains `vehicle_sale_completed`, and first required mapping keys remain `accounts_receivable_account` and `sales_revenue_account`.
 
 Mapping validation direction:
 
@@ -444,9 +461,11 @@ Future Phase 4D-2B tests:
 
 ```txt
 Phase 4D-2-spec: this documentation only
-Phase 4D-2A: Convert preflight service only, no writes
-Phase 4D-2B: Revenue-side draft generation only
-Phase 4D-2C: optional preview UI / backend preview endpoint
+Phase 4D-2A: Convert preflight service only, no writes, completed
+Phase 4D-2A-1: Runtime mapping decision spec, completed
+Phase 4D-2A-2: Database-backed mapping foundation, future, no UI, no draft generation
+Phase 4D-2A-3: Mapping admin UI, future, optional
+Phase 4D-2B: Revenue-side draft generation only, future
 Phase 5: COGS / vehicle cost basis / inventory mapping after cost capitalization rules are reliable
-Phase 6: tax / overpayment / refund / reversal
+Phase 5 later scope: tax / overpayment / refund / reversal
 ```
