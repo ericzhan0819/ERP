@@ -1,8 +1,8 @@
 # Accounting Event Review / Convert Workflow Spec
 
-Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed.
-Scope: review / void / convert skeleton are implemented; journal draft generation spec exists, but runtime journal draft generation, revenue recognition, COGS recognition, posting, and additional accounting runtime behavior remain not implemented.
-This document reflects the implemented review, void, and convert skeleton workflows. It does not implement journal draft generation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
+Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed.
+Scope: review / void / convert skeleton and convert preflight preview are implemented; journal draft generation spec exists, but runtime journal draft creation, revenue recognition, COGS recognition, posting, and additional accounting runtime behavior remain not implemented.
+This document reflects the implemented review, void, convert skeleton, and preflight workflows. It does not implement journal draft creation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
 
 ## 1. Purpose
 
@@ -111,6 +111,19 @@ Accounting Event Phase 4D-2-spec completed:
 - future header / line / permission / transaction / audit / testing boundaries are documented
 - future runtime split recommends Phase 4D-2A preflight only and Phase 4D-2B revenue-side draft generation only
 - runtime journal draft generation remains not implemented
+
+Accounting Event Phase 4D-2A completed:
+
+- `AccountingEventConvertPreflightService` exists
+- preflight only returns validated preview
+- runtime still does not create journal draft
+- runtime still does not create journal lines
+- runtime still does not set status converted
+- runtime still does not write `converted_journal_entry_id`
+- runtime still does not write `accounting_event.converted` audit
+- mapping config default remains disabled and no actual runtime account IDs in committed config
+- 4D-2B revenue-side draft generation remains backlog
+- COGS / tax / overpayment / refund / reversal remains backlog
 
 Current business flow:
 
@@ -259,6 +272,18 @@ Current convert boundaries:
 - Phase 4D-1 does not write `converted_journal_entry_id`.
 - Phase 4D-1 does not change `accounting_events.status` to `converted`.
 - Phase 4D-1 does not add `AccountingEventConvertService`.
+
+Current Phase 4D-2A Convert Preflight Service behavior:
+
+- Preflight requires `module.accounting.events.convert` and `module.accounting.journals.create`.
+- Preflight validates tenant scope, reviewed status, non-voided state, no `converted_journal_entry_id`, positive amount, mapping exists / source_type / enabled, required runtime accounts, account company / branch / active / type, and draft line balance.
+- Preflight returns a safe preview header and two revenue-side lines only.
+- Preflight does not create `AccountingJournalEntry`.
+- Preflight does not create `AccountingJournalEntryLine`.
+- Preflight does not update `accounting_events.status`.
+- Preflight does not write `converted_journal_entry_id`.
+- Preflight does not write `accounting_event.converted` audit.
+- Preflight does not generate COGS / inventory / tax / overpayment / rounding / refund / reversal lines.
 
 Future Phase 4D-2+ Draft Generation behavior should generate only a manual journal draft, never a posted journal.
 

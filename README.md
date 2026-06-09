@@ -17,9 +17,9 @@
 
 # System Status
 
-目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed；Accounting Event Phase 4C Account Mapping Spec completed；Accounting Event Phase 4C-2 Config-based Mapping Foundation completed；Accounting Event Phase 4D-1 Convert Skeleton completed；Accounting Event Phase 4D-2 Journal Draft Generation Spec completed。
+目前開發中（Early Development），Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed；Accounting Event Phase 4C Account Mapping Spec completed；Accounting Event Phase 4C-2 Config-based Mapping Foundation completed；Accounting Event Phase 4D-1 Convert Skeleton completed；Accounting Event Phase 4D-2 Journal Draft Generation Spec completed；Accounting Event Phase 4D-2A Convert Preflight Service completed。
 
-目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 2 獨立入口與 create / edit 工作台、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、Transaction Completion MVP through UI、客戶管理 MVP、客戶交易紀錄、Audit log display localization、Accounting Phase 1 Chart of Accounts、Accounting Phase 2 Journal Draft Foundation、Accounting Phase 3 Journal Posting / Voiding、Accounting Journal Workbench UI Polish、Vehicle Cost Accounting Treatment Spec、Accounting Event Foundation Phase 1、Accounting Event Phase 2 readonly workspace、Accounting Event Phase 3 completion integration、Accounting Event Phase 4A Review Workflow、Accounting Event Phase 4B Void Workflow、Accounting Event Phase 4C Account Mapping Spec、Accounting Event Phase 4C-2 Config-based Mapping Foundation、Accounting Event Phase 4D-1 Convert Skeleton、Accounting Event Phase 4D-2 Journal Draft Generation Spec、Sales / Payments / Delivery semantics UI hints、系統稽核紀錄與登入紀錄。
+目前已完成後台基礎架構、模組系統、權限地基、車輛管理 MVP、車輛價格、車輛成本、車輛成本管理 Phase 2 獨立入口與 create / edit 工作台、車輛銷售、銷售收款 / 應收、Receivables mark-sold action、Transaction Completion MVP through UI、客戶管理 MVP、客戶交易紀錄、Audit log display localization、Accounting Phase 1 Chart of Accounts、Accounting Phase 2 Journal Draft Foundation、Accounting Phase 3 Journal Posting / Voiding、Accounting Journal Workbench UI Polish、Vehicle Cost Accounting Treatment Spec、Accounting Event Foundation Phase 1、Accounting Event Phase 2 readonly workspace、Accounting Event Phase 3 completion integration、Accounting Event Phase 4A Review Workflow、Accounting Event Phase 4B Void Workflow、Accounting Event Phase 4C Account Mapping Spec、Accounting Event Phase 4C-2 Config-based Mapping Foundation、Accounting Event Phase 4D-1 Convert Skeleton、Accounting Event Phase 4D-2 Journal Draft Generation Spec、Accounting Event Phase 4D-2A Convert Preflight Service、Sales / Payments / Delivery semantics UI hints、系統稽核紀錄與登入紀錄。
 
 Transaction Completion remains non-recognition。完成交易目前會記錄交易完成狀態、建立一筆 pending Accounting Event、寫入 audit event，但不會自動產生 revenue / COGS / journal behavior。
 
@@ -46,6 +46,7 @@ Accounting Event Phase 4C Account Mapping Spec completed
 Accounting Event Phase 4C-2 Config-based Mapping Foundation completed
 Accounting Event Phase 4D-1 Convert Skeleton completed
 Accounting Event Phase 4D-2 Journal Draft Generation Spec completed
+Accounting Event Phase 4D-2A Convert Preflight Service completed
 Sales / Payments / Delivery semantics UI hints completed
 ```
 
@@ -476,6 +477,24 @@ archived   已封存
 - Tax runtime 尚未完成。
 - AR / AP / Cash / Bank / Invoice / Reports 尚未完成。
 - Refund / reversal 尚未完成。
+
+## Accounting Event Phase 4D-2A Convert Preflight Service
+
+- Accounting Event Phase 4D-2A Convert Preflight Service completed。
+- Added `app/Services/AccountingEventConvertPreflightService.php`。
+- Added `tests/Feature/AccountingEventConvertPreflightServiceTest.php`。
+- Preflight only returns backend-validated preview data。
+- Runtime still does not create journal draft。
+- Runtime still does not create journal lines。
+- Runtime still does not set status converted。
+- Runtime still does not write `converted_journal_entry_id`。
+- Runtime still does not write `accounting_event.converted` audit。
+- Preview requires `module.accounting.events.convert` and `module.accounting.journals.create`。
+- Preview validates tenant scope, reviewed state, non-voided state, not converted state, positive amount, mapping metadata, runtime account IDs, account company / branch / active / type, and balanced draft lines。
+- Preview returns revenue-side lines only：debit `accounts_receivable_account` and credit `sales_revenue_account`。
+- 4D-2B revenue-side draft generation remains backlog。
+- COGS / tax / overpayment / refund / reversal remains backlog。
+- Mapping config default remains disabled and no actual runtime account IDs in committed config。
 
 ## Delivery / Accounting Specs
 

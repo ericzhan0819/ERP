@@ -1,8 +1,8 @@
 # Accounting Event Account Mapping Spec
 
-Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed.
-Scope: config-based mapping foundation and convert skeleton exist; mapping runtime journal generation remains disabled.
-This document does not implement mapping management migrations, models, React pages, journal draft generation, journal lines generation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or successful runtime conversion.
+Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed.
+Scope: config-based mapping foundation, convert skeleton, and preflight preview exist; mapping runtime journal generation remains disabled.
+This document does not implement mapping management migrations, models, React pages, journal draft creation, journal lines creation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or successful runtime conversion.
 
 ## 1. Purpose
 
@@ -102,6 +102,19 @@ Accounting Event Phase 4D-2-spec:
 - future draft header / line / permission / transaction / audit / testing boundaries are documented
 - runtime mapping remains disabled
 - actual journal draft generation remains not implemented
+
+Accounting Event Phase 4D-2A:
+
+- `AccountingEventConvertPreflightService` exists
+- preflight only returns validated preview
+- runtime still does not create journal draft
+- runtime still does not create journal lines
+- runtime still does not set status converted
+- runtime still does not write `converted_journal_entry_id`
+- runtime still does not write `accounting_event.converted` audit
+- mapping config default remains disabled and no actual runtime account IDs in committed config
+- 4D-2B revenue-side draft generation remains backlog
+- COGS / tax / overpayment / refund / reversal remains backlog
 
 Currently not completed:
 
@@ -420,7 +433,7 @@ Convert idempotency is required. If `converted_journal_entry_id` already exists,
 
 Convert failure must not change event status. Journal draft creation and event status update should happen in the same DB transaction.
 
-Phase 4D-1 already implements the reviewed, not voided, no `converted_journal_entry_id`, tenant, convert permission, mapping exists, source_type match, and enabled checks. It stops at disabled mapping fail-safe and does not generate a draft.
+Phase 4D-2A now implements preflight validation for reviewed, not voided, no `converted_journal_entry_id`, tenant, convert permission, journal create permission, mapping exists, source_type match, enabled, required runtime accounts, account company / branch / active / type, and balanced preview lines. It returns preview only and still does not generate a draft.
 
 ## 15. Future Journal Draft Shape
 

@@ -7,12 +7,14 @@ use App\Http\Requests\ConvertAccountingEventRequest;
 use App\Http\Requests\VoidAccountingEventRequest;
 use App\Models\AccountingEvent;
 use App\Services\AuditLogService;
+use App\Services\AccountingEventConvertPreflightService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,6 +22,7 @@ class AccountingEventController extends Controller
 {
     public function __construct(
         private readonly AuditLogService $auditLogService,
+        private readonly AccountingEventConvertPreflightService $convertPreflightService,
     ) {}
 
     /**
@@ -218,7 +221,7 @@ class AccountingEventController extends Controller
     }
 
     /**
-     * 技術註解：Phase 4D-1 僅建立轉傳票安全門；所有 mapping 失敗都停在 422，避免尚未完成的認列流程寫入 draft、line 或 converted 狀態。
+     * 技術註解：Phase 4D-2A 只呼叫 preflight 產生後端預覽並立即導回，不建立 draft、line、converted 狀態或 audit，避免前置檢查變成正式認列入口。
      */
     public function convert(ConvertAccountingEventRequest $request, int $accountingEvent): RedirectResponse
     {
@@ -231,13 +234,16 @@ class AccountingEventController extends Controller
         abort_unless($event->converted_journal_entry_id === null, 403);
         abort_unless($event->voided_at === null, 403);
 
-        $mapping = config('accounting_event_mappings.event_types.'.$event->event_type);
+        try {
+            $this->convertPreflightService->preview($event, $request->user());
+        } catch (ValidationException $exception) {
+            $message = collect($exception->errors())->flatten()->first() ?? '會計事件無法產生傳票草稿。';
 
-        abort_unless(is_array($mapping), 422, '找不到會計事件映射設定，無法產生傳票草稿。');
-        abort_unless(($mapping['source_type'] ?? null) === $event->source_type, 422, '會計事件映射與來源類型不一致，無法產生傳票草稿。');
-        abort_unless(($mapping['enabled'] ?? false) === true, 422, '會計事件映射尚未啟用，無法產生傳票草稿。');
+            abort(422, $message);
+        }
 
-        abort(422, '會計事件映射尚未啟用，無法產生傳票草稿。');
+        return redirect()->route('employee-system.accounting.events.show', $event->id)
+            ->with('info', '會計事件轉傳票前置檢查已完成；目前尚未建立傳票草稿。');
     }
 
     private function scopedEventQuery(?Authenticatable $user): Builder

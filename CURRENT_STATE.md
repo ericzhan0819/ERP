@@ -2,7 +2,7 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed；Accounting Event Phase 4C Account Mapping Spec completed；Accounting Event Phase 4C-2 Config-based Mapping Foundation completed；Accounting Event Phase 4D-1 Convert Skeleton completed；Accounting Event Phase 4D-2 Journal Draft Generation Spec completed。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed；Accounting Event Phase 4C Account Mapping Spec completed；Accounting Event Phase 4C-2 Config-based Mapping Foundation completed；Accounting Event Phase 4D-1 Convert Skeleton completed；Accounting Event Phase 4D-2 Journal Draft Generation Spec completed；Accounting Event Phase 4D-2A Convert Preflight Service completed。
 - 穩定節點：Transaction Completion MVP completed through UI，已涵蓋 RBAC foundation、Data model foundation、Backend completion action、Backend completion payload、React UI、Manual QA checklist documented。
 - 最新驗證狀態：`./vendor/bin/sail artisan test tests/Feature/AccountingEventConvertTest.php` passed：15 tests / 140 assertions；`./vendor/bin/sail artisan test tests/Feature/AccountingEventReviewTest.php tests/Feature/AccountingEventVoidTest.php tests/Feature/AccountingEventMappingConfigTest.php tests/Feature/StaffPermissionRoleMatrixTest.php` passed：58 tests / 631 assertions；`./vendor/bin/sail artisan test` passed：384 tests / 3567 assertions；`npm run build` passed。
 - 本文件為目前穩定節點同步整理；目前不實作退款、不做 AR / AP / cash / invoice / reports 整合、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
@@ -51,6 +51,7 @@
 - Accounting Event Phase 4C-2 Config-based Mapping Foundation
 - Accounting Event Phase 4D-1 Convert Skeleton
 - Accounting Event Phase 4D-2 Journal Draft Generation Spec
+- Accounting Event Phase 4D-2A Convert Preflight Service
 - Confirm Delivery / Transaction Completion Spec
 - Sales / Payments / Delivery semantics UI hints
 - Transaction Completion / Confirm Delivery MVP：Completion RBAC、Completion data fields、Completion backend action、Completion payload、Completion UI、Completion audit event、Manual QA checklist
@@ -285,6 +286,25 @@
 - No `converted_journal_entry_id` write。
 - No `AccountingEventConvertService`。
 - No COGS / tax / overpayment / refund / AR / AP / Cash / Bank / Invoice / Reports。
+
+## Accounting Event Phase 4D-2A Convert Preflight Service
+
+- Accounting Event Phase 4D-2A Convert Preflight Service completed。
+- Added `app/Services/AccountingEventConvertPreflightService.php`。
+- Added `tests/Feature/AccountingEventConvertPreflightServiceTest.php`。
+- Preflight only returns validated preview。
+- Runtime still does not create journal draft。
+- Runtime still does not create journal lines。
+- Runtime still does not set status converted。
+- Runtime still does not write `converted_journal_entry_id`。
+- Runtime still does not write `accounting_event.converted` audit。
+- Preview requires both `module.accounting.events.convert` and `module.accounting.journals.create`。
+- Preview validates same tenant, reviewed / not voided / not converted state, positive amount, mapping exists / source_type / enabled, required runtime accounts, account company / branch / active / type, and `AccountingJournalValidator::validateDraftLines()`。
+- Preview returns revenue-side header and two lines only：debit `accounts_receivable_account` and credit `sales_revenue_account`。
+- Preview excludes customer sensitive keys, full payload JSON, profit / gross margin / purchase_cost / cogs_amount / revenue_amount。
+- 4D-2B revenue-side draft generation remains backlog。
+- COGS / tax / overpayment / refund / reversal remains backlog。
+- Mapping config default remains disabled and no actual runtime account IDs in committed config。
 
 ## Accounting Module Boundaries
 

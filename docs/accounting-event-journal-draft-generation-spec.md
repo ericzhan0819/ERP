@@ -4,7 +4,8 @@
 
 - Spec completed only
 - Phase 4D-1 Convert Skeleton completed
-- Phase 4D-2 runtime not implemented
+- Phase 4D-2A Convert Preflight Service completed
+- Runtime journal draft generation not implemented
 
 ## Scope
 
@@ -30,6 +31,7 @@ Completed accounting and accounting event phases:
 - Accounting Event Phase 4C: account mapping spec
 - Accounting Event Phase 4C-2: config-based mapping foundation
 - Accounting Event Phase 4D-1: convert skeleton
+- Accounting Event Phase 4D-2A: convert preflight service
 
 Current Phase 4D-1 behavior:
 
@@ -53,6 +55,19 @@ Current mapping state:
 - `enabled = false`.
 - Runtime account IDs remain null.
 - Journal line templates remain disabled metadata.
+
+## Phase 4D-2A Runtime Boundary
+
+- Accounting Event Phase 4D-2A Convert Preflight Service completed。
+- Preflight only returns validated preview。
+- Runtime still does not create journal draft。
+- Runtime still does not create journal lines。
+- Runtime still does not set status converted。
+- Runtime still does not write `converted_journal_entry_id`。
+- Runtime still does not write `accounting_event.converted` audit。
+- 4D-2B revenue-side draft generation remains backlog。
+- COGS / tax / overpayment / refund / reversal remains backlog。
+- Mapping config default remains disabled and no actual runtime account IDs in committed config。
 
 ## Non-goals
 
@@ -203,9 +218,9 @@ Phase 4D-2B: Revenue-side Draft Generation only
 Phase 4D-2C or Phase 5: COGS / inventory / tax / overpayment / refund decisions
 ```
 
-Phase 4D-2A: Convert Preflight Service only:
+Phase 4D-2A: Convert Preflight Service only completed:
 
-- Add a service that resolves mapping / checks accounts / returns preview array.
+- Added a service that resolves mapping / checks accounts / returns preview array.
 - Do not create journal.
 - Do not create lines.
 - Do not change status.
