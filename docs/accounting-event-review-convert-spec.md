@@ -1,8 +1,8 @@
 # Accounting Event Review / Convert Workflow Spec
 
-Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified.
-Scope: review / void / convert skeleton and `AccountingEventJournalDraftPreflightService` preview are implemented; journal draft generation spec exists at `docs/accounting-event-journal-draft-generation-spec.md`, but active route-wired journal draft creation, revenue recognition, COGS recognition, posting, and additional accounting runtime behavior remain out of scope until explicit Phase 4D-2B acceptance.
-This document reflects the implemented review, void, convert skeleton, and preflight workflows. It does not implement journal draft creation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
+Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified + Phase 4D-2B Revenue-side Journal Draft Generation completed.
+Scope: review / void / convert skeleton and `AccountingEventJournalDraftPreflightService` preview are implemented; `AccountingEventConvertService` is route-active for reviewed `vehicle_sale_completed` revenue-side draft generation only.
+This document reflects the implemented review, void, preflight, and revenue-side draft generation workflows. It does not implement posting, COGS recognition, inventory, tax, overpayment, refund / reversal, reports, AR/AP expansion, Cash/Bank expansion, Invoice module, or profit / gross margin payload.
 
 ## 1. Purpose
 
@@ -11,8 +11,20 @@ This document is the design specification before Accounting Event Phase 4. It de
 ```txt
 pending Accounting Event
 -> reviewed Accounting Event
--> future manual journal draft generation
+-> draft journal generation for vehicle_sale_completed revenue-side lines
 ```
+
+## Phase 4D-2B Revenue-side Draft Generation
+
+- Convert route now uses `AccountingEventConvertService`.
+- Reviewed `vehicle_sale_completed` event with valid DB-backed AR / Sales Revenue mappings can generate one draft journal.
+- Journal has exactly two lines: debit AR and credit Sales Revenue.
+- Event status becomes `converted` and `converted_journal_entry_id` is written.
+- `accounting_event.converted` audit is written and sanitized.
+- Journal remains `draft`; no automatic posting.
+- Config `enabled = true` is only event-type activation gate; actual accounts come from DB-backed mapping and `runtime_account_id` remains null.
+- Excluded: COGS, inventory, tax, overpayment, refund / reversal, AR/AP module expansion, Cash/Bank module expansion, Invoice module, Reports, profit / gross margin payload, journal preview endpoint, UI redesign.
+- Next recommended phase: Phase 4D-2B Manual QA Checklist.
 
 Core positioning:
 

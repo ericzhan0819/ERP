@@ -2,6 +2,7 @@
 
 use App\Models\AccountingAccount;
 use App\Models\AccountingEvent;
+use App\Models\AccountingEventAccountMapping;
 use App\Models\AccountingJournalEntry;
 use App\Models\AccountingJournalEntryLine;
 use App\Models\User;
@@ -124,14 +125,31 @@ function aeDraftPreflightMakeAccount(User $user, string $type, array $overrides 
     ], $overrides));
 }
 
-function aeDraftPreflightSetMapping(bool $enabled, ?int $receivableId = null, ?int $revenueId = null, array $overrides = []): void
+function aeDraftPreflightSetMapping(bool $enabled, array $overrides = []): void
 {
     $mapping = config('accounting_event_mappings.event_types.vehicle_sale_completed');
     $mapping['enabled'] = $enabled;
-    $mapping['mapping_keys']['accounts_receivable_account']['runtime_account_id'] = $receivableId;
-    $mapping['mapping_keys']['sales_revenue_account']['runtime_account_id'] = $revenueId;
 
     Config::set('accounting_event_mappings.event_types.vehicle_sale_completed', array_replace_recursive($mapping, $overrides));
+}
+
+function aeDraftPreflightCreateMapping(AccountingEvent $event, string $key, AccountingAccount $account): void
+{
+    AccountingEventAccountMapping::create([
+        'company_id' => $event->company_id,
+        'branch_id' => null,
+        'event_type' => $event->event_type,
+        'source_type' => $event->source_type,
+        'mapping_key' => $key,
+        'account_id' => $account->id,
+        'is_active' => true,
+    ]);
+}
+
+function aeDraftPreflightCreateRequiredMappings(AccountingEvent $event, AccountingAccount $receivable, AccountingAccount $revenue): void
+{
+    aeDraftPreflightCreateMapping($event, 'accounts_receivable_account', $receivable);
+    aeDraftPreflightCreateMapping($event, 'sales_revenue_account', $revenue);
 }
 
 function aeDraftPreflightPreview(AccountingEvent $event, User $user): array
@@ -162,6 +180,7 @@ function aeDraftPreflightExpectValidationMessage(callable $callback, string $mes
 it('mapping disabled fails safe without journal line or event mutation', function (): void {
     $user = aeDraftPreflightMakeUser();
     $event = aeDraftPreflightMakeReviewedEvent($user);
+    aeDraftPreflightSetMapping(false);
 
     aeDraftPreflightExpectValidationMessage(
         fn () => aeDraftPreflightPreview($event, $user),
@@ -273,6 +292,7 @@ it('enforces tenant scope as not found instead of forbidden', function (User $us
 it('allows branch user to preflight company level event before mapping disabled check', function (): void {
     $user = aeDraftPreflightMakeUser(companyId: 1, branchId: 10);
     $event = aeDraftPreflightMakeReviewedEvent($user, ['branch_id' => null]);
+    aeDraftPreflightSetMapping(false);
 
     aeDraftPreflightExpectValidationMessage(
         fn () => aeDraftPreflightPreview($event, $user),
@@ -282,7 +302,7 @@ it('allows branch user to preflight company level event before mapping disabled 
     aeDraftPreflightAssertNoMutation($event);
 });
 
-it('enabled mapping without runtime account ids is rejected without writing database', function (): void {
+it('enabled mapping without database account mappings is rejected without writing database', function (): void {
     $user = aeDraftPreflightMakeUser();
     $event = aeDraftPreflightMakeReviewedEvent($user);
     aeDraftPreflightSetMapping(true);
@@ -295,18 +315,22 @@ it('enabled mapping without runtime account ids is rejected without writing data
     aeDraftPreflightAssertNoMutation($event);
 });
 
-it('rejects invalid runtime account mapping', function (callable $accountFactory, string $message): void {
+it('rejects invalid database account mapping', function (callable $accountFactory, string $message): void {
     $user = aeDraftPreflightMakeUser();
     $invalidReceivable = $accountFactory($user);
     $revenue = aeDraftPreflightMakeAccount($user, 'revenue');
     $event = aeDraftPreflightMakeReviewedEvent($user);
-    aeDraftPreflightSetMapping(true, $invalidReceivable instanceof AccountingAccount ? $invalidReceivable->id : 999999, $revenue->id);
+    aeDraftPreflightSetMapping(true);
+    if ($invalidReceivable instanceof AccountingAccount) {
+        aeDraftPreflightCreateMapping($event, 'accounts_receivable_account', $invalidReceivable);
+    }
+    aeDraftPreflightCreateMapping($event, 'sales_revenue_account', $revenue);
 
     aeDraftPreflightExpectValidationMessage(fn () => aeDraftPreflightPreview($event, $user), $message);
 
     aeDraftPreflightAssertNoMutation($event);
 })->with([
-    'missing account' => [fn (User $user): null => null, '會計事件映射科目無效，無法產生傳票草稿。'],
+    'missing account' => [fn (User $user): null => null, '會計事件映射尚未指定必要科目，無法產生傳票草稿。'],
     'inactive account' => [fn (User $user): AccountingAccount => aeDraftPreflightMakeAccount($user, 'asset', ['is_active' => false]), '會計事件映射科目無效，無法產生傳票草稿。'],
     'other company' => [function (User $user): AccountingAccount {
         aeDraftPreflightEnsureTenantRows(2, 20);
@@ -318,7 +342,7 @@ it('rejects invalid runtime account mapping', function (callable $accountFactory
 
         return aeDraftPreflightMakeAccount($user, 'asset', ['branch_id' => 20]);
     }, '會計事件映射科目無效，無法產生傳票草稿。'],
-    'wrong type' => [fn (User $user): AccountingAccount => aeDraftPreflightMakeAccount($user, 'expense'), '會計事件映射科目類型不符，無法產生傳票草稿。'],
+    'wrong type' => [fn (User $user): AccountingAccount => aeDraftPreflightMakeAccount($user, 'expense'), '會計事件映射科目無效，無法產生傳票草稿。'],
 ]);
 
 it('returns valid revenue side preview without sensitive or recognition fields', function (): void {
@@ -326,7 +350,8 @@ it('returns valid revenue side preview without sensitive or recognition fields',
     $receivable = aeDraftPreflightMakeAccount($user, 'asset');
     $revenue = aeDraftPreflightMakeAccount($user, 'revenue');
     $event = aeDraftPreflightMakeReviewedEvent($user, ['amount' => 1000]);
-    aeDraftPreflightSetMapping(true, $receivable->id, $revenue->id);
+    aeDraftPreflightSetMapping(true);
+    aeDraftPreflightCreateRequiredMappings($event, $receivable, $revenue);
 
     $preview = aeDraftPreflightPreview($event, $user);
 
@@ -338,6 +363,13 @@ it('returns valid revenue side preview without sensitive or recognition fields',
         'source_number' => 'SALE-AEDP-001',
         'entry_date' => '2026-06-09',
         'summary' => '車輛交易完成轉傳票：SALE-AEDP-001',
+        'header' => [
+            'entry_date' => '2026-06-09',
+            'summary' => '車輛交易完成轉傳票：SALE-AEDP-001',
+            'status' => 'draft',
+            'source_type' => 'accounting_event',
+            'source_id' => $event->id,
+        ],
         'status' => 'draft',
         'source' => ['type' => 'accounting_event', 'id' => $event->id],
         'totals' => ['debit' => '1000.00', 'credit' => '1000.00', 'difference' => '0.00'],
@@ -380,7 +412,8 @@ it('valid preview lines are explicitly accepted by journal validator', function 
     $receivable = aeDraftPreflightMakeAccount($user, 'asset');
     $revenue = aeDraftPreflightMakeAccount($user, 'revenue');
     $event = aeDraftPreflightMakeReviewedEvent($user, ['amount' => 5000]);
-    aeDraftPreflightSetMapping(true, $receivable->id, $revenue->id);
+    aeDraftPreflightSetMapping(true);
+    aeDraftPreflightCreateRequiredMappings($event, $receivable, $revenue);
 
     $preview = aeDraftPreflightPreview($event, $user);
 

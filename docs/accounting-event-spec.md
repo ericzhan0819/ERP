@@ -1,8 +1,20 @@
 # Accounting Event Foundation Spec
 
-> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified.
+> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified + Phase 4D-2B Revenue-side Journal Draft Generation completed.
 > Scope: define Accounting Event product semantics, current foundation state, future data direction, status flow, source documents, tenant / permission / audit principles, and future Journal Draft / Revenue / COGS integration direction.
-> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. Phase 4A has implemented pending -> reviewed. Phase 4B has implemented pending / reviewed -> voided. Phase 4C completed the account mapping design spec. Phase 4C-2 implemented config-based mapping foundation metadata. Phase 4D-1 implemented convert skeleton. Phase 4D-2 completed journal draft generation spec. Phase 4D-2A implemented `AccountingEventJournalDraftPreflightService` only. Phase 4D-2A-2 verified DB-backed mapping migration / model / policy / request / resolver / controller / UI / routes / permissions. This checkpoint is not 4D-2B and does not implement active route-wired successful journal draft conversion, journal draft generation runtime, or accounting recognition runtime behavior.
+> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. Phase 4A has implemented pending -> reviewed. Phase 4B has implemented pending / reviewed -> voided. Phase 4C completed the account mapping design spec. Phase 4C-2 implemented config-based mapping foundation metadata. Phase 4D-1 implemented convert skeleton. Phase 4D-2 completed journal draft generation spec. Phase 4D-2A implemented `AccountingEventJournalDraftPreflightService`. Phase 4D-2A-2 verified DB-backed mapping migration / model / policy / request / resolver / controller / UI / routes / permissions. Phase 4D-2B wires `AccountingEventConvertService` to create one draft journal with exactly two revenue-side lines for reviewed `vehicle_sale_completed` events with valid DB-backed AR / Sales Revenue mappings. Journal remains draft and is not posted.
+
+## Phase 4D-2B Revenue-side Journal Draft Generation
+
+- Convert route now uses `AccountingEventConvertService`.
+- Reviewed `vehicle_sale_completed` event with valid DB-backed `accounts_receivable_account` and `sales_revenue_account` mappings can generate one draft journal.
+- Generated journal has exactly two lines: debit AR, credit Sales Revenue.
+- Event status becomes `converted`; `converted_journal_entry_id` is written.
+- `accounting_event.converted` audit is written without payload, sensitive customer fields, profit fields, gross margin fields, purchase cost, COGS, or revenue payload fields.
+- Journal remains `draft`; no automatic posting.
+- Config `enabled = true` is only event-type activation gate. Actual runtime accounts come from DB-backed mapping; config `runtime_account_id` remains null.
+- Excluded: COGS, inventory, tax, overpayment, refund / reversal, AR/AP module expansion, Cash/Bank module expansion, Invoice module, Reports, profit / gross margin payload, journal preview endpoint, UI redesign.
+- Next recommended phase: Phase 4D-2B Manual QA Checklist.
 
 ## 1. Purpose
 

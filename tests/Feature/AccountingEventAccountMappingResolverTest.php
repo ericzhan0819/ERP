@@ -239,3 +239,23 @@ it('optional mapping keys remain unused in first runtime foundation', function (
     expect(array_keys($resolved))->toBe(['accounts_receivable_account', 'sales_revenue_account']);
     aeResolverAssertNoMutation($event);
 });
+
+it('ignores config runtime account ids and uses database mapping as actual source', function (): void {
+    $user = aeResolverMakeUser();
+    $event = aeResolverMakeEvent($user);
+    $configReceivable = aeResolverMakeAccount($user, 'asset');
+    $dbReceivable = aeResolverMakeAccount($user, 'asset');
+    $revenue = aeResolverMakeAccount($user, 'revenue');
+    aeResolverCreateMapping($event, 'accounts_receivable_account', $dbReceivable);
+    aeResolverCreateMapping($event, 'sales_revenue_account', $revenue);
+
+    $resolved = aeResolverResolve($event, aeResolverMappingConfig([
+        'mapping_keys' => [
+            'accounts_receivable_account' => ['runtime_account_id' => $configReceivable->id],
+        ],
+    ]));
+
+    expect($resolved['accounts_receivable_account']['account']->id)->toBe($dbReceivable->id)
+        ->and($resolved['accounts_receivable_account']['account']->id)->not->toBe($configReceivable->id);
+    aeResolverAssertNoMutation($event);
+});

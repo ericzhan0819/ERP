@@ -7,20 +7,21 @@ Status:
 - Phase 4D-2A-1 Runtime Mapping Decision Spec completed
 - Phase 4D-2A Convert Preflight Service completed
 - Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified
+- Accounting Event Phase 4D-2B Revenue-side Journal Draft Generation completed
 - Runtime mapping decision documented
 - DB-backed mapping migration / model / policy / request / controller / resolver / UI / routes / permissions exist and are verified for first stable scope
 
 Scope:
 
-- Decide how future Accounting Event -> Journal Draft runtime account mapping should be provided
+- Decide how Accounting Event -> Journal Draft runtime account mapping should be provided
 - Compare config-based mapping vs database-backed mapping
-- Recommend next implementation path
+- Document the accepted DB-backed mapping runtime source
 - This decision spec did not add runtime code; current repo state now includes verified DB-backed mapping migration / model / policy / request / resolver / controller / UI / routes / permissions
-- This checkpoint is not 4D-2B
-- Convert route still calls `AccountingEventJournalDraftPreflightService`
-- `AccountingEventConvertService` exists but is not wired into `AccountingEventController::convert()`
-- No journal draft generation in this task
-- Phase 4D-2B remains future and must not be inferred from this verified mapping foundation
+- Phase 4D-2B now uses DB-backed AR / Sales Revenue mappings for revenue-side draft generation
+- Convert route calls `AccountingEventConvertService`
+- Config `enabled = true` is only an event-type activation gate
+- Config is not the runtime account-id source; `runtime_account_id` remains null
+- Actual runtime accounts come from DB-backed `accounting_event_account_mappings`
 
 ## 2. Current Problem
 

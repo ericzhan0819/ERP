@@ -16,7 +16,7 @@ return [
         'vehicle_sale_completed' => [
             'label' => '車輛交易完成',
             'source_type' => 'vehicle_sale_completion',
-            'enabled' => false,
+            'enabled' => true,
             'description' => 'Runtime metadata for reviewed vehicle sale completion accounting event draft generation.',
             'required_status' => 'reviewed',
             'creates_journal_status' => 'draft',

@@ -9,11 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/**
- * 技術註解：此 service 是未來 Phase 4D-2B revenue-side draft generation 的候選實作，
- * 目前不得由 AccountingEventController::convert() 啟用；正式啟用前必須完成 DB-backed mapping
- * foundation verification、manual QA checklist、audit review 與 route regression。
- */
 class AccountingEventConvertService
 {
     public function __construct(
@@ -39,7 +34,14 @@ class AccountingEventConvertService
 
             $this->journalValidator->validateDraftLines($lines, (int) $lockedEvent->company_id);
             $normalizedLines = $this->journalValidator->normalizeLines($lines);
-            $entryDate = $preview['header']['entry_date'];
+            $header = is_array($preview['header'] ?? null) ? $preview['header'] : [];
+            $entryDate = $header['entry_date'] ?? $preview['entry_date'] ?? null;
+            $summary = $header['summary'] ?? $preview['summary'] ?? null;
+
+            if (! is_string($entryDate) || $entryDate === '' || ! is_string($summary) || $summary === '') {
+                throw ValidationException::withMessages(['header' => '傳票草稿表頭資料不完整，無法產生傳票草稿。']);
+            }
+
             $journalNumber = $this->journalNumberService->generate((int) $lockedEvent->company_id, new \DateTimeImmutable($entryDate));
 
             // 技術註解：傳票 header 只使用後端 preflight 與事件 allowlist，避免前端注入 journal number、tenant 或分錄資料造成權限提升。
@@ -48,7 +50,7 @@ class AccountingEventConvertService
                 'branch_id' => $lockedEvent->branch_id === null ? null : (int) $lockedEvent->branch_id,
                 'journal_number' => $journalNumber,
                 'entry_date' => $entryDate,
-                'summary' => $preview['header']['summary'],
+                'summary' => $summary,
                 'status' => 'draft',
                 'source_type' => 'accounting_event',
                 'source_id' => (int) $lockedEvent->id,
@@ -89,7 +91,11 @@ class AccountingEventConvertService
             throw ValidationException::withMessages(['event' => '此會計事件已產生傳票草稿。']);
         }
 
-        if ($event->status !== 'reviewed' || $event->voided_at !== null) {
+        if ($event->voided_at !== null) {
+            throw ValidationException::withMessages(['event' => '已作廢的會計事件不可產生傳票草稿。']);
+        }
+
+        if ($event->status !== 'reviewed') {
             throw ValidationException::withMessages(['event' => '只有已覆核的會計事件可以產生傳票草稿。']);
         }
     }
@@ -106,7 +112,6 @@ class AccountingEventConvertService
             $statusKey => $event->status,
             'converted_journal_entry_id' => $journalId,
             'journal_number' => $journalNumber,
-            'amount' => $event->amount,
             'currency' => $event->currency,
             'reviewed_by_name' => $event->reviewer?->name,
             'reviewed_at' => $event->reviewed_at?->toDateTimeString(),

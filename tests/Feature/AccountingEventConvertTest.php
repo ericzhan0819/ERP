@@ -144,12 +144,10 @@ function aeConvertCreateRequiredMappings(AccountingEvent $event, AccountingAccou
     aeConvertCreateMapping($event, 'sales_revenue_account', $revenue);
 }
 
-function aeConvertEnableRuntimeMapping(AccountingAccount $receivable, AccountingAccount $revenue): void
+function aeConvertEnableRuntimeMapping(): void
 {
     $mapping = config('accounting_event_mappings.event_types.vehicle_sale_completed');
     $mapping['enabled'] = true;
-    $mapping['mapping_keys']['accounts_receivable_account']['runtime_account_id'] = $receivable->id;
-    $mapping['mapping_keys']['sales_revenue_account']['runtime_account_id'] = $revenue->id;
 
     config(['accounting_event_mappings.event_types.vehicle_sale_completed' => $mapping]);
 }
@@ -196,7 +194,7 @@ it('reviewed accounting event with convert permission fails safe when mapping is
         ->and(AccountingJournalEntryLine::count())->toBe(0);
 });
 
-it('reviewed accounting event with valid runtime mappings only runs preflight through route', function (): void {
+it('reviewed accounting event with valid database mappings creates draft journal through route', function (): void {
     aeConvertRegisterAccountingEventsModule();
     Permission::findOrCreate('module.accounting.journals.create', 'web');
     $user = aeConvertMakeUser('aec-route-success@example.com');
@@ -204,20 +202,28 @@ it('reviewed accounting event with valid runtime mappings only runs preflight th
     $event = aeConvertMakeReviewedEvent($user, ['amount' => 200000]);
     $receivable = aeConvertMakeAccount($user, 'asset');
     $revenue = aeConvertMakeAccount($user, 'revenue');
-    aeConvertEnableRuntimeMapping($receivable, $revenue);
+    aeConvertEnableRuntimeMapping();
+    aeConvertCreateRequiredMappings($event, $receivable, $revenue);
 
     $this->actingAs($user)
         ->patch(aeConvertRoute($event))
         ->assertRedirect(route('employee-system.accounting.events.show', $event->id))
-        ->assertSessionHas('success', '會計事件轉傳票前置檢查已完成。');
+        ->assertSessionHas('success', '會計事件已產生傳票草稿。');
 
     $event->refresh();
+    $journal = AccountingJournalEntry::query()->firstOrFail();
+    $lines = AccountingJournalEntryLine::query()->orderBy('sort_order')->get();
 
-    expect(AccountingJournalEntry::count())->toBe(0)
-        ->and(AccountingJournalEntryLine::count())->toBe(0)
-        ->and($event->status)->toBe('reviewed')
-        ->and($event->converted_journal_entry_id)->toBeNull()
-        ->and(ActivityLog::query()->where('event', 'accounting_event.converted')->exists())->toBeFalse();
+    expect(AccountingJournalEntry::count())->toBe(1)
+        ->and(AccountingJournalEntryLine::count())->toBe(2)
+        ->and($event->status)->toBe('converted')
+        ->and($event->converted_journal_entry_id)->toBe($journal->id)
+        ->and($journal->status)->toBe('draft')
+        ->and($journal->source_type)->toBe('accounting_event')
+        ->and($journal->source_id)->toBe($event->id)
+        ->and($lines[0]->account_id)->toBe($receivable->id)
+        ->and($lines[1]->account_id)->toBe($revenue->id)
+        ->and(ActivityLog::query()->where('event', 'accounting_event.converted')->exists())->toBeTrue();
 });
 
 it('convert route requires journal create permission in addition to convert permission', function (): void {
@@ -481,7 +487,8 @@ it('successful preflight keeps reviewed event without converted journal link pay
     $event = aeConvertMakeReviewedEvent($user, ['amount' => 210000]);
     $receivable = aeConvertMakeAccount($user, 'asset');
     $revenue = aeConvertMakeAccount($user, 'revenue');
-    aeConvertEnableRuntimeMapping($receivable, $revenue);
+    aeConvertEnableRuntimeMapping();
+    aeConvertCreateRequiredMappings($event, $receivable, $revenue);
 
     $this->actingAs($user)
         ->patch(aeConvertRoute($event))
@@ -493,11 +500,12 @@ it('successful preflight keeps reviewed event without converted journal link pay
         ->get(route('employee-system.accounting.events.show', $event->id))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('event.status', 'reviewed')
-            ->where('event.converted_journal_entry', null)
+            ->where('event.status', 'converted')
+            ->whereNot('event.converted_journal_entry', null)
         );
 
-    aeConvertAssertNoJournalMutation($event, 'reviewed');
+    expect(AccountingJournalEntry::count())->toBe(1)
+        ->and(AccountingJournalEntryLine::count())->toBe(2);
 });
 
 it('RolePermissionSeeder registers accounting events convert permission', function (): void {

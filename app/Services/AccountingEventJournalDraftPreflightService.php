@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\AccountingAccount;
 use App\Models\AccountingEvent;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
@@ -11,6 +10,7 @@ class AccountingEventJournalDraftPreflightService
 {
     public function __construct(
         private readonly AccountingJournalValidator $journalValidator,
+        private readonly AccountingEventAccountMappingResolver $mappingResolver,
     ) {}
 
     /**
@@ -31,16 +31,17 @@ class AccountingEventJournalDraftPreflightService
         }
 
         $mapping = $this->mappingFor($event);
-        $accounts = $this->resolveRequiredAccounts($event, $user, $mapping);
+        $accounts = $this->mappingResolver->resolveRequiredAccounts($event, $mapping);
         $amountText = $this->formatAmount($amount);
         $summary = '車輛交易完成轉傳票：'.$event->source_number;
+        $entryDate = optional($event->event_date)->toDateString();
         $lines = [
             [
                 'mapping_key' => 'accounts_receivable_account',
-                'account_id' => (int) $accounts['accounts_receivable_account']->id,
-                'account_code' => $accounts['accounts_receivable_account']->code,
-                'account_name' => $accounts['accounts_receivable_account']->name,
-                'account_type' => $accounts['accounts_receivable_account']->type,
+                'account_id' => (int) $accounts['accounts_receivable_account']['account']->id,
+                'account_code' => $accounts['accounts_receivable_account']['account']->code,
+                'account_name' => $accounts['accounts_receivable_account']['account']->name,
+                'account_type' => $accounts['accounts_receivable_account']['account']->type,
                 'debit' => $amountText,
                 'credit' => '0.00',
                 'memo' => '應收帳款／收款清算',
@@ -48,10 +49,10 @@ class AccountingEventJournalDraftPreflightService
             ],
             [
                 'mapping_key' => 'sales_revenue_account',
-                'account_id' => (int) $accounts['sales_revenue_account']->id,
-                'account_code' => $accounts['sales_revenue_account']->code,
-                'account_name' => $accounts['sales_revenue_account']->name,
-                'account_type' => $accounts['sales_revenue_account']->type,
+                'account_id' => (int) $accounts['sales_revenue_account']['account']->id,
+                'account_code' => $accounts['sales_revenue_account']['account']->code,
+                'account_name' => $accounts['sales_revenue_account']['account']->name,
+                'account_type' => $accounts['sales_revenue_account']['account']->type,
                 'debit' => '0.00',
                 'credit' => $amountText,
                 'memo' => '車輛銷售收入',
@@ -62,12 +63,19 @@ class AccountingEventJournalDraftPreflightService
         $this->journalValidator->validateDraftLines($lines, (int) $event->company_id);
 
         return [
+            'header' => [
+                'entry_date' => $entryDate,
+                'summary' => $summary,
+                'status' => 'draft',
+                'source_type' => 'accounting_event',
+                'source_id' => (int) $event->id,
+            ],
             'event_id' => (int) $event->id,
             'event_type' => $event->event_type,
             'source_type' => $event->source_type,
             'source_id' => (int) $event->source_id,
             'source_number' => $event->source_number,
-            'entry_date' => optional($event->event_date)->toDateString(),
+            'entry_date' => $entryDate,
             'summary' => $summary,
             'status' => 'draft',
             'source' => [
@@ -139,72 +147,6 @@ class AccountingEventJournalDraftPreflightService
         }
 
         return $mapping;
-    }
-
-    /**
-     * 技術註解：科目解析只信任後端 mapping metadata 的 runtime_account_id，並同時檢查 company/branch/type/active，避免 IDOR 與跨分店科目被用於正式草稿。
-     *
-     * @param array<string, mixed> $mapping
-     * @return array<string, AccountingAccount>
-     */
-    private function resolveRequiredAccounts(AccountingEvent $event, User $user, array $mapping): array
-    {
-        $requiredKeys = $mapping['required_mapping_keys'] ?? [];
-        $mappingKeys = $mapping['mapping_keys'] ?? [];
-        $accounts = [];
-
-        foreach ($requiredKeys as $key) {
-            if (! is_string($key) || ! isset($mappingKeys[$key]) || ! is_array($mappingKeys[$key])) {
-                throw ValidationException::withMessages(['mapping' => '會計事件映射尚未指定必要科目，無法產生傳票草稿。']);
-            }
-
-            $accountId = $mappingKeys[$key]['runtime_account_id'] ?? null;
-
-            if (! is_numeric($accountId) || (int) $accountId <= 0) {
-                throw ValidationException::withMessages(['mapping' => '會計事件映射尚未指定必要科目，無法產生傳票草稿。']);
-            }
-
-            $account = AccountingAccount::query()->find((int) $accountId);
-
-            if (! $account instanceof AccountingAccount || ! $this->accountScopeIsValid($account, $event, $user)) {
-                throw ValidationException::withMessages(['mapping' => '會計事件映射科目無效，無法產生傳票草稿。']);
-            }
-
-            $intendedTypes = $mappingKeys[$key]['intended_account_types'] ?? [];
-
-            if (! in_array($account->type, is_array($intendedTypes) ? $intendedTypes : [], true)) {
-                throw ValidationException::withMessages(['mapping' => '會計事件映射科目類型不符，無法產生傳票草稿。']);
-            }
-
-            $accounts[$key] = $account;
-        }
-
-        if (! isset($accounts['accounts_receivable_account'], $accounts['sales_revenue_account'])) {
-            throw ValidationException::withMessages(['mapping' => '會計事件映射尚未指定必要科目，無法產生傳票草稿。']);
-        }
-
-        return $accounts;
-    }
-
-    private function accountScopeIsValid(AccountingAccount $account, AccountingEvent $event, User $user): bool
-    {
-        if ((int) $account->company_id !== (int) $event->company_id || ! (bool) $account->is_active) {
-            return false;
-        }
-
-        if ($account->branch_id === null) {
-            return true;
-        }
-
-        if ($user->branch_id !== null && (int) $account->branch_id !== (int) $user->branch_id) {
-            return false;
-        }
-
-        if ($event->branch_id !== null && (int) $account->branch_id !== (int) $event->branch_id) {
-            return false;
-        }
-
-        return true;
     }
 
     private function formatAmount(float $amount): string

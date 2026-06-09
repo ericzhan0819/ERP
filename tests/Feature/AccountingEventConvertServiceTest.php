@@ -14,8 +14,6 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(function (): void {
-    $this->markTestSkipped('AccountingEventConvertService is future Phase 4D-2B candidate and is not route-active yet.');
-
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
     Permission::findOrCreate('module.accounting.events.convert', 'web');
@@ -226,7 +224,13 @@ it('pending voided and already converted events reject and do not mutate', funct
     };
     $event = aeConvertServiceMakeEvent($user, $overrides);
 
-    aeConvertServiceExpectValidationMessage(fn () => aeConvertServiceConvert($event, $user), $status === 'converted' ? '此會計事件已產生傳票草稿。' : '只有已覆核的會計事件可以產生傳票草稿。');
+    $message = match ($status) {
+        'converted' => '此會計事件已產生傳票草稿。',
+        'voided' => '已作廢的會計事件不可產生傳票草稿。',
+        default => '只有已覆核的會計事件可以產生傳票草稿。',
+    };
+
+    aeConvertServiceExpectValidationMessage(fn () => aeConvertServiceConvert($event, $user), $message);
 
     expect(AccountingJournalEntry::count())->toBe($expectedJournals);
     expect(AccountingJournalEntryLine::count())->toBe(0);

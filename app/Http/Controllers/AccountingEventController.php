@@ -7,7 +7,7 @@ use App\Http\Requests\ConvertAccountingEventRequest;
 use App\Http\Requests\VoidAccountingEventRequest;
 use App\Models\AccountingEvent;
 use App\Services\AuditLogService;
-use App\Services\AccountingEventJournalDraftPreflightService;
+use App\Services\AccountingEventConvertService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -22,7 +22,7 @@ class AccountingEventController extends Controller
 {
     public function __construct(
         private readonly AuditLogService $auditLogService,
-        private readonly AccountingEventJournalDraftPreflightService $journalDraftPreflightService,
+        private readonly AccountingEventConvertService $convertService,
     ) {}
 
     /**
@@ -221,7 +221,7 @@ class AccountingEventController extends Controller
     }
 
     /**
-     * 技術註解：Phase 4D-2A convert route 僅執行轉傳票 preflight，不建立傳票或分錄，避免未完成的正式認列流程提前寫入資料。
+     * 技術註解：轉傳票只接受後端事件與 DB-backed mapping，不接收前端分錄或科目 ID，避免權限提升、IDOR 與任意傳票注入。
      */
     public function convert(ConvertAccountingEventRequest $request, int $accountingEvent): RedirectResponse
     {
@@ -231,7 +231,7 @@ class AccountingEventController extends Controller
 
         $this->authorize('convert', $event);
         try {
-            $this->journalDraftPreflightService->preview($event, $request->user());
+            $this->convertService->convert($event, $request->user(), $request);
         } catch (ValidationException $exception) {
             $message = collect($exception->errors())->flatten()->first() ?? '會計事件無法產生傳票草稿。';
 
@@ -239,7 +239,7 @@ class AccountingEventController extends Controller
         }
 
         return redirect()->route('employee-system.accounting.events.show', $event->id)
-            ->with('success', '會計事件轉傳票前置檢查已完成。');
+            ->with('success', '會計事件已產生傳票草稿。');
     }
 
     private function scopedEventQuery(?Authenticatable $user): Builder

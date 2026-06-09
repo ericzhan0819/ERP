@@ -2,24 +2,24 @@
 
 Status:
 
-- Spec completed only
+- Spec completed and Phase 4D-2B revenue-side runtime accepted
 - Phase 4D-1 Convert Skeleton completed
 - Phase 4D-2A Convert Preflight Service completed
 - Phase 4D-2A-1 Runtime Mapping Decision Spec completed
 - Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified
+- Accounting Event Phase 4D-2B Revenue-side Journal Draft Generation completed
 
 Scope:
 
-- Define future reviewed Accounting Event -> Accounting Journal Draft generation rules
-- `AccountingEventJournalDraftPreflightService` exists and returns backend-generated preview only
+- Define reviewed Accounting Event -> Accounting Journal Draft generation rules
+- `AccountingEventJournalDraftPreflightService` exists and returns backend-generated preview with `header`
 - Preflight validates permissions / mapping / accounts / amount / preview lines / `AccountingJournalValidator`
-- No journal draft generation in this phase
-- No journal lines generation in this phase
-- No status = converted in this phase
-- No converted_journal_entry_id write in this phase
-- No `AccountingJournalNumberService::generate()` call in preflight
-- Convert route still calls `AccountingEventJournalDraftPreflightService` only
-- `AccountingEventConvertService` exists as candidate future 4D-2B logic but is not wired into `AccountingEventController::convert()`
+- Convert route calls `AccountingEventConvertService`
+- Reviewed `vehicle_sale_completed` with valid DB-backed AR / Sales Revenue mappings creates one draft journal
+- Journal has exactly two lines: debit AR and credit Sales Revenue
+- Event status becomes `converted` and `converted_journal_entry_id` is written
+- `accounting_event.converted` audit is written without payload / sensitive / profit / cost fields
+- Journal remains `draft` and is not posted
 
 ## Current Repo State
 
@@ -37,53 +37,56 @@ Completed accounting foundations:
 - Accounting Event Phase 4C-2: config-based mapping foundation
 - Accounting Event Phase 4D-1: convert skeleton
 
-Current Phase 4D-2A behavior:
+Current Phase 4D-2B behavior:
 
 ```txt
 reviewed Accounting Event
 -> user with module.accounting.events.convert
 -> scoped tenant query
 -> policy convert guard
+-> AccountingEventConvertService
+-> DB transaction + accounting_events lockForUpdate
 -> AccountingEventJournalDraftPreflightService
 -> checks module.accounting.events.convert and module.accounting.journals.create
 -> tenant / status / voided / converted guards
 -> mapping exists / source_type / enabled / DB-backed account mapping checks
 -> account company / branch / active / intended type checks
--> revenue-side preview lines validated by AccountingJournalValidator
--> no state change
--> no journal draft
--> no journal lines
+-> revenue-side preview lines validated / normalized by AccountingJournalValidator
+-> AccountingJournalNumberService generates journal number
+-> creates one draft AccountingJournalEntry
+-> creates exactly two AccountingJournalEntryLine rows
+-> sets accounting_events.status = converted
+-> writes converted_journal_entry_id
+-> writes accounting_event.converted audit
 ```
 
 Current boundaries:
 
-- Accounting Event review exists, but review does not create journal drafts.
+- Accounting Event review exists, but review alone does not create journal drafts.
 - Accounting Event void exists, but void does not cancel journals or reverse posted journals.
-- Convert route exists, but it currently only runs preflight and does not return preview as a formal endpoint.
-- Config mapping metadata exists and runtime account IDs are not committed.
-- DB-backed mapping migration / model / policy / request / controller / resolver / UI / routes / permissions are verified for first stable scope, but this checkpoint is not 4D-2B.
+- Convert route exists and creates a revenue-side draft journal only after review and DB-backed mapping validation.
+- Config `enabled = true` is only an event-type activation gate.
+- Config is not runtime account-id source; `runtime_account_id` remains null.
+- Actual runtime accounts come from DB-backed `accounting_event_account_mappings`.
 - Existing Accounting Journal creation, validation, numbering, posting, and voiding workflows remain the only supported journal runtime paths.
 
 ## Non-goals
 
 This spec does not implement or approve:
 
-- No active AccountingEventConvertService route-wired runtime draft generation in this phase
-- No AccountingJournalEntry creation
-- No AccountingJournalEntryLine creation
-- No converted_journal_entry_id write
-- No accounting_events.status = converted
 - No automatic posting
-- No revenue recognition
 - No COGS recognition
+- No inventory recognition
 - No profit / gross margin payload
 - No tax runtime
+- No overpayment runtime
 - No AR / AP module
 - No Cash / Bank module
 - No Invoice module
 - No Reports
 - No refund / reversal
-- No assumption that verified mapping UI / DB-backed mapping foundation activates journal draft generation
+- No journal preview endpoint
+- No UI redesign
 - No Odoo code / CSS / XML / Python copy
 
 ## Journal Draft Generation Positioning

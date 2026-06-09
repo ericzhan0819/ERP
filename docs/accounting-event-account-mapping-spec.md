@@ -1,8 +1,8 @@
 # Accounting Event Account Mapping Spec
 
-Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified.
-Scope: config metadata, verified DB-backed mapping migration / model / policy / requests / resolver / controller / UI / routes / permissions; `AccountingEventJournalDraftPreflightService` preview exists; detailed draft generation runtime boundary is documented in `docs/accounting-event-journal-draft-generation-spec.md`.
-This document does not accept 4D-2B journal draft creation, journal lines creation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or successful runtime conversion as active route behavior.
+Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified + Phase 4D-2B Revenue-side Journal Draft Generation completed.
+Scope: config metadata, verified DB-backed mapping migration / model / policy / requests / resolver / controller / UI / routes / permissions; `AccountingEventJournalDraftPreflightService` preview exists; `AccountingEventConvertService` is route-active for reviewed `vehicle_sale_completed` revenue-side draft generation only.
+This document accepts 4D-2B creation of one draft journal and exactly two revenue-side journal lines from valid DB-backed AR / Sales Revenue mappings. It still does not accept posting, COGS recognition, inventory, tax handling, overpayment, refund / reversal, reports, AR/AP module expansion, Cash/Bank module expansion, Invoice module, or profit / gross margin payload.
 
 ## 1. Purpose
 
