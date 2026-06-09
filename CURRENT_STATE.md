@@ -2,7 +2,7 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed；Accounting Event Phase 4C Account Mapping Spec completed；Accounting Event Phase 4C-2 Config-based Mapping Foundation completed；Accounting Event Phase 4D-1 Convert Skeleton completed；Accounting Event Phase 4D-2 Journal Draft Generation Spec completed；Accounting Event Phase 4D-2A Convert Preflight Service completed；Accounting Event Phase 4D-2A-1 Runtime Mapping Decision Spec completed；Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation completed。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed；Accounting Event Phase 4C Account Mapping Spec completed；Accounting Event Phase 4C-2 Config-based Mapping Foundation completed；Accounting Event Phase 4D-1 Convert Skeleton completed；Accounting Event Phase 4D-2 Journal Draft Generation Spec completed；Accounting Event Phase 4D-2A Convert Preflight Service completed；Accounting Event Phase 4D-2A-1 Runtime Mapping Decision Spec completed；Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation completed；Accounting Event Phase 4D-2A-3 Minimal Mapping Management UI completed。
 - 穩定節點：Transaction Completion MVP completed through UI，已涵蓋 RBAC foundation、Data model foundation、Backend completion action、Backend completion payload、React UI、Manual QA checklist documented。
 - 最新驗證狀態：`./vendor/bin/sail artisan test tests/Feature/AccountingEventConvertTest.php` passed：15 tests / 140 assertions；`./vendor/bin/sail artisan test tests/Feature/AccountingEventReviewTest.php tests/Feature/AccountingEventVoidTest.php tests/Feature/AccountingEventMappingConfigTest.php tests/Feature/StaffPermissionRoleMatrixTest.php` passed：58 tests / 631 assertions；`./vendor/bin/sail artisan test` passed：384 tests / 3567 assertions；`npm run build` passed。
 - 本文件為目前穩定節點同步整理；目前不實作退款、不做 AR / AP / cash / invoice / reports 整合、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
@@ -54,6 +54,7 @@
 - Accounting Event Phase 4D-2A Convert Preflight Service
 - Accounting Event Phase 4D-2A-1 Runtime Mapping Decision Spec
 - Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation
+- Accounting Event Phase 4D-2A-3 Minimal Mapping Management UI
 - Confirm Delivery / Transaction Completion Spec
 - Sales / Payments / Delivery semantics UI hints
 - Transaction Completion / Confirm Delivery MVP：Completion RBAC、Completion data fields、Completion backend action、Completion payload、Completion UI、Completion audit event、Manual QA checklist
@@ -320,6 +321,15 @@
 - First supported event type remains `vehicle_sale_completed`。
 - First required mapping keys remain `accounts_receivable_account` and `sales_revenue_account`。
 - No journal draft generation、journal lines、converted status、`converted_journal_entry_id` write、`accounting_event.converted` audit、automatic posting、revenue / COGS / tax / refund / reversal runtime、profit / gross margin payload、mapping UI、route / permission / migration / model / policy / controller / request / seeder changes。
+
+## Accounting Event Phase 4D-2A-3 Minimal Mapping Management UI
+
+- Accounting Event Phase 4D-2A-3 Minimal Mapping Management UI completed。
+- Added mapping module / routes / controller / policy / requests / React pages / tests。
+- Mapping UI only manages DB-backed mapping records for Accounting Event preflight / future draft generation。
+- First scope only supports `vehicle_sale_completed` + `accounts_receivable_account` / `sales_revenue_account` required keys。
+- No journal draft / lines / converted status / posting / recognition runtime。
+- 4D-2B revenue-side journal draft generation remains backlog。
 
 ## Accounting Module Boundaries
 

@@ -5,8 +5,9 @@
 - Accounting Event Runtime Mapping Decision Spec completed.
 - Phase 4D-2A Convert Preflight Service completed.
 - Phase 4D-2A-2 Database-backed Mapping Foundation completed.
+- Accounting Event Phase 4D-2A-3 Minimal Mapping Management UI completed.
 - Phase 4D-2B revenue-side journal draft generation remains backlog.
-- Runtime foundation now exists without UI / route / permission / seeder / journal draft generation.
+- Runtime foundation now includes minimal mapping management UI / route / controller / policy / requests / React pages / tests, without journal draft generation.
 
 ## Decision
 
@@ -92,6 +93,13 @@ Optional / future keys remain backlog:
 - `overpayment_account`
 - `rounding_adjustment_account`
 
+## Minimal Mapping Management UI
+
+- Phase 4D-2A-3 added the `accounting-event-mappings` module, routes, controller, policy, FormRequests, React pages, seeder permissions, and feature tests.
+- The UI only manages DB-backed mapping records for preflight / future draft generation account resolution.
+- First scope only supports `vehicle_sale_completed` with required keys `accounts_receivable_account` and `sales_revenue_account`.
+- The UI does not enable config runtime, does not write account IDs into config, and does not create journal draft records.
+
 ## Explicit Prohibitions
 
 This decision spec does not allow:
@@ -107,15 +115,15 @@ This decision spec does not allow:
 - No tax runtime.
 - No overpayment / refund / reversal.
 - No profit / gross margin payload.
-- No mapping UI in this docs-only commit.
-- No route / permission / migration / model / policy / controller / request / seeder changes.
+- No automatic posting.
+- No revenue / COGS recognition runtime.
 
 ## Phase Recommendation
 
 - Phase 4D-2A completed: preflight service.
 - Phase 4D-2A-1 completed: runtime mapping decision spec.
 - Phase 4D-2A-2 completed: database-backed mapping foundation, no UI, no draft generation.
-- Phase 4D-2A-3 future: mapping admin UI, optional.
+- Phase 4D-2A-3 completed: minimal mapping management UI, no draft generation.
 - Phase 4D-2B future: revenue-side journal draft generation only.
 - Phase 5 future: COGS / vehicle cost basis / tax / overpayment / refund / reversal.
 

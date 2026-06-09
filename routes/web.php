@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AccountingAccountController;
+use App\Http\Controllers\AccountingEventAccountMappingController;
 use App\Http\Controllers\AccountingEventController;
 use App\Http\Controllers\AccountingJournalEntryController;
 use App\Http\Controllers\CompanySettingController;
@@ -254,6 +255,28 @@ Route::patch('/employee-system/accounting/accounts/{account}', [AccountingAccoun
     ->middleware(['auth', 'module.access:accounting-accounts'])
     ->whereNumber('account')
     ->name('employee-system.accounting.accounts.update');
+
+Route::get('/employee-system/accounting/event-mappings', [AccountingEventAccountMappingController::class, 'index'])
+    ->middleware(['auth', 'module.access:accounting-event-mappings'])
+    ->name('employee-system.accounting.event-mappings.index');
+
+Route::get('/employee-system/accounting/event-mappings/create', [AccountingEventAccountMappingController::class, 'create'])
+    ->middleware(['auth', 'module.access:accounting-event-mappings'])
+    ->name('employee-system.accounting.event-mappings.create');
+
+Route::post('/employee-system/accounting/event-mappings', [AccountingEventAccountMappingController::class, 'store'])
+    ->middleware(['auth', 'module.access:accounting-event-mappings'])
+    ->name('employee-system.accounting.event-mappings.store');
+
+Route::get('/employee-system/accounting/event-mappings/{mapping}/edit', [AccountingEventAccountMappingController::class, 'edit'])
+    ->middleware(['auth', 'module.access:accounting-event-mappings'])
+    ->whereNumber('mapping')
+    ->name('employee-system.accounting.event-mappings.edit');
+
+Route::patch('/employee-system/accounting/event-mappings/{mapping}', [AccountingEventAccountMappingController::class, 'update'])
+    ->middleware(['auth', 'module.access:accounting-event-mappings'])
+    ->whereNumber('mapping')
+    ->name('employee-system.accounting.event-mappings.update');
 
 Route::get('/employee-system/accounting/events', [AccountingEventController::class, 'index'])
     ->middleware(['auth', 'module.access:accounting-events'])

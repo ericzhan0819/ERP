@@ -39,6 +39,7 @@ class StaffPermissionController extends Controller
         'vehicles.sales.completion' => '交易完成',
         'receivables' => '收款管理',
         'accounting.events' => '會計事件',
+        'accounting.event-mappings' => '會計事件映射',
         'customers.sensitive' => '客戶個資',
     ];
 

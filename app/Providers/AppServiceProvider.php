@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Customer;
 use App\Models\AccountingAccount;
 use App\Models\AccountingEvent;
+use App\Models\AccountingEventAccountMapping;
 use App\Models\AccountingJournalEntry;
 use App\Models\Vehicle;
 use App\Models\VehicleCost;
@@ -13,6 +14,7 @@ use App\Models\VehicleSalePayment;
 use App\Policies\CustomerPolicy;
 use App\Policies\AccountingAccountPolicy;
 use App\Policies\AccountingEventPolicy;
+use App\Policies\AccountingEventAccountMappingPolicy;
 use App\Policies\AccountingJournalEntryPolicy;
 use App\Policies\VehicleCostPolicy;
 use App\Policies\VehiclePolicy;
@@ -41,6 +43,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(AccountingAccount::class, AccountingAccountPolicy::class);
         // 技術註解：會計事件只讀工作台仍屬財務候選資料，需顯式綁定 Policy 以維持 tenant scope 與檢視權限一致。
         Gate::policy(AccountingEvent::class, AccountingEventPolicy::class);
+        // 技術註解：會計事件映射會影響未來傳票科目選擇，需顯式綁定 Policy 防止跨租戶或未授權修改。
+        Gate::policy(AccountingEventAccountMapping::class, AccountingEventAccountMappingPolicy::class);
         // 技術註解：傳票草稿屬財務敏感資料，需顯式綁定 Policy，確保跨租戶與狀態限制由後端唯一控管。
         Gate::policy(AccountingJournalEntry::class, AccountingJournalEntryPolicy::class);
         // 技術註解：顯式註冊 CustomerPolicy，確保客戶主檔與敏感個資皆由後端授權層控管。
