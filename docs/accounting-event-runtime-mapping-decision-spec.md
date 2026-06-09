@@ -6,6 +6,10 @@
 - Phase 4D-2A Convert Preflight Service completed.
 - Phase 4D-2A-2 Database-backed Mapping Foundation completed.
 - Accounting Event Phase 4D-2A-3 Minimal Mapping Management UI completed.
+- Accounting Event Phase 4D-2A-3 Manual QA Checklist completed.
+- Added `docs/accounting-event-mapping-manual-qa-checklist.md`.
+- This is docs-only.
+- No runtime code changed.
 - Phase 4D-2B revenue-side journal draft generation remains backlog.
 - Runtime foundation now includes minimal mapping management UI / route / controller / policy / requests / React pages / tests, without journal draft generation.
 
@@ -99,6 +103,15 @@ Optional / future keys remain backlog:
 - The UI only manages DB-backed mapping records for preflight / future draft generation account resolution.
 - First scope only supports `vehicle_sale_completed` with required keys `accounts_receivable_account` and `sales_revenue_account`.
 - The UI does not enable config runtime, does not write account IDs into config, and does not create journal draft records.
+
+## Manual QA Checklist
+
+- Phase 4D-2A-3 Manual QA Checklist completed.
+- Added `docs/accounting-event-mapping-manual-qa-checklist.md`.
+- The checklist covers permission / sidebar, mapping index, create, validation, edit, preflight boundary, negative security, and accounting boundary checks.
+- This is docs-only.
+- No runtime code changed.
+- 4D-2B revenue-side journal draft generation remains backlog.
 
 ## Explicit Prohibitions
 
