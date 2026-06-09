@@ -6,20 +6,21 @@ Status:
 
 - Phase 4D-2A-1 Runtime Mapping Decision Spec completed
 - Phase 4D-2A Convert Preflight Service completed
+- Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified
 - Runtime mapping decision documented
-- DB-backed mapping foundation code may already exist in repo and requires dedicated verification / normalization before stable Phase 4D-2A-2 acceptance
+- DB-backed mapping migration / model / policy / request / controller / resolver / UI / routes / permissions exist and are verified for first stable scope
 
 Scope:
 
 - Decide how future Accounting Event -> Journal Draft runtime account mapping should be provided
 - Compare config-based mapping vs database-backed mapping
 - Recommend next implementation path
-- This decision spec did not add runtime code, but later repo state may already include DB-backed mapping migration / model / resolver / controller / UI / routes / permissions
+- This decision spec did not add runtime code; current repo state now includes verified DB-backed mapping migration / model / policy / request / resolver / controller / UI / routes / permissions
 - This checkpoint is not 4D-2B
 - Convert route still calls `AccountingEventJournalDraftPreflightService`
 - `AccountingEventConvertService` exists but is not wired into `AccountingEventController::convert()`
 - No journal draft generation in this task
-- Next required step is Phase 4D-2A-2 Verification / Normalization, not direct 4D-2B
+- Phase 4D-2B remains future and must not be inferred from this verified mapping foundation
 
 ## 2. Current Problem
 
@@ -140,7 +141,7 @@ Decision rationale:
 
 ## 6. Proposed Table Design
 
-Decision-spec design only. A later repo state may already contain the migration; treat that code as requiring Phase 4D-2A-2 verification / normalization before stable acceptance.
+Verified current table direction. Nullable `branch_id` unique behavior remains documented and is guarded by application validation for active duplicates in the first stable scope.
 
 Recommended table:
 
@@ -186,19 +187,18 @@ Notes:
 
 ## 7. First Runtime Scope
 
-First version only supports:
+First stable runtime mapping scope supports:
 
 ```txt
 event_type = vehicle_sale_completed
 mapping_key = accounts_receivable_account
 mapping_key = sales_revenue_account
-branch_id = null
+branch_id = null company default, with tested branch mapping fallback support
 is_active = true
 ```
 
 Not supported:
 
-- branch override
 - COGS mapping runtime
 - inventory mapping runtime
 - tax mapping runtime
@@ -238,7 +238,7 @@ Future branch override:
    mapping_key = key
 ```
 
-First version does not implement branch override. This is documented only as a future direction.
+Branch-specific lookup and fallback to company-level mapping are covered by resolver tests, but UI scope remains limited to the first AR / Sales Revenue keys.
 
 ## 9. Account Validation Rule
 
@@ -340,9 +340,8 @@ Not included:
 
 ```txt
 Phase 4D-2A-1: Runtime Mapping Decision Spec only
-Phase 4D-2A-2: Database-backed Mapping Foundation verification / normalization
-Phase 4D-2A-3: Minimal Mapping Management UI
-Phase 4D-2A-4: Preflight reads DB-backed mapping instead of config runtime_account_id
+Phase 4D-2A-2: Database-backed Mapping Foundation verified
+Phase 4D-2A-3: Minimal Mapping Management UI completed
 Phase 4D-2B: Revenue-side Journal Draft Generation only
 Phase 5: COGS / vehicle cost basis / inventory mapping
 Phase 6: tax / overpayment / refund / reversal
@@ -350,7 +349,7 @@ Phase 6: tax / overpayment / refund / reversal
 
 ## 13. Phase 4D-2A-2 Future Scope
 
-Phase 4D-2A-2 should verify / normalize existing or future DB-backed mapping foundation:
+Phase 4D-2A-2 verified / normalized existing DB-backed mapping foundation:
 
 - migration for `accounting_event_account_mappings`
 - model `AccountingEventAccountMapping`
@@ -358,10 +357,10 @@ Phase 4D-2A-2 should verify / normalize existing or future DB-backed mapping fou
 - request validation
 - service or resolver: `AccountingEventAccountMappingResolver`
 - tests
+- UI / routes / permissions
 
 Should not add yet:
 
-- UI
 - journal draft generation
 - journal lines generation
 - converted status write

@@ -1,8 +1,8 @@
 # Accounting Event Foundation Spec
 
-> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + DB-backed mapping foundation code exists and requires focused verification / normalization.
+> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified.
 > Scope: define Accounting Event product semantics, current foundation state, future data direction, status flow, source documents, tenant / permission / audit principles, and future Journal Draft / Revenue / COGS integration direction.
-> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. Phase 4A has implemented pending -> reviewed. Phase 4B has implemented pending / reviewed -> voided. Phase 4C completed the account mapping design spec. Phase 4C-2 implemented config-based mapping foundation metadata. Phase 4D-1 implemented convert skeleton. Phase 4D-2 completed journal draft generation spec. Phase 4D-2A implemented `AccountingEventJournalDraftPreflightService` only. DB-backed mapping migration / model / resolver / controller / UI / routes / permissions may already exist, but this checkpoint is not 4D-2B. It does not implement active route-wired successful journal draft conversion, journal draft generation runtime, or accounting recognition runtime behavior.
+> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. Phase 4A has implemented pending -> reviewed. Phase 4B has implemented pending / reviewed -> voided. Phase 4C completed the account mapping design spec. Phase 4C-2 implemented config-based mapping foundation metadata. Phase 4D-1 implemented convert skeleton. Phase 4D-2 completed journal draft generation spec. Phase 4D-2A implemented `AccountingEventJournalDraftPreflightService` only. Phase 4D-2A-2 verified DB-backed mapping migration / model / policy / request / resolver / controller / UI / routes / permissions. This checkpoint is not 4D-2B and does not implement active route-wired successful journal draft conversion, journal draft generation runtime, or accounting recognition runtime behavior.
 
 ## 1. Purpose
 
@@ -137,7 +137,7 @@ The current Accounting Event mapping foundation includes:
 - Phase 4D-2A preflight service is completed.
 - Phase 4D-2A-1 runtime mapping decision spec exists.
 - Formal runtime mapping direction is DB-backed mapping.
-- Phase 4D-2A-2 Database-backed Mapping Foundation code may already exist and is the next verification / normalization step.
+- Phase 4D-2A-2 Database-backed Mapping Foundation is verified.
 - Convert route still calls `AccountingEventJournalDraftPreflightService` only；`AccountingEventConvertService` exists but is not wired into `AccountingEventController::convert()`。
 
 The following are not completed yet:

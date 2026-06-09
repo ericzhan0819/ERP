@@ -6,7 +6,7 @@ Status:
 - Phase 4D-1 Convert Skeleton completed
 - Phase 4D-2A Convert Preflight Service completed
 - Phase 4D-2A-1 Runtime Mapping Decision Spec completed
-- Phase 4D-2A-2 DB-backed mapping foundation code may already exist and requires focused verification / normalization before stable acceptance
+- Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified
 
 Scope:
 
@@ -47,7 +47,7 @@ reviewed Accounting Event
 -> AccountingEventJournalDraftPreflightService
 -> checks module.accounting.events.convert and module.accounting.journals.create
 -> tenant / status / voided / converted guards
--> mapping exists / source_type / enabled / runtime_account_id checks
+-> mapping exists / source_type / enabled / DB-backed account mapping checks
 -> account company / branch / active / intended type checks
 -> revenue-side preview lines validated by AccountingJournalValidator
 -> no state change
@@ -61,7 +61,7 @@ Current boundaries:
 - Accounting Event void exists, but void does not cancel journals or reverse posted journals.
 - Convert route exists, but it currently only runs preflight and does not return preview as a formal endpoint.
 - Config mapping metadata exists and runtime account IDs are not committed.
-- DB-backed mapping migration / model / resolver / controller / UI / routes / permissions may already exist, but this checkpoint is not 4D-2B.
+- DB-backed mapping migration / model / policy / request / controller / resolver / UI / routes / permissions are verified for first stable scope, but this checkpoint is not 4D-2B.
 - Existing Accounting Journal creation, validation, numbering, posting, and voiding workflows remain the only supported journal runtime paths.
 
 ## Non-goals
@@ -83,7 +83,7 @@ This spec does not implement or approve:
 - No Invoice module
 - No Reports
 - No refund / reversal
-- No acceptance of mapping UI / DB-backed mapping foundation as stable without Phase 4D-2A-2 verification / normalization
+- No assumption that verified mapping UI / DB-backed mapping foundation activates journal draft generation
 - No Odoo code / CSS / XML / Python copy
 
 ## Journal Draft Generation Positioning
@@ -256,7 +256,7 @@ Minimum required mapping for future revenue-side first runtime:
 - `accounts_receivable_account`
 - `sales_revenue_account`
 
-These keys currently exist as required metadata in config, but `runtime_account_id` is still null and mapping is expected to remain disabled until actual runtime mapping is explicitly decided.
+These keys exist as required metadata in config, `runtime_account_id` remains null, and actual account IDs come from verified DB-backed mappings.
 
 Runtime mapping source decision:
 
@@ -431,7 +431,7 @@ Future Phase 4D-2B tests:
 Phase 4D-2-spec: this documentation only
 Phase 4D-2A: Convert preflight service only, no writes
 Phase 4D-2A-1: Runtime mapping decision spec completed
-Phase 4D-2A-2: DB-backed mapping foundation verification / normalization next
+Phase 4D-2A-2: DB-backed mapping foundation verified
 Phase 4D-2B: Revenue-side draft generation only
 Phase 4D-2C: optional preview UI / backend preview endpoint
 Phase 5: COGS / vehicle cost basis / inventory mapping after cost capitalization rules are reliable

@@ -2,9 +2,9 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed；Accounting Event Phase 4C Account Mapping Spec completed；Accounting Event Phase 4C-2 Config-based Mapping Foundation completed；Accounting Event Phase 4D-1 Convert Skeleton completed；Accounting Event Phase 4D-2 Journal Draft Generation Spec completed；Accounting Event Phase 4D-2A Convert Preflight Service completed；Accounting Event Phase 4D-2A-1 Runtime Mapping Decision Spec completed；Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation exists and is under focused verification / normalization。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed；Accounting Event Phase 4C Account Mapping Spec completed；Accounting Event Phase 4C-2 Config-based Mapping Foundation completed；Accounting Event Phase 4D-1 Convert Skeleton completed；Accounting Event Phase 4D-2 Journal Draft Generation Spec completed；Accounting Event Phase 4D-2A Convert Preflight Service completed；Accounting Event Phase 4D-2A-1 Runtime Mapping Decision Spec completed；Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified。
 - 穩定節點：Transaction Completion MVP completed through UI，已涵蓋 RBAC foundation、Data model foundation、Backend completion action、Backend completion payload、React UI、Manual QA checklist documented。
-- 最新驗證狀態：Phase 4D-2A 新增 `AccountingEventJournalDraftPreflightService`，convert route 只做 preflight；DB-backed mapping migration / model / resolver / controller / UI / routes / permissions may already exist；完整驗證結果以本次執行命令為準。
+- 最新驗證狀態：Phase 4D-2A-2 verified；convert route 只做 preflight；DB-backed mapping migration / model / policy / request / controller / resolver / UI / routes / permissions exist and focused verification passed。
 - 本文件為目前穩定節點同步整理；目前不實作退款、不做 AR / AP / cash / invoice / reports 整合、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
 
 ## 技術棧
@@ -53,7 +53,7 @@
 - Accounting Event Phase 4D-2 Journal Draft Generation Spec
 - Accounting Event Phase 4D-2A Convert Preflight Service
 - Accounting Event Phase 4D-2A-1 Runtime Mapping Decision Spec
-- Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation exists; focused verification / normalization pending
+- Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified
 - Confirm Delivery / Transaction Completion Spec
 - Sales / Payments / Delivery semantics UI hints
 - Transaction Completion / Confirm Delivery MVP：Completion RBAC、Completion data fields、Completion backend action、Completion payload、Completion UI、Completion audit event、Manual QA checklist
@@ -318,9 +318,21 @@
 - Decided formal runtime mapping should use DB-backed mapping。
 - Config remains metadata。
 - Production should not store actual runtime account IDs in config。
-- Next step：Phase 4D-2A-2 Verification / Normalization。
-- DB-backed mapping migration / model / resolver / controller / UI / routes / permissions may already exist and must be audited before stable acceptance。
+- Phase 4D-2A-2 Database-backed Mapping Foundation verified。
+- DB-backed mapping migration / model / policy / request / controller / resolver / UI / routes / permissions exist and are stable for first scope。
 - No journal draft generation。
+
+## Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation
+
+- Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified。
+- Verified `accounting_event_account_mappings` migration、`AccountingEventAccountMapping` model、policy、requests、controller、resolver、React pages、routes、module registry、permissions、focused tests。
+- First stable runtime mapping scope：`vehicle_sale_completed` + `accounts_receivable_account` / `sales_revenue_account`。
+- Config remains metadata；production config has no runtime account IDs。
+- Resolver uses DB-backed mappings, validates same company active accounts, intended account type, active mapping, source type, and branch fallback to company-level mapping。
+- Convert route remains preflight-only and calls `AccountingEventJournalDraftPreflightService`。
+- `AccountingEventConvertService` exists but is not route-wired。
+- No active journal draft generation、journal lines generation、converted status transition、`converted_journal_entry_id` write、journal number generation from convert route、or `accounting_event.converted` audit。
+- Phase 4D-2B remains future。
 
 ## Accounting Event Phase 4D-2A-3 Minimal Mapping Management UI
 

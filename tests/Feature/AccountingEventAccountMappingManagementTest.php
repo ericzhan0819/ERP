@@ -25,6 +25,8 @@ beforeEach(function (): void {
     Role::findOrCreate('admin', 'web');
     Role::findOrCreate('accounting', 'web');
     Role::findOrCreate('viewer', 'web');
+    Role::findOrCreate('sales', 'web');
+    Role::findOrCreate('inventory', 'web');
 });
 
 function aeMappingEnsureTenant(int $companyId, ?int $branchId = null): void
@@ -78,6 +80,14 @@ it('admin and accounting can view mapping index while viewer cannot', function (
     $this->actingAs(aeMappingUser('viewer'))->get(route('employee-system.accounting.event-mappings.index'))->assertForbidden();
 });
 
+it('broad accounting view permission alone cannot access mapping index', function (): void {
+    Permission::findOrCreate('module.accounting.view', 'web');
+    $user = aeMappingUser('viewer');
+    $user->givePermissionTo('module.accounting.view');
+
+    $this->actingAs($user)->get(route('employee-system.accounting.event-mappings.index'))->assertForbidden();
+});
+
 it('admin and accounting can open create page', function (): void {
     foreach (['admin', 'accounting'] as $role) {
         $this->actingAs(aeMappingUser($role))->get(route('employee-system.accounting.event-mappings.create'))->assertOk();
@@ -88,7 +98,7 @@ it('creates company default AR mapping and ignores frontend protected overrides'
     $user = aeMappingUser('admin');
     $account = aeMappingAccount($user, 'asset');
 
-    $this->actingAs($user)->post(route('employee-system.accounting.event-mappings.store'), aeMappingPayload($account, ['company_id' => 999, 'created_by' => 999, 'updated_by' => 999, 'source_type' => 'wrong_source']))->assertRedirect(route('employee-system.accounting.event-mappings.index'));
+    $this->actingAs($user)->post(route('employee-system.accounting.event-mappings.store'), aeMappingPayload($account, ['company_id' => 999, 'created_by' => 999, 'updated_by' => 999, 'source_type' => 'vehicle_sale_completion']))->assertRedirect(route('employee-system.accounting.event-mappings.index'));
 
     $mapping = AccountingEventAccountMapping::firstOrFail();
     expect((int) $mapping->company_id)->toBe((int) $user->company_id)
@@ -96,6 +106,14 @@ it('creates company default AR mapping and ignores frontend protected overrides'
         ->and((int) $mapping->created_by)->toBe((int) $user->id)
         ->and((int) $mapping->updated_by)->toBe((int) $user->id)
         ->and($mapping->source_type)->toBe('vehicle_sale_completion');
+    aeMappingAssertNoAccountingMutation();
+});
+
+it('rejects source type outside mapping metadata', function (): void {
+    $user = aeMappingUser('admin');
+    $account = aeMappingAccount($user, 'asset');
+
+    $this->actingAs($user)->post(route('employee-system.accounting.event-mappings.store'), aeMappingPayload($account, ['source_type' => 'wrong_source']))->assertSessionHasErrors('source_type');
     aeMappingAssertNoAccountingMutation();
 });
 
@@ -158,6 +176,17 @@ it('update cannot change to wrong account type', function (): void {
 
     $this->actingAs($user)->patch(route('employee-system.accounting.event-mappings.update', $mapping->id), aeMappingPayload($wrong))->assertSessionHasErrors('account_id');
 });
+
+it('viewer sales and inventory cannot create or update mappings', function (string $role): void {
+    $admin = aeMappingUser('admin');
+    $mapping = aeMappingCreate($admin, 'accounts_receivable_account', aeMappingAccount($admin, 'asset'));
+    $user = aeMappingUser($role, (int) $admin->company_id, $admin->branch_id === null ? null : (int) $admin->branch_id);
+    $account = aeMappingAccount($admin, 'asset');
+
+    $this->actingAs($user)->post(route('employee-system.accounting.event-mappings.store'), aeMappingPayload($account))->assertForbidden();
+    $this->actingAs($user)->patch(route('employee-system.accounting.event-mappings.update', $mapping->id), aeMappingPayload($account))->assertForbidden();
+    aeMappingAssertNoAccountingMutation();
+})->with(['viewer', 'sales', 'inventory']);
 
 it('index payload does not expose raw tenant or actor ids', function (): void {
     $user = aeMappingUser('admin');

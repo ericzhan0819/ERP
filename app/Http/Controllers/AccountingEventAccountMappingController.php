@@ -201,6 +201,10 @@ class AccountingEventAccountMappingController extends Controller
             throw ValidationException::withMessages(['event_type' => '目前只支援車輛交易完成事件。']);
         }
 
+        if (array_key_exists('source_type', $validated) && $validated['source_type'] !== null && $validated['source_type'] !== $this->sourceType()) {
+            throw ValidationException::withMessages(['source_type' => '來源類型不符合目前支援的會計事件映射。']);
+        }
+
         $branchId = array_key_exists('branch_id', $validated) && $validated['branch_id'] !== null ? (int) $validated['branch_id'] : null;
         if ($user->branch_id !== null && $branchId !== null && (int) $user->branch_id !== $branchId) {
             throw ValidationException::withMessages(['branch_id' => '分店映射只能使用公司預設或目前分店。']);

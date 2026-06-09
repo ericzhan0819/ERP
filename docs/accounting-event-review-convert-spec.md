@@ -1,6 +1,6 @@
 # Accounting Event Review / Convert Workflow Spec
 
-Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + DB-backed mapping foundation code exists and requires focused verification / normalization.
+Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified.
 Scope: review / void / convert skeleton and `AccountingEventJournalDraftPreflightService` preview are implemented; journal draft generation spec exists at `docs/accounting-event-journal-draft-generation-spec.md`, but active route-wired journal draft creation, revenue recognition, COGS recognition, posting, and additional accounting runtime behavior remain out of scope until explicit Phase 4D-2B acceptance.
 This document reflects the implemented review, void, convert skeleton, and preflight workflows. It does not implement journal draft creation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
 
@@ -123,9 +123,9 @@ Accounting Event Phase 4D-2A completed:
 - runtime still does not write `converted_journal_entry_id`
 - runtime still does not write `accounting_event.converted` audit
 - mapping config default remains disabled and no actual runtime account IDs in committed config
-- Phase 4D-2A-2 Verification / Normalization remains the next step before any direct Phase 4D-2B work
+- Phase 4D-2A-2 Database-backed Mapping Foundation is verified before any direct Phase 4D-2B work
 - COGS / tax / overpayment / refund / reversal remains backlog
-- DB-backed mapping migration / model / resolver / controller / UI / routes / permissions may already exist, but this checkpoint is not 4D-2B.
+- DB-backed mapping migration / model / policy / request / controller / resolver / UI / routes / permissions are verified, but this checkpoint is not 4D-2B.
 - Convert route still calls `AccountingEventJournalDraftPreflightService` only；`AccountingEventConvertService` exists but is not wired into `AccountingEventController::convert()`。
 
 Current business flow:

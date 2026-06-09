@@ -24,6 +24,24 @@ class AccountingEventAccountMappingPolicy
     }
 
     /**
+     * 技術註解：單筆檢視沿用正式 mapping view 權限並檢查 tenant/branch，避免以寬鬆會計權限讀取跨租戶映射。
+     */
+    public function view(User $user, AccountingEventAccountMapping $mapping): bool
+    {
+        if (! $user->can('module.accounting.event-mappings.view')) {
+            return false;
+        }
+
+        if ((int) ($user->company_id ?? 0) !== (int) $mapping->company_id) {
+            return false;
+        }
+
+        return $user->branch_id === null
+            || $mapping->branch_id === null
+            || (int) $user->branch_id === (int) $mapping->branch_id;
+    }
+
+    /**
      * 技術註解：更新需同時檢查權限與 tenant/branch 邊界，防止跨公司或跨分店覆寫會計映射造成錯誤認列風險。
      */
     public function update(User $user, AccountingEventAccountMapping $mapping): bool

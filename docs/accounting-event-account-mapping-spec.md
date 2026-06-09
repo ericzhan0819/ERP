@@ -1,7 +1,7 @@
 # Accounting Event Account Mapping Spec
 
-Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + DB-backed mapping foundation code exists and requires focused verification / normalization before stable Phase 4D-2A-2 acceptance.
-Scope: config metadata, DB-backed mapping migration / model / resolver / controller / UI / routes / permissions may already exist; `AccountingEventJournalDraftPreflightService` preview exists; detailed draft generation runtime boundary is documented in `docs/accounting-event-journal-draft-generation-spec.md`.
+Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + Accounting Event Phase 4D-2A-2 Database-backed Mapping Foundation verified.
+Scope: config metadata, verified DB-backed mapping migration / model / policy / requests / resolver / controller / UI / routes / permissions; `AccountingEventJournalDraftPreflightService` preview exists; detailed draft generation runtime boundary is documented in `docs/accounting-event-journal-draft-generation-spec.md`.
 This document does not accept 4D-2B journal draft creation, journal lines creation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or successful runtime conversion as active route behavior.
 
 ## 1. Purpose
@@ -36,7 +36,7 @@ Boundaries:
 - This document defines runtime draft generation direction. Phase 4D-1 convert skeleton exists but mapping remains disabled and does not produce a draft.
 - Detailed draft generation runtime boundary is defined in `docs/accounting-event-journal-draft-generation-spec.md`.
 - Runtime mapping decision is defined in `docs/accounting-event-runtime-mapping-decision-spec.md`.
-- Phase 4D-2A-2 added `accounting_event_account_mappings`, `AccountingEventAccountMapping`, and `AccountingEventAccountMappingResolver`.
+- Phase 4D-2A-2 verified `accounting_event_account_mappings`, `AccountingEventAccountMapping`, policy, requests, resolver, controller, UI, routes, permissions, and tests.
 
 ## 2. Current Repo State
 
@@ -116,7 +116,7 @@ Accounting Event Phase 4D-2A:
 - runtime still does not write `converted_journal_entry_id`
 - runtime still does not write `accounting_event.converted` audit
 - mapping config default remains disabled and no actual runtime account IDs in committed config
-- Phase 4D-2A-2 Verification / Normalization remains the next step before any direct 4D-2B work
+- Phase 4D-2A-2 Database-backed Mapping Foundation is verified before any direct 4D-2B work
 - COGS / tax / overpayment / refund / reversal remains backlog
 - Convert route still calls `AccountingEventJournalDraftPreflightService` only；`AccountingEventConvertService` exists but is not wired into `AccountingEventController::convert()`。
 
@@ -136,7 +136,7 @@ Currently not completed:
 - Cash / Bank
 - Invoice
 - Reports
-- Mapping admin UI code may already exist and must remain limited to AR / Sales Revenue mapping management until verified; COGS / tax / overpayment keys remain future-disabled.
+- Mapping admin UI exists and remains limited to AR / Sales Revenue mapping management; COGS / tax / overpayment keys remain future-disabled.
 
 ## 3. Design Principles
 
@@ -689,7 +689,7 @@ This document does not do:
 - This spec reflects Phase 4D-1 Convert Skeleton completed.
 - This spec adds no runtime behavior.
 - This spec does not change database schema.
-- Convert route / permission skeleton exists; mapping management routes / permissions may already exist and require Phase 4D-2A-2 verification / normalization.
+- Convert route / permission skeleton exists; mapping management routes / permissions are verified for Phase 4D-2A-2 first scope.
 - This spec does not change React pages.
 - Mapping config remains disabled.
 - Mapping config contains no actual account IDs or fixed account codes.
