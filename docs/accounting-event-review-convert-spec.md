@@ -1,6 +1,6 @@
 # Accounting Event Review / Convert Workflow Spec
 
-Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed.
+Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed.
 Scope: review / void / convert skeleton and `AccountingEventJournalDraftPreflightService` preview are implemented; journal draft generation spec exists at `docs/accounting-event-journal-draft-generation-spec.md`, but runtime journal draft creation, revenue recognition, COGS recognition, posting, and additional accounting runtime behavior remain out of scope until Phase 4D-2B.
 This document reflects the implemented review, void, convert skeleton, and preflight workflows. It does not implement journal draft creation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
 
@@ -626,6 +626,8 @@ Phase 4C-2: completed config-based mapping foundation
 Phase 4D-1: completed convert permission / route / request / policy / controller skeleton only
 Phase 4D-2-spec: completed journal draft generation design spec only
 Phase 4D-2A: future convert preflight service only, no writes
+Phase 4D-2A-1: completed runtime mapping decision spec only
+Phase 4D-2A-2: future DB-backed mapping foundation, no UI, no draft generation
 Phase 4D-2B: future revenue-side journal draft generation only
 Phase 5: COGS / vehicle cost basis / inventory mapping after cost capitalization rules are reliable
 ```
@@ -640,7 +642,8 @@ Phase boundaries:
 - Phase 4D-1 does not generate journal draft.
 - Phase 4D-1 returns 422 when mapping is disabled / missing / source_type mismatch.
 - Phase 4D-2-spec completed as docs-only.
-- Next runtime step should be Phase 4D-2A preflight service only.
+- Phase 4D-2A-1 completed and decided formal runtime mapping should be DB-backed.
+- Next runtime step should be DB-backed mapping foundation, not direct draft generation.
 - Phase 4D-2B should be revenue-side draft generation only.
 - Phase 5 is the first place to consider COGS / vehicle cost basis / inventory mapping.
 - Detailed draft generation spec is `docs/accounting-event-journal-draft-generation-spec.md`.

@@ -1,160 +1,382 @@
 # Accounting Event Runtime Mapping Decision Spec
 
-## Status
+## 1. Status / Scope
 
-- Accounting Event Runtime Mapping Decision Spec completed.
-- Phase 4D-2A Convert Preflight Service completed.
-- Phase 4D-2A-2 Database-backed Mapping Foundation completed.
-- Accounting Event Phase 4D-2A-3 Minimal Mapping Management UI completed.
-- Accounting Event Phase 4D-2A-3 Manual QA Checklist completed.
-- Accounting Event Phase 4D-2B Revenue-side Journal Draft Generation completed.
-- Accounting Event Phase 4D-2B Manual QA Checklist completed.
-- Added `docs/accounting-event-mapping-manual-qa-checklist.md`.
-- Added `docs/accounting-event-journal-draft-manual-qa-checklist.md`.
-- This checklist update is docs-only.
-- No runtime code changed.
-- 4D-2B runtime already completed in commit `1cb20ee`.
-- Runtime code now includes revenue-side draft generation.
-- Phase 4D-2B revenue-side journal draft generation creates draft journal header and AR / Sales Revenue lines only.
-- Runtime foundation now includes minimal mapping management UI plus draft generation guarded by reviewed status, enabled config, DB mappings, convert permission, and journal create permission.
-- COGS / tax / refund / reversal remain backlog.
-- 4D-2B UI polish or Phase 5 decision spec remains next.
+Status:
 
-## Decision
+- Spec completed only
+- Phase 4D-2A Convert Preflight Service completed
+- Runtime mapping decision documented
+- Database-backed mapping implementation not yet started
 
-- Committed `config/accounting_event_mappings.php` should stay short-term metadata only.
-- Committed config should keep event type, mapping key, account type compatibility, and journal line template metadata.
-- Formal production `account_id` values must not be hard-coded into committed config.
-- Config override must not be treated as production runtime accounting setup.
-- The next runtime implementation should build database-backed mapping foundation before Phase 4D-2B journal draft generation.
+Scope:
 
-## Why Database-backed Mapping
+- Decide how future Accounting Event -> Journal Draft runtime account mapping should be provided
+- Compare config-based mapping vs database-backed mapping
+- Recommend next implementation path
+- No runtime code in this task
+- No migration in this task
+- No model / controller / policy / request / UI in this task
+- No journal draft generation in this task
 
-- The project is expected to become SaaS / tenant scoped.
-- Different company / branch scopes may require different accounting accounts.
-- Account IDs are database data and do not belong in the repository.
-- Mapping changes require audit trail because they affect accounting output.
-- Mapping validation must stay consistent with `AccountingAccount` company / branch / active / type rules.
+## 2. Current Problem
 
-## Database-backed Mapping Foundation
+- `AccountingEventJournalDraftPreflightService` already needs `runtime_account_id` to produce a valid preview.
+- Current `config/accounting_event_mappings.php` only keeps metadata.
+- Config defaults should not hard-code account ids.
+- SaaS / multi-company / multi-branch scenarios are not suitable for account ids in config.
+- Different companies have different Chart of Accounts.
+- The same company may later need branch-level mapping overrides.
+- Therefore, before Phase 4D-2B actually creates journal drafts, the runtime mapping source must be decided.
 
-Table:
+## 3. Option A: Config-based runtime_account_id
+
+Implementation direction:
+
+```txt
+config/accounting_event_mappings.php
+-> mapping_keys.*.runtime_account_id = actual accounting_accounts.id
+-> preflight service reads runtime_account_id
+-> convert service creates journal draft
+```
+
+Pros:
+
+- Fastest
+- No migration required
+- No UI required
+- Simple tests
+- Single-company MVP can run quickly
+
+Cons:
+
+- Not suitable for SaaS / multi-company
+- Account id is database-specific and should not be written into config
+- Different environments may have different ids
+- Hard to manage when each company has different mappings
+- Accounting staff cannot adjust mappings inside the system
+- Mapping changes require code changes / deployment
+- Weak audit trail
+- Branch override is difficult
+- Easy to turn config from metadata into runtime data and blur boundaries
+
+Conclusion:
+
+- Option A can be used as local test / temporary development override.
+- Option A is not suitable as the formal runtime mapping strategy.
+- Production mapping should not be stored in config long term.
+
+## 4. Option B: Database-backed runtime mapping
+
+Implementation direction:
+
+```txt
+accounting_event_account_mappings table
+-> company_id
+-> branch_id nullable
+-> event_type
+-> mapping_key
+-> account_id
+-> is_active
+-> created_by
+-> updated_by
+-> timestamps
+```
+
+Future flow:
+
+```txt
+AccountingEventJournalDraftPreflightService
+-> read config metadata for allowed event_type / mapping_key / intended account types
+-> resolve actual account_id from DB mapping
+-> validate account company / branch / active / type
+-> build preview
+```
+
+Pros:
+
+- Suitable for SaaS / multi-company
+- Each company can have its own mapping
+- Nullable `branch_id` supports company-level default
+- Future branch-level override is possible
+- UI management is possible
+- Audit log is possible
+- Mapping can be adjusted without deployment
+- Config remains metadata and DB stores runtime data
+- Better fit for long-term ERP direction
+
+Cons:
+
+- Requires migration / model / policy / request / controller / UI
+- More tests required
+- Fallback / override rules must be defined
+- Slower initially than config-based mapping
+
+Conclusion:
+
+- Option B should be the formal direction.
+- Build a minimal database-backed mapping foundation first, then a simple mapping management UI.
+- Phase 4D-2B revenue-side journal draft generation should wait until DB-backed mapping foundation is completed.
+
+## 5. Final Decision
+
+```txt
+正式 runtime mapping 採用 Option B：Database-backed runtime mapping。
+config/accounting_event_mappings.php 繼續保留 metadata / allowed mapping keys / intended account types / template directions。
+actual runtime account_id 不應寫進 config 預設檔。
+```
+
+Decision rationale:
+
+- The project target is a used car ERP / future SaaS.
+- Tenant scope already uses company / branch.
+- Chart of Accounts is already DB data.
+- Account ids are environment-specific and tenant-specific runtime data.
+- Accounting staff will need to maintain mapping inside the system in the future.
+- Hard-coded config binds deployment and data environment together, which hurts long-term maintenance.
+- Database-backed mapping keeps the system auditable, adjustable, and extensible.
+
+## 6. Proposed Table Design
+
+Design only. No migration is added in this task.
+
+Recommended table:
 
 ```txt
 accounting_event_account_mappings
 ```
 
-Fields:
-
-- `id`
-- `company_id`
-- `branch_id` nullable
-- `event_type`
-- `source_type`
-- `mapping_key`
-- `account_id`
-- `is_active`
-- `notes` nullable
-- `created_by`
-- `updated_by`
-- timestamps
-
-Unique candidate:
+Columns:
 
 ```txt
-company_id + branch_id + event_type + mapping_key
+id
+company_id
+branch_id nullable
+event_type string
+mapping_key string
+account_id foreign id
+is_active boolean default true
+created_by nullable foreign id users
+updated_by nullable foreign id users
+created_at
+updated_at
 ```
 
-Branch rule:
-
-- `branch_id = null` means company default.
-- Branch-specific mapping can override company default later.
-
-Phase 4D-2A-2 added the migration, model, and resolver. Because MySQL allows multiple `NULL` values in unique indexes, branch-null company-default uniqueness is still backed by resolver behavior and should be reinforced by future UI / service validation rather than generated-column tricks in this phase.
-
-## Resolver Priority
-
-Resolution should:
-
-- First try exact branch mapping.
-- Then fallback to company-level mapping where `branch_id` is null.
-- Reject cross-company account.
-- Reject inactive mapping.
-- Reject inactive account.
-- Reject wrong account type.
-
-## First Supported Runtime Scope
-
-First supported event type remains only:
+Indexes / constraints direction:
 
 ```txt
-vehicle_sale_completed
+index company_id
+index branch_id
+index event_type
+index mapping_key
+index account_id
+unique company_id + branch_id + event_type + mapping_key
 ```
 
-First required mapping keys remain only:
+Notes:
 
-- `accounts_receivable_account`
-- `sales_revenue_account`
+- MySQL unique index behavior with nullable `branch_id` must be handled carefully.
+- If nullable `branch_id` makes unique behavior unsuitable, future migration can consider generated column `normalized_branch_key`.
+- Or first skip branch override and only implement company-level mapping.
+- Or use application-level validation to prevent duplicate mappings.
+- First version should only implement company-level mapping, meaning `branch_id = null`.
+- Branch override should remain later work.
 
-Optional / future keys remain backlog:
+## 7. First Runtime Scope
 
-- `vehicle_inventory_account`
-- `cogs_account`
-- `tax_payable_account`
-- `overpayment_account`
-- `rounding_adjustment_account`
+First version only supports:
 
-## Minimal Mapping Management UI
+```txt
+event_type = vehicle_sale_completed
+mapping_key = accounts_receivable_account
+mapping_key = sales_revenue_account
+branch_id = null
+is_active = true
+```
 
-- Phase 4D-2A-3 added the `accounting-event-mappings` module, routes, controller, policy, FormRequests, React pages, seeder permissions, and feature tests.
-- The UI only manages DB-backed mapping records for preflight / future draft generation account resolution.
-- First scope only supports `vehicle_sale_completed` with required keys `accounts_receivable_account` and `sales_revenue_account`.
-- The UI does not enable config runtime, does not write account IDs into config, and does not create journal draft records.
+Not supported:
 
-## Manual QA Checklist
+- branch override
+- COGS mapping runtime
+- inventory mapping runtime
+- tax mapping runtime
+- overpayment mapping runtime
+- rounding adjustment runtime
+- payment_received event
+- vehicle_cost_recorded event
+- manual_accounting_review event
 
-- Phase 4D-2A-3 Manual QA Checklist completed.
-- Added `docs/accounting-event-mapping-manual-qa-checklist.md`.
-- The checklist covers permission / sidebar, mapping index, create, validation, edit, preflight boundary, negative security, and accounting boundary checks.
-- This is docs-only.
-- No runtime code changed.
-- 4D-2B revenue-side journal draft generation remains backlog.
+## 8. Mapping Resolution Rule
 
-## Journal Draft Manual QA Checklist
+Future service resolution order.
 
-- Phase 4D-2B Manual QA Checklist completed.
-- Added `docs/accounting-event-journal-draft-manual-qa-checklist.md`.
-- This is docs-only.
-- No runtime code changed.
-- 4D-2B runtime already completed in commit `1cb20ee`.
-- Checklist confirms draft-only journal creation, two revenue-side lines, duplicate convert blocking, mapping validation, permission denial, audit safety, and no COGS / tax / refund / reversal behavior.
-- 4D-2B UI polish or Phase 5 decision spec remains next.
+Phase 1 company-level only:
 
-## Explicit Prohibitions
+```txt
+Find active mapping where:
+company_id = event.company_id
+branch_id is null
+event_type = event.event_type
+mapping_key = required mapping key
+```
 
-This decision spec does not allow:
+Future branch override:
 
-- No automatic posting.
-- No COGS runtime.
-- No inventory runtime.
-- No tax runtime.
-- No overpayment / refund / reversal.
-- No profit / gross margin payload.
-- No automatic posting.
-- No COGS recognition runtime.
+```txt
+1. Try branch mapping:
+   company_id = event.company_id
+   branch_id = event.branch_id
+   event_type = event.event_type
+   mapping_key = key
 
-## Phase Recommendation
+2. Fallback company mapping:
+   company_id = event.company_id
+   branch_id is null
+   event_type = event.event_type
+   mapping_key = key
+```
 
-- Phase 4D-2A completed: preflight service.
-- Phase 4D-2A-1 completed: runtime mapping decision spec.
-- Phase 4D-2A-2 completed: database-backed mapping foundation, no UI, no draft generation.
-- Phase 4D-2A-3 completed: minimal mapping management UI, no draft generation.
-- Phase 4D-2B completed: revenue-side journal draft generation only.
-- Phase 5 future: COGS / vehicle cost basis / tax / overpayment / refund / reversal.
+First version does not implement branch override. This is documented only as a future direction.
 
-## Accounting Boundary
+## 9. Account Validation Rule
 
-- Preflight only returns backend-validated preview.
-- Preflight must not be treated as recognition or conversion.
-- Formal draft generation must wait until runtime mapping source, tenant scope, account validation, audit requirements, and idempotency are implemented in runtime code.
-- Posting remains manual through the existing Accounting Journal workflow.
+Future DB-backed mapping resolution must preserve existing preflight validation:
+
+- account exists
+- `account.company_id = event.company_id`
+- `account.is_active = true`
+- first version `account.branch_id` should be null or explicitly allowed
+- account type must match config metadata `intended_account_types`
+- AR / clearing: `asset`
+- Sales Revenue: `revenue`
+- account cannot be from another company
+- inactive account cannot be used
+- wrong type account cannot be used
+
+## 10. Permission Design
+
+Future mapping management permission options:
+
+```txt
+module.accounting.mappings.view
+module.accounting.mappings.update
+```
+
+More precise option:
+
+```txt
+module.accounting.event-mappings.view
+module.accounting.event-mappings.update
+```
+
+Recommended permissions:
+
+```txt
+module.accounting.event-mappings.view
+module.accounting.event-mappings.update
+```
+
+Rationale:
+
+- Mapping is dedicated to Accounting Event, not all accounting mappings.
+- Future tax mappings / payment mappings / cost mappings may exist.
+- `event-mappings` avoids an overly broad permission name.
+
+Recommended default roles:
+
+- admin: view / update
+- accounting: view / update
+- viewer: none
+- sales: none
+- inventory: none
+
+Important boundaries:
+
+- `module.accounting.view` cannot replace mapping permissions.
+- `module.accounting.events.convert` cannot replace mapping update.
+- `module.accounting.journals.create` cannot replace mapping update.
+
+## 11. Future UI Direction
+
+Future minimal mapping UI.
+
+Route direction:
+
+```txt
+/employee-system/accounting/event-mappings
+```
+
+Page:
+
+```txt
+resources/js/Pages/Accounting/EventMappings/Index.jsx
+```
+
+First UI only needs:
+
+- Display event_type: 車輛交易完成
+- Display mapping_key: `accounts_receivable_account`
+- Display mapping_key: `sales_revenue_account`
+- Display label / description / intended_account_types
+- Select active AccountingAccount
+- Only show same company active accounts
+- Save mapping
+- Do not show COGS / tax / overpayment runtime fields, or show them as future disabled
+- Do not allow manual account_id input
+- Do not implement complex workflow
+
+Not included:
+
+- branch override UI
+- audit diff UI
+- mapping versioning
+- mapping approval
+- preview endpoint
+- journal generation
+
+## 12. Future Implementation Sequence
+
+```txt
+Phase 4D-2A-1: Runtime Mapping Decision Spec only
+Phase 4D-2A-2: Database-backed Mapping Foundation
+Phase 4D-2A-3: Minimal Mapping Management UI
+Phase 4D-2A-4: Preflight reads DB-backed mapping instead of config runtime_account_id
+Phase 4D-2B: Revenue-side Journal Draft Generation only
+Phase 5: COGS / vehicle cost basis / inventory mapping
+Phase 6: tax / overpayment / refund / reversal
+```
+
+## 13. Phase 4D-2A-2 Future Scope
+
+Future Phase 4D-2A-2 should add:
+
+- migration for `accounting_event_account_mappings`
+- model `AccountingEventAccountMapping`
+- policy
+- request validation
+- service or resolver: `AccountingEventAccountMappingResolver`
+- tests
+
+Should not add yet:
+
+- UI
+- journal draft generation
+- journal lines generation
+- converted status write
+- converted_journal_entry_id write
+- COGS
+- tax
+- overpayment
+- refund
+- reports
+
+## 14. Acceptance Criteria
+
+- New spec exists
+- Clearly compares Option A / Option B
+- Clearly decides to use DB-backed mapping
+- Clearly states config only keeps metadata
+- Clearly states production should not hard-code `runtime_account_id`
+- Clearly states first runtime only supports `vehicle_sale_completed` AR / Sales Revenue mapping
+- Clearly states next implementation sequence
+- No runtime code changed

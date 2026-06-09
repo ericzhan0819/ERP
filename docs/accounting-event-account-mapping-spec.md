@@ -1,6 +1,6 @@
 # Accounting Event Account Mapping Spec
 
-Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed.
+Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed.
 Scope: config metadata, convert skeleton, and `AccountingEventJournalDraftPreflightService` preview exist; detailed draft generation runtime boundary is documented in `docs/accounting-event-journal-draft-generation-spec.md`.
 This document does not implement mapping management React pages, routes, permissions, seeders, journal draft creation, journal lines creation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or successful runtime conversion.
 
@@ -256,11 +256,12 @@ Cons:
 Current recommendation:
 
 ```txt
-Short-term: committed config remains event type / mapping key / line template metadata only.
+Formal decision: DB-backed runtime mapping.
+Config-based mapping remains metadata / local testing only.
 Next runtime step: database-backed mapping foundation before revenue-side draft generation.
 ```
 
-It remains disabled for runtime conversion and does not contain account IDs. Database-backed mapping is now the recommended prerequisite before 4D-2B draft generation.
+It remains disabled for runtime conversion and does not contain account IDs. Database-backed mapping is now the formal prerequisite before 4D-2B draft generation. See `docs/accounting-event-runtime-mapping-decision-spec.md`.
 
 ## 7. Suggested Mapping Keys
 

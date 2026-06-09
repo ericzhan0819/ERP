@@ -5,7 +5,8 @@ Status:
 - Spec completed only
 - Phase 4D-1 Convert Skeleton completed
 - Phase 4D-2A Convert Preflight Service completed
-- Phase 4D-2B Revenue-side Draft Generation only remains the next step
+- Phase 4D-2A-1 Runtime Mapping Decision Spec completed
+- Phase 4D-2A-2 DB-backed mapping foundation remains the next step
 
 Scope:
 
@@ -255,10 +256,13 @@ Minimum required mapping for future revenue-side first runtime:
 
 These keys currently exist as required metadata in config, but `runtime_account_id` is still null and mapping is expected to remain disabled until actual runtime mapping is explicitly decided.
 
-Before enabling runtime, decide:
+Runtime mapping source decision:
 
-- How config-based mapping receives actual account IDs, or
-- Whether to switch to database-backed mapping.
+- Formal runtime mapping source should be DB-backed.
+- Config `runtime_account_id` is not the production strategy.
+- `config/accounting_event_mappings.php` should keep metadata / allowed mapping keys / intended account types / template directions.
+- Actual runtime account IDs should not be committed in config defaults.
+- See `docs/accounting-event-runtime-mapping-decision-spec.md`.
 
 Mapping account type validation:
 
@@ -424,6 +428,8 @@ Future Phase 4D-2B tests:
 ```txt
 Phase 4D-2-spec: this documentation only
 Phase 4D-2A: Convert preflight service only, no writes
+Phase 4D-2A-1: Runtime mapping decision spec completed
+Phase 4D-2A-2: DB-backed mapping foundation next
 Phase 4D-2B: Revenue-side draft generation only
 Phase 4D-2C: optional preview UI / backend preview endpoint
 Phase 5: COGS / vehicle cost basis / inventory mapping after cost capitalization rules are reliable
