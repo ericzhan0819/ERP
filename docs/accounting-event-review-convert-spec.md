@@ -1,7 +1,7 @@
 # Accounting Event Review / Convert Workflow Spec
 
 Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed.
-Scope: review / void / convert skeleton and convert preflight preview are implemented; journal draft generation spec exists, but runtime journal draft creation, revenue recognition, COGS recognition, posting, and additional accounting runtime behavior remain not implemented.
+Scope: review / void / convert skeleton and convert preflight preview are implemented; journal draft generation spec exists at `docs/accounting-event-journal-draft-generation-spec.md`, but this spec still keeps runtime journal draft creation, revenue recognition, COGS recognition, posting, and additional accounting runtime behavior out of scope.
 This document reflects the implemented review, void, convert skeleton, and preflight workflows. It does not implement journal draft creation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
 
 ## 1. Purpose
@@ -642,6 +642,8 @@ Phase boundaries:
 - Next runtime step should be Phase 4D-2A preflight service only.
 - Phase 4D-2B should be revenue-side draft generation only.
 - Phase 5 is the first place to consider COGS / vehicle cost basis / inventory mapping.
+- Detailed draft generation spec is `docs/accounting-event-journal-draft-generation-spec.md`.
+- Journal draft generation runtime must not bypass existing journal validator, number service, journal create permission, tenant guard, or convert policy.
 
 ## 15. Explicit Non-goals
 

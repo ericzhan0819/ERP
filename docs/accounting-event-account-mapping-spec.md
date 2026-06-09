@@ -1,7 +1,7 @@
 # Accounting Event Account Mapping Spec
 
 Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + Phase 4D-2A-2 Database-backed Mapping Foundation completed.
-Scope: config metadata, convert skeleton, preflight preview, and DB-backed account mapping resolver exist; mapping runtime journal generation remains disabled.
+Scope: config metadata, convert skeleton, preflight preview, and DB-backed account mapping resolver exist; detailed draft generation runtime boundary is documented in `docs/accounting-event-journal-draft-generation-spec.md`.
 This document does not implement mapping management React pages, routes, permissions, seeders, journal draft creation, journal lines creation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or successful runtime conversion.
 
 ## 1. Purpose
@@ -660,7 +660,7 @@ Phase 4C-2 completed.
 
 Phase 4D-1 completed.
 
-Phase 4D-2-spec completed.
+Phase 4D-2-spec completed and documents that first runtime should split into preflight-only and revenue-side draft generation only.
 
 Next runtime step should be Phase 4D-2A preflight service only.
 
@@ -671,6 +671,8 @@ Convert must fail safely while committed mapping `enabled = false` and runtime m
 Actual draft generation must wait for mapping activation / validation decision.
 
 Detailed draft generation runtime boundary is defined in `docs/accounting-event-journal-draft-generation-spec.md`.
+
+Actual runtime mapping must still respect mapping activation, same-company active accounts, intended account types, explicit branch behavior, and no fixed committed account IDs.
 
 Runtime mapping decision is defined in `docs/accounting-event-runtime-mapping-decision-spec.md`.
 

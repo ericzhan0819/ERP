@@ -1,33 +1,23 @@
 # Accounting Event Journal Draft Generation Spec
 
-## Status
+Status:
 
 - Spec completed only
 - Phase 4D-1 Convert Skeleton completed
-- Phase 4D-2A Convert Preflight Service completed
-- Phase 4D-2A-1 Runtime Mapping Decision Spec completed
-- Phase 4D-2A-2 Database-backed Mapping Foundation completed
-- Phase 4D-2B Revenue-side Journal Draft Generation completed
-- Phase 4D-2B Manual QA Checklist completed
-- Phase 4D-2B UI Polish completed
-- Added `docs/accounting-event-journal-draft-manual-qa-checklist.md`
-- This checklist update is docs-only; no runtime code changed
-- 4D-2B runtime already completed in commit `1cb20ee`
-- COGS / tax / refund / reversal remain backlog
-- Accounting Event show now has clear convert draft action / status hints
-- Journal show now displays source Accounting Event reference when allowed
-- Phase 5 COGS / vehicle cost basis decision spec remains backlog
+- Phase 4D-2 runtime not implemented
 
-## Scope
+Scope:
 
 - Define future reviewed Accounting Event -> Accounting Journal Draft generation rules
-- Runtime converts reviewed Accounting Event to draft journal only when config is enabled and DB-backed AR / Sales Revenue mappings exist
-- Runtime creates draft journal header, two revenue-side lines, converted status, `converted_journal_entry_id`, and `accounting_event.converted` audit
-- UI polish improves draft conversion visibility and source reference navigation only; no accounting behavior changed
+- No PHP / JSX / migration / route / permission / seeder / config runtime changes
+- No journal draft generation in this commit
+- No journal lines generation in this commit
+- No status = converted in this commit
+- No converted_journal_entry_id write in this commit
 
 ## Current Repo State
 
-Completed accounting and accounting event phases:
+Completed accounting foundations:
 
 - Accounting Phase 1: Chart of Accounts
 - Accounting Phase 2: Manual Journal Draft Foundation
@@ -40,10 +30,8 @@ Completed accounting and accounting event phases:
 - Accounting Event Phase 4C: account mapping spec
 - Accounting Event Phase 4C-2: config-based mapping foundation
 - Accounting Event Phase 4D-1: convert skeleton
-- Accounting Event Phase 4D-2A: convert preflight service
-- Accounting Event Phase 4D-2A-2: database-backed mapping foundation
 
-Current Phase 4D-2B behavior:
+Current Phase 4D-1 behavior:
 
 ```txt
 reviewed Accounting Event
@@ -51,62 +39,33 @@ reviewed Accounting Event
 -> scoped tenant query
 -> policy convert guard
 -> mapping exists / source_type / enabled checks
--> DB-backed AR / Sales Revenue mappings exist
--> create draft journal + two lines
--> accounting event status converted
--> converted_journal_entry_id written
+-> mapping enabled=false
+-> 422 fail-safe
+-> no state change
+-> no journal draft
 ```
 
-Current mapping state:
+Current boundaries:
 
-- `config/accounting_event_mappings.php` exists.
-- `vehicle_sale_completed` metadata exists.
-- `required_mapping_keys` contains `accounts_receivable_account` and `sales_revenue_account`.
-- `enabled = true`.
-- Runtime account IDs remain null.
-- Journal line templates remain disabled metadata.
-- Runtime mapping decision is documented in `docs/accounting-event-runtime-mapping-decision-spec.md`.
-- `accounting_event_account_mappings` now provides the DB-backed account source for future runtime.
-- 4D-2B draft generation is implemented for revenue-side AR / Sales Revenue lines only.
-
-## Phase 4D-2A Runtime Boundary
-
-- Accounting Event Phase 4D-2A Convert Preflight Service completed。
-- Preflight only returns validated preview。
-- Runtime now creates a draft journal and two revenue-side lines after successful preflight。
-- Runtime now sets status converted。
-- Runtime now writes `converted_journal_entry_id`。
-- Runtime now writes `accounting_event.converted` audit。
-- 4D-2B revenue-side draft generation completed。
-- COGS / tax / overpayment / refund / reversal remains backlog。
-- Mapping config default is enabled for 4D-2B and no actual runtime account IDs exist in committed config。
-
-## Phase 4D-2A-1 Runtime Mapping Decision
-
-- Accounting Event Runtime Mapping Decision Spec completed：`docs/accounting-event-runtime-mapping-decision-spec.md`。
-- Committed `config/accounting_event_mappings.php` remains short-term metadata only for event type / mapping key / line template metadata。
-- Formal account IDs must not be hard-coded into committed config。
-- Config override must not be treated as production runtime setup。
-- The next runtime implementation should be database-backed mapping foundation before 4D-2B revenue-side journal draft generation。
-- Database-backed mapping is preferred because this project is SaaS / tenant scoped, company / branch mappings may differ, account IDs are database data, mapping changes need audit trail, and mapping validation must align with AccountingAccount company / branch / active / type rules。
-
-## Phase 4D-2A-2 Database-backed Mapping Foundation
-
-- Added `accounting_event_account_mappings` table。
-- Added `AccountingEventAccountMapping` model。
-- Added `AccountingEventAccountMappingResolver` service。
-- Preflight now uses DB-backed mapping resolver after config metadata enabled check。
-- Committed config remains metadata-only and disabled by default。
-- No UI / route / permission / seeder changes。
-- No journal draft / lines / converted status / `converted_journal_entry_id` / converted audit。
-- Phase 4D-2A-3 mapping admin UI remains optional future backlog。
-- Phase 5 COGS / vehicle cost basis / tax / overpayment / refund / reversal remains backlog。
+- Accounting Event review exists, but review does not create journal drafts.
+- Accounting Event void exists, but void does not cancel journals or reverse posted journals.
+- Convert skeleton exists, but it is a fail-safe gate only.
+- Config mapping metadata exists, but runtime account IDs are not committed.
+- Existing Accounting Journal creation, validation, numbering, posting, and voiding workflows remain the only supported journal runtime paths.
 
 ## Non-goals
 
+This spec does not implement or approve:
+
+- No runtime code
+- No convert service
+- No AccountingJournalEntry creation
+- No AccountingJournalEntryLine creation
+- No converted_journal_entry_id write
+- No accounting_events.status = converted
 - No automatic posting
+- No revenue recognition
 - No COGS recognition
-- No inventory recognition
 - No profit / gross margin payload
 - No tax runtime
 - No AR / AP module
@@ -115,12 +74,12 @@ Current mapping state:
 - No Reports
 - No refund / reversal
 - No mapping UI
-- No route / permission / migration / model / policy / controller / request / seeder changes
+- No database-backed mapping table
 - No Odoo code / CSS / XML / Python copy
 
 ## Journal Draft Generation Positioning
 
-Future workflow:
+Future flow:
 
 ```txt
 Business Document
@@ -138,25 +97,24 @@ Positioning decisions:
 - Convert never posts.
 - Converted Accounting Event does not mean posted journal.
 - Posted journal still requires existing `module.accounting.journals.post`.
-- Completion, review, mapping, and convert are not the final revenue recognition action.
-- Posting is the formal accounting entry point.
+- Completion / review / mapping / convert are not the final revenue recognition action; posting is the formal accounting entry point.
 - Current scope still does not implement revenue / COGS runtime.
 
 ## Future Convert Preconditions
 
-Future draft creation must require both permissions:
+Future runtime that actually creates a draft must require both permissions:
 
 ```txt
 module.accounting.events.convert
 module.accounting.journals.create
 ```
 
-Permission decisions:
+Permission rationale:
 
-- `module.accounting.events.convert` means the user can move an Accounting Event into the conversion flow.
-- `module.accounting.journals.create` means the user can create an `AccountingJournalEntry`.
+- `module.accounting.events.convert` means the user may move an Accounting Event into the journal conversion flow.
+- `module.accounting.journals.create` means the user may create an `AccountingJournalEntry`.
 - Convert must not rely only on view / review / void / `module.accounting.view`.
-- Convert must not use only `module.accounting.events.convert` to bypass journal create authorization.
+- Convert must not rely only on `module.accounting.events.convert` to bypass journal create permission.
 
 Other required preconditions:
 
@@ -178,7 +136,7 @@ Other required preconditions:
 
 ## Future Draft Header Shape
 
-Based on current `AccountingJournalEntry` schema/model, future generated draft header should use:
+Based on the current `AccountingJournalEntry` schema/model, future generated draft header should use:
 
 ```txt
 company_id = event.company_id
@@ -199,27 +157,27 @@ Suggested summary format:
 由會計事件產生：{source_number} / {event_type_label}
 ```
 
-Domain-specific Chinese summary option:
+Alternative Chinese domain format:
 
 ```txt
 車輛交易完成轉傳票：{source_number}
 ```
 
-Header boundaries:
+Required header decisions:
 
-- `journal_number` must not be provided by frontend or event payload.
-- `company_id` / `branch_id` must not be provided by frontend.
-- `source_type` / `source_id` must point to `accounting_event`, not directly to `vehicle_sale`, to preserve the accounting event source chain.
-- Source document detail should be displayed through Accounting Event payload / source fields.
-- Vehicle sale data should not be inserted directly into journal source fields.
+- `journal_number` cannot be provided by frontend or event payload.
+- `company_id` / `branch_id` cannot be provided by frontend.
+- `source_type` / `source_id` must point to `accounting_event`, not directly to `vehicle_sale`, to preserve the source chain.
+- Source document detail should be displayed through Accounting Event payload / source fields, not by embedding vehicle sale directly as journal source.
 
 ## Future Draft Line Shape
 
-Based on current `AccountingJournalEntryLine` schema/model, future generated lines should use:
+Based on the current `AccountingJournalEntryLine` schema/model, future generated lines should use:
 
 ```txt
 journal_entry_id
 account_id
+debit
 credit
 memo
 sort_order
@@ -235,29 +193,20 @@ Line field decisions:
 
 ## First Runtime Scope Recommendation
 
-The first actual draft generation runtime should not include COGS.
+The first real draft generation runtime should not do COGS in the same step.
 
 Recommended split:
 
-```txt
-Phase 4D-2A: Convert Preflight Service only, completed
-Phase 4D-2A-1: Runtime Mapping Decision Spec, completed
-Phase 4D-2A-2: Database-backed Mapping Foundation, future, no UI, no draft generation
-Phase 4D-2A-3: Mapping Admin UI, future, optional
-Phase 4D-2B: Revenue-side Draft Generation only, completed
-Phase 5: COGS / inventory / tax / overpayment / refund decisions
-```
+Phase 4D-2A: Convert Preflight Service only
 
-Phase 4D-2A: Convert Preflight Service only completed:
-
-- Added a service that resolves mapping / checks accounts / returns preview array.
+- Add a service that resolves mapping / checks accounts / produces preview array.
 - Do not create journal.
 - Do not create lines.
 - Do not change status.
 - Do not write `converted_journal_entry_id`.
 - Test mapping enabled false / missing / account missing / inactive / wrong tenant / wrong account type.
 
-Phase 4D-2B: Revenue-side Draft Generation only:
+Phase 4D-2B: Revenue-side Draft Generation only
 
 - Generate only two lines:
 
@@ -284,12 +233,12 @@ Phase 4D-2C or Phase 5 may consider:
 - tax lines
 - refund / reversal
 
-Reasons:
+Rationale:
 
 - Current vehicle cost basis / capitalization does not have enough runtime guarantees.
 - COGS should not be derived from Accounting Event payload.
 - Payload explicitly forbids profit / gross margin / purchase_cost / cogs_amount.
-- Implementing revenue + COGS together would over-expand accounting recognition scope.
+- Doing revenue + COGS at once would over-expand accounting recognition scope.
 
 ## Mapping Requirements for First Runtime
 
@@ -298,25 +247,18 @@ Minimum required mapping for future revenue-side first runtime:
 - `accounts_receivable_account`
 - `sales_revenue_account`
 
-Current config state:
+These keys currently exist as required metadata in config, but `runtime_account_id` is still null and mapping is expected to remain disabled until actual runtime mapping is explicitly decided.
 
-- Both keys are already required metadata.
-- `runtime_account_id` is still null.
-- Mapping remains `enabled = false`.
+Before enabling runtime, decide:
 
-Before enabling runtime, the project must decide:
+- How config-based mapping receives actual account IDs, or
+- Whether to switch to database-backed mapping.
 
-- Implement database-backed mapping foundation.
-- Mapping account type validation.
-- Branch behavior.
-
-Database-backed mapping shape is defined in `docs/accounting-event-runtime-mapping-decision-spec.md`. First supported event type remains `vehicle_sale_completed`, and first required mapping keys remain `accounts_receivable_account` and `sales_revenue_account`.
-
-Mapping validation direction:
+Mapping account type validation:
 
 - AR / clearing account intended type: `asset`.
 - Sales revenue account intended type: `revenue`.
-- Account must belong to same company.
+- Account must be same company.
 - Account must be active.
 - Branch behavior must be explicit.
 
@@ -334,7 +276,7 @@ Mapping validation direction:
 
 ## Idempotency / Transaction Rules
 
-Future runtime conversion rules:
+Future runtime must enforce:
 
 - If `event.converted_journal_entry_id` is not null, abort; do not create second draft.
 - If `event.status` is not `reviewed`, abort.
@@ -347,12 +289,12 @@ Future runtime conversion rules:
 
 ## Audit Rules
 
-Future successful conversion should write audit only after successful state change:
+Only future successful conversion writes audit:
 
-- event: `accounting_event.converted`
-- description: `Accounting event converted to journal draft`
-- module metadata: `accounting_events`
-- old_values / new_values: allowlist only
+- Event: `accounting_event.converted`
+- Description: `Accounting event converted to journal draft`
+- Module metadata: `accounting_events`
+- `old_values` / `new_values` must use allowlist only.
 
 Audit allowlist:
 
@@ -389,7 +331,7 @@ revenue_amount as recognition detail
 full payload JSON
 ```
 
-Phase 4D-1 fail-safe convert attempt still should not write audit because there is no state change.
+Phase 4D-1 fail-safe convert attempt still should not write audit because no state change occurs.
 
 ## UI Direction
 
@@ -397,7 +339,7 @@ This spec does not implement UI.
 
 Future UI direction:
 
-- Accounting Event Show may show Generate Journal Draft button when `can.convert = true` and status = `reviewed`.
+- Accounting Event Show may show Generate Journal Draft button when `can.convert = true` and `status = reviewed`.
 - If mapping disabled/missing, UI may display reason but backend remains source of truth.
 - After successful conversion, show linked journal draft.
 - Convert button must not show for pending / voided / converted.
@@ -417,7 +359,7 @@ Future message direction:
 
 - Missing account mapping: `會計事件映射尚未指定必要科目，無法產生傳票草稿。`
 - Inactive / cross-tenant account: `會計事件映射科目無效，無法產生傳票草稿。`
-- Unbalanced lines: use `AccountingJournalValidator`.
+- Unbalanced lines: reuse `AccountingJournalValidator`.
 - Already converted: `此會計事件已產生傳票草稿。`
 - Not reviewed: `只有已覆核的會計事件可以產生傳票草稿。`
 - Missing journal create permission: `沒有建立會計傳票的權限。`
@@ -442,12 +384,12 @@ Future Phase 4D-2A tests:
 Future Phase 4D-2B tests:
 
 - Reviewed event can convert to draft when mapping enabled and accounts valid.
-- Creates one `AccountingJournalEntry` with `status = draft`.
+- Creates one `AccountingJournalEntry` with `status=draft`.
 - Creates two revenue-side lines only.
 - Line debit/credit balanced.
-- Uses `AccountingJournalNumberService` `JE-YYYYMM-0001`.
-- Journal `source_type = accounting_event` and `source_id = event.id`.
-- Event status becomes converted.
+- Uses `AccountingJournalNumberService` format `JE-YYYYMM-0001`.
+- Journal `source_type=accounting_event` and `source_id=event.id`.
+- Event status becomes `converted`.
 - Event `converted_journal_entry_id` points to journal.
 - Writes `accounting_event.converted` audit allowlist.
 - Cannot convert twice.
@@ -475,11 +417,9 @@ Future Phase 4D-2B tests:
 
 ```txt
 Phase 4D-2-spec: this documentation only
-Phase 4D-2A: Convert preflight service only, no writes, completed
-Phase 4D-2A-1: Runtime mapping decision spec, completed
-Phase 4D-2A-2: Database-backed mapping foundation, future, no UI, no draft generation
-Phase 4D-2A-3: Mapping admin UI, future, optional
-Phase 4D-2B: Revenue-side draft generation only, future
+Phase 4D-2A: Convert preflight service only, no writes
+Phase 4D-2B: Revenue-side draft generation only
+Phase 4D-2C: optional preview UI / backend preview endpoint
 Phase 5: COGS / vehicle cost basis / inventory mapping after cost capitalization rules are reliable
-Phase 5 later scope: tax / overpayment / refund / reversal
+Phase 6: tax / overpayment / refund / reversal
 ```

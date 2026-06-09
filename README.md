@@ -554,7 +554,8 @@ archived   已封存
 - No automatic revenue recognition。
 - No automatic COGS recognition。
 - Accounting Event Foundation Phase 1、Phase 2 readonly workspace、Phase 3 completion integration、Phase 4A Review Workflow、Phase 4B Void Workflow、Phase 4C Account Mapping Spec、Phase 4C-2 Config-based Mapping Foundation、Phase 4D-1 Convert Skeleton、Phase 4D-2 Journal Draft Generation Spec、Phase 4D-2A Convert Preflight Service 與 Phase 4D-2A-1 Runtime Mapping Decision Spec 已存在。
-- Phase 4D-2 spec exists at `docs/accounting-event-journal-draft-generation-spec.md`；actual Accounting Event -> Journal Draft runtime remains backlog。
+- Phase 4D-2 spec exists at `docs/accounting-event-journal-draft-generation-spec.md`；it defines future Accounting Event -> Journal Draft header、line、permission、transaction、audit、testing boundaries。
+- Actual Accounting Event -> Journal Draft runtime must remain split into preflight service and revenue-side draft generation；do not treat the spec itself as completed runtime。
 - Future implementation should do database-backed mapping foundation before Phase 4D-2B revenue-side draft generation。
 - Completion → pending Accounting Event 已完成；pending → reviewed 已完成；pending / reviewed → voided 已完成；convert skeleton 已完成；mapping config metadata 已完成但 disabled；mapping disabled fail-safe exists；No journal draft generation yet。
 - No AR / AP / Cash / Bank / Invoice / Reports integration yet。

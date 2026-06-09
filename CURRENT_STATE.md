@@ -286,6 +286,8 @@
 - This is docs-only。
 - Defines future draft header / line / permission / transaction / audit / testing boundaries。
 - Recommends future runtime split: 4D-2A preflight only, 4D-2B revenue-side draft generation only。
+- Defines that future draft creation must require both `module.accounting.events.convert` and `module.accounting.journals.create`。
+- Defines that future draft generation must use `AccountingJournalValidator` and `AccountingJournalNumberService`。
 - No runtime code changed。
 - No journal draft generation。
 - No journal lines。

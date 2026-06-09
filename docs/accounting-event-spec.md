@@ -126,6 +126,8 @@ The current Accounting Event mapping foundation includes:
 - Journal line templates are disabled metadata only.
 - Mapping config has no runtime account IDs and no fixed account codes.
 - `docs/accounting-event-journal-draft-generation-spec.md` exists as docs-only Phase 4D-2 specification.
+- Phase 4D-2 spec defines future draft header / line / permission / transaction / audit / testing boundaries.
+- Phase 4D-2 spec recommends Phase 4D-2A preflight service only and Phase 4D-2B revenue-side draft generation only.
 
 The following are not completed yet:
 
@@ -554,6 +556,7 @@ Phase 3 directly connects successful completion to one pending Accounting Event 
 - Accounting Event Phase 4C-2 config-based mapping foundation exists.
 - Accounting Event Phase 4D-1 Convert Skeleton exists.
 - Accounting Event Phase 4D-2 Journal Draft Generation Spec exists.
+- Accounting Event Phase 4D-2 spec exists at `docs/accounting-event-journal-draft-generation-spec.md`.
 - Mapping config is metadata only.
 - Mapping config contains no actual account IDs or fixed account codes.
 - Mapping config is disabled for runtime conversion.
