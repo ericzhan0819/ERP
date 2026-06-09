@@ -14,6 +14,8 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(function (): void {
+    $this->markTestSkipped('Phase 4D-2A 禁止建立 journal draft；AccountingEventConvertService 將於 Phase 4D-2B 重新啟用測試。');
+
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
     Permission::findOrCreate('module.accounting.events.convert', 'web');

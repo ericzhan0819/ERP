@@ -36,7 +36,7 @@ it('accounting event mappings config contains vehicle sale completed mapping', f
         ->and($mapping['source_type'] ?? null)->toBe('vehicle_sale_completion')
         ->and($mapping['required_status'] ?? null)->toBe('reviewed')
         ->and($mapping['creates_journal_status'] ?? null)->toBe('draft')
-        ->and($mapping['enabled'] ?? null)->toBeTrue();
+        ->and($mapping['enabled'] ?? null)->toBeFalse();
 });
 
 it('vehicle sale completed mapping defines required and optional mapping keys', function (): void {
@@ -143,12 +143,12 @@ it('mapping config exposes convert skeleton route without mapping management rou
         ])->exists())->toBeFalse();
 });
 
-it('mapping config enables revenue side draft generation without automatic posting or future runtime', function (): void {
+it('mapping config keeps revenue side draft generation disabled until runtime accounts are configured', function (): void {
     $mapping = accountingEventVehicleSaleCompletedMapping();
     $templates = $mapping['journal_line_templates'] ?? [];
 
-    expect($mapping['enabled'])->toBeTrue()
-        ->and(class_exists('App\\Services\\AccountingEventConvertService'))->toBeTrue()
+    expect($mapping['enabled'])->toBeFalse()
+        ->and(class_exists('App\\Services\\AccountingEventJournalDraftPreflightService'))->toBeTrue()
         ->and(collect($templates)->firstWhere('key', 'cogs_debit')['enabled'])->toBeFalse()
         ->and(collect($templates)->firstWhere('key', 'vehicle_inventory_credit')['enabled'])->toBeFalse()
         ->and($mapping['non_goals'])->toContain('no_automatic_posting')

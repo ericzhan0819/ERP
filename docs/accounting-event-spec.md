@@ -1,8 +1,8 @@
 # Accounting Event Foundation Spec
 
-> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed.
+> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed.
 > Scope: define Accounting Event product semantics, current foundation state, future data direction, status flow, source documents, tenant / permission / audit principles, and future Journal Draft / Revenue / COGS integration direction.
-> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. Phase 4A has implemented pending -> reviewed. Phase 4B has implemented pending / reviewed -> voided. Phase 4C completed the account mapping design spec. Phase 4C-2 implemented config-based mapping foundation metadata. Phase 4D-1 implemented convert skeleton. Phase 4D-2 completed journal draft generation spec only. It does not implement create workflows, successful journal draft conversion, journal draft generation runtime, or accounting recognition runtime behavior.
+> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. Phase 4A has implemented pending -> reviewed. Phase 4B has implemented pending / reviewed -> voided. Phase 4C completed the account mapping design spec. Phase 4C-2 implemented config-based mapping foundation metadata. Phase 4D-1 implemented convert skeleton. Phase 4D-2 completed journal draft generation spec. Phase 4D-2A implemented `AccountingEventJournalDraftPreflightService` only. It does not implement create workflows, successful journal draft conversion, journal draft generation runtime, or accounting recognition runtime behavior.
 
 ## 1. Purpose
 
@@ -88,6 +88,7 @@ AccountingEventPolicy::convert
 AccountingEventController::convert
 AccountingEventConvertTest
 docs/accounting-event-journal-draft-generation-spec.md
+AccountingEventJournalDraftPreflightService
 ```
 
 `AccountingEventTest` covers schema, casts, relationships, config, tenant scoped query, and completion regression. The completion regression confirms a successful completion action creates one pending Accounting Event.
@@ -111,7 +112,9 @@ Accounting Event Show page has void UI for pending / reviewed events when can.vo
 
 `AccountingEventVoidTest` covers pending/reviewed void, view-only denied, review-only denied, `module.accounting.view` denied, cross-tenant 404, converted denied, already voided denied, void_reason validation, deny-list, audit safe payload, `can.void` props, seeder permission, permission matrix, and no journal draft/lines.
 
-`AccountingEventConvertTest` covers authorized convert skeleton, mapping disabled fail-safe 422, mapping missing 422, source_type mismatch 422, same tenant guard, reviewed-only guard, not voided / not converted guards, view-only / review-only / void-only / `module.accounting.view` denial, forbidden payload 403, `can.convert` props, seeder permission, permission matrix, and no journal draft/lines/status/write.
+`AccountingEventConvertTest` covers authorized convert preflight route behavior, mapping disabled fail-safe 422, missing `module.accounting.journals.create` 422, mapping missing 422, source_type mismatch 422, same tenant guard, reviewed-only guard, not voided / not converted guards, view-only / review-only / void-only / `module.accounting.view` denial, forbidden payload 403, `can.convert` props, seeder permission, permission matrix, and no journal draft/lines/status/write.
+
+`AccountingEventJournalDraftPreflightTest` covers `AccountingEventJournalDraftPreflightService` permissions, tenant 404 behavior, reviewed / voided / converted guards, mapping existence / enabled / runtime account checks, account company / branch / active / type validation, positive amount validation, two-line revenue-side preview, sensitive field exclusion, and `AccountingJournalValidator` validation.
 
 `AccountingEventService` exists. Successful completion creates one pending Accounting Event. Completion integration is backend-only and does not require `module.accounting.events.view`.
 
@@ -128,6 +131,7 @@ The current Accounting Event mapping foundation includes:
 - `docs/accounting-event-journal-draft-generation-spec.md` exists as docs-only Phase 4D-2 specification.
 - Phase 4D-2 spec defines future draft header / line / permission / transaction / audit / testing boundaries.
 - Phase 4D-2 spec recommends Phase 4D-2A preflight service only and Phase 4D-2B revenue-side draft generation only.
+- Phase 4D-2A preflight service is completed and Phase 4D-2B Revenue-side Draft Generation only is the next step.
 
 The following are not completed yet:
 

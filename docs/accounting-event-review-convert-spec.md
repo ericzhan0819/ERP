@@ -1,7 +1,7 @@
 # Accounting Event Review / Convert Workflow Spec
 
 Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed.
-Scope: review / void / convert skeleton and convert preflight preview are implemented; journal draft generation spec exists at `docs/accounting-event-journal-draft-generation-spec.md`, but this spec still keeps runtime journal draft creation, revenue recognition, COGS recognition, posting, and additional accounting runtime behavior out of scope.
+Scope: review / void / convert skeleton and `AccountingEventJournalDraftPreflightService` preview are implemented; journal draft generation spec exists at `docs/accounting-event-journal-draft-generation-spec.md`, but runtime journal draft creation, revenue recognition, COGS recognition, posting, and additional accounting runtime behavior remain out of scope until Phase 4D-2B.
 This document reflects the implemented review, void, convert skeleton, and preflight workflows. It does not implement journal draft creation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
 
 ## 1. Purpose
@@ -114,15 +114,16 @@ Accounting Event Phase 4D-2-spec completed:
 
 Accounting Event Phase 4D-2A completed:
 
-- `AccountingEventConvertPreflightService` exists
-- preflight only returns validated preview
+- `AccountingEventJournalDraftPreflightService` exists
+- preflight validates permissions / mapping / accounts / amount / preview / `AccountingJournalValidator`
+- preflight only returns validated backend-generated preview
 - runtime still does not create journal draft
 - runtime still does not create journal lines
 - runtime still does not set status converted
 - runtime still does not write `converted_journal_entry_id`
 - runtime still does not write `accounting_event.converted` audit
 - mapping config default remains disabled and no actual runtime account IDs in committed config
-- 4D-2B revenue-side draft generation remains backlog
+- Phase 4D-2B Revenue-side Draft Generation only remains the next step
 - COGS / tax / overpayment / refund / reversal remains backlog
 
 Current business flow:

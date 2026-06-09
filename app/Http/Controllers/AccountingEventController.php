@@ -7,7 +7,7 @@ use App\Http\Requests\ConvertAccountingEventRequest;
 use App\Http\Requests\VoidAccountingEventRequest;
 use App\Models\AccountingEvent;
 use App\Services\AuditLogService;
-use App\Services\AccountingEventConvertService;
+use App\Services\AccountingEventJournalDraftPreflightService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -22,7 +22,7 @@ class AccountingEventController extends Controller
 {
     public function __construct(
         private readonly AuditLogService $auditLogService,
-        private readonly AccountingEventConvertService $convertService,
+        private readonly AccountingEventJournalDraftPreflightService $journalDraftPreflightService,
     ) {}
 
     /**
@@ -221,7 +221,7 @@ class AccountingEventController extends Controller
     }
 
     /**
-     * 技術註解：轉傳票仍先經 tenant scoped 查詢與 Policy，再交由 service 在 transaction 內鎖定事件，避免 IDOR、雙擊併發與前端注入分錄。
+     * 技術註解：Phase 4D-2A convert route 僅執行轉傳票 preflight，不建立傳票或分錄，避免未完成的正式認列流程提前寫入資料。
      */
     public function convert(ConvertAccountingEventRequest $request, int $accountingEvent): RedirectResponse
     {
@@ -230,12 +230,8 @@ class AccountingEventController extends Controller
             ->firstOrFail();
 
         $this->authorize('convert', $event);
-        abort_unless($event->status === 'reviewed', 403);
-        abort_unless($event->converted_journal_entry_id === null, 403);
-        abort_unless($event->voided_at === null, 403);
-
         try {
-            $this->convertService->convert($event, $request->user(), $request);
+            $this->journalDraftPreflightService->preview($event, $request->user());
         } catch (ValidationException $exception) {
             $message = collect($exception->errors())->flatten()->first() ?? '會計事件無法產生傳票草稿。';
 
@@ -243,7 +239,7 @@ class AccountingEventController extends Controller
         }
 
         return redirect()->route('employee-system.accounting.events.show', $event->id)
-            ->with('success', '會計事件已產生傳票草稿。');
+            ->with('success', '會計事件轉傳票前置檢查已完成。');
     }
 
     private function scopedEventQuery(?Authenticatable $user): Builder

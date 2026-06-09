@@ -4,16 +4,19 @@ Status:
 
 - Spec completed only
 - Phase 4D-1 Convert Skeleton completed
-- Phase 4D-2 runtime not implemented
+- Phase 4D-2A Convert Preflight Service completed
+- Phase 4D-2B Revenue-side Draft Generation only remains the next step
 
 Scope:
 
 - Define future reviewed Accounting Event -> Accounting Journal Draft generation rules
-- No PHP / JSX / migration / route / permission / seeder / config runtime changes
-- No journal draft generation in this commit
-- No journal lines generation in this commit
-- No status = converted in this commit
-- No converted_journal_entry_id write in this commit
+- `AccountingEventJournalDraftPreflightService` exists and returns backend-generated preview only
+- Preflight validates permissions / mapping / accounts / amount / preview lines / `AccountingJournalValidator`
+- No journal draft generation in this phase
+- No journal lines generation in this phase
+- No status = converted in this phase
+- No converted_journal_entry_id write in this phase
+- No `AccountingJournalNumberService::generate()` call in preflight
 
 ## Current Repo State
 
@@ -31,34 +34,37 @@ Completed accounting foundations:
 - Accounting Event Phase 4C-2: config-based mapping foundation
 - Accounting Event Phase 4D-1: convert skeleton
 
-Current Phase 4D-1 behavior:
+Current Phase 4D-2A behavior:
 
 ```txt
 reviewed Accounting Event
 -> user with module.accounting.events.convert
 -> scoped tenant query
 -> policy convert guard
--> mapping exists / source_type / enabled checks
--> mapping enabled=false
--> 422 fail-safe
+-> AccountingEventJournalDraftPreflightService
+-> checks module.accounting.events.convert and module.accounting.journals.create
+-> tenant / status / voided / converted guards
+-> mapping exists / source_type / enabled / runtime_account_id checks
+-> account company / branch / active / intended type checks
+-> revenue-side preview lines validated by AccountingJournalValidator
 -> no state change
 -> no journal draft
+-> no journal lines
 ```
 
 Current boundaries:
 
 - Accounting Event review exists, but review does not create journal drafts.
 - Accounting Event void exists, but void does not cancel journals or reverse posted journals.
-- Convert skeleton exists, but it is a fail-safe gate only.
-- Config mapping metadata exists, but runtime account IDs are not committed.
+- Convert route exists, but it currently only runs preflight and does not return preview as a formal endpoint.
+- Config mapping metadata exists, default `vehicle_sale_completed.enabled = false`, and runtime account IDs are not committed.
 - Existing Accounting Journal creation, validation, numbering, posting, and voiding workflows remain the only supported journal runtime paths.
 
 ## Non-goals
 
 This spec does not implement or approve:
 
-- No runtime code
-- No convert service
+- No AccountingEventConvertService runtime draft generation in this phase
 - No AccountingJournalEntry creation
 - No AccountingJournalEntryLine creation
 - No converted_journal_entry_id write

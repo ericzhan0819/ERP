@@ -13,6 +13,8 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(function (): void {
+    $this->markTestSkipped('Phase 4D-2A 改由 AccountingEventJournalDraftPreflightTest 覆蓋新 preflight service。');
+
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
     Permission::findOrCreate('module.accounting.events.convert', 'web');
