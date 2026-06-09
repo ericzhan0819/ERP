@@ -1,7 +1,7 @@
 # Accounting Event Review / Convert Workflow Spec
 
-Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed.
-Scope: review / void / convert skeleton are implemented; journal draft generation, revenue recognition, COGS recognition, posting, and additional accounting runtime behavior remain not implemented.
+Status: Spec completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed.
+Scope: review / void / convert skeleton are implemented; journal draft generation spec exists, but runtime journal draft generation, revenue recognition, COGS recognition, posting, and additional accounting runtime behavior remain not implemented.
 This document reflects the implemented review, void, and convert skeleton workflows. It does not implement journal draft generation, revenue recognition, COGS recognition, posting, or additional runtime behavior.
 
 ## 1. Purpose
@@ -32,6 +32,7 @@ Accounting Event is an accounting candidate event. It is not an official journal
 - `converted` does not mean posted.
 - Journal posting must continue through the existing Accounting Journal post workflow.
 - Phase 4A implemented pending -> reviewed. Phase 4B implemented pending / reviewed -> voided. Phase 4D-1 implemented convert permission / route / request / policy / controller skeleton and mapping fail-safe only; journal draft generation remains future work.
+- Detailed draft generation specification exists at `docs/accounting-event-journal-draft-generation-spec.md`; runtime remains not implemented.
 
 ## 2. Current Repo State
 
@@ -102,6 +103,14 @@ Accounting Event Phase 4D-1 completed:
 - Staff Permission matrix shows accounting.events convert action label `轉傳票`
 - convert checks same tenant, reviewed, not voided, not converted, convert permission, mapping exists, source_type match, and mapping enabled
 - mapping disabled fail-safe returns 422 because `vehicle_sale_completed.enabled = false`
+
+Accounting Event Phase 4D-2-spec completed:
+
+- Journal Draft Generation Spec completed
+- `docs/accounting-event-journal-draft-generation-spec.md` exists
+- future header / line / permission / transaction / audit / testing boundaries are documented
+- future runtime split recommends Phase 4D-2A preflight only and Phase 4D-2B revenue-side draft generation only
+- runtime journal draft generation remains not implemented
 
 Current business flow:
 
@@ -252,6 +261,8 @@ Current convert boundaries:
 - Phase 4D-1 does not add `AccountingEventConvertService`.
 
 Future Phase 4D-2+ Draft Generation behavior should generate only a manual journal draft, never a posted journal.
+
+Detailed draft generation rules and boundaries are defined in `docs/accounting-event-journal-draft-generation-spec.md`.
 
 Future draft generation flow:
 
@@ -587,8 +598,10 @@ Phase 4B: completed void permission + void route/controller action/request/polic
 Phase 4C: completed account mapping config design spec
 Phase 4C-2: completed config-based mapping foundation
 Phase 4D-1: completed convert permission / route / request / policy / controller skeleton only
-Phase 4D-2: journal draft generation service using mapping
-Phase 5: revenue / COGS draft mapping only after accounting rules are confirmed
+Phase 4D-2-spec: completed journal draft generation design spec only
+Phase 4D-2A: future convert preflight service only, no writes
+Phase 4D-2B: future revenue-side journal draft generation only
+Phase 5: COGS / vehicle cost basis / inventory mapping after cost capitalization rules are reliable
 ```
 
 Phase boundaries:
@@ -600,15 +613,17 @@ Phase boundaries:
 - Phase 4D-1 completed convert permission / route / request / policy / controller skeleton.
 - Phase 4D-1 does not generate journal draft.
 - Phase 4D-1 returns 422 when mapping is disabled / missing / source_type mismatch.
-- Next recommended step is docs / Phase 4D-2 spec, not direct runtime draft generation.
-- Phase 4D-2 should be the first phase to use mapping for journal draft generation service.
-- Phase 5 is the first place to handle revenue / COGS draft mapping.
+- Phase 4D-2-spec completed as docs-only.
+- Next runtime step should be Phase 4D-2A preflight service only.
+- Phase 4D-2B should be revenue-side draft generation only.
+- Phase 5 is the first place to consider COGS / vehicle cost basis / inventory mapping.
 
 ## 15. Explicit Non-goals
 
 This document does not do:
 
 - No code changes.
+- No runtime behavior.
 - No journal draft generation.
 - No convert success state transition.
 - No `converted_journal_entry_id` write.

@@ -2,7 +2,7 @@
 
 ## 狀態摘要
 
-- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed；Accounting Event Phase 4C Account Mapping Spec completed；Accounting Event Phase 4C-2 Config-based Mapping Foundation completed；Accounting Event Phase 4D-1 Convert Skeleton completed。
+- 專案狀態：Early Development，Vehicle Sales + Receivables + Customer Transaction + Audit Display MVP completed；Vehicle Cost Management Phase 2 completed；Accounting Phase 1 / 2 / 3 completed；Accounting Journal Workbench UI Polish completed；Vehicle Cost Accounting Treatment Spec completed；Transaction Completion MVP completed through UI；Accounting Event Foundation Phase 1 completed；Accounting Event Phase 2 readonly workspace completed；Accounting Event Phase 3 completion integration completed；Accounting Event Phase 4A Review Workflow completed；Accounting Event Phase 4B Void Workflow completed；Accounting Event Phase 4C Account Mapping Spec completed；Accounting Event Phase 4C-2 Config-based Mapping Foundation completed；Accounting Event Phase 4D-1 Convert Skeleton completed；Accounting Event Phase 4D-2 Journal Draft Generation Spec completed。
 - 穩定節點：Transaction Completion MVP completed through UI，已涵蓋 RBAC foundation、Data model foundation、Backend completion action、Backend completion payload、React UI、Manual QA checklist documented。
 - 最新驗證狀態：`./vendor/bin/sail artisan test tests/Feature/AccountingEventConvertTest.php` passed：15 tests / 140 assertions；`./vendor/bin/sail artisan test tests/Feature/AccountingEventReviewTest.php tests/Feature/AccountingEventVoidTest.php tests/Feature/AccountingEventMappingConfigTest.php tests/Feature/StaffPermissionRoleMatrixTest.php` passed：58 tests / 631 assertions；`./vendor/bin/sail artisan test` passed：384 tests / 3567 assertions；`npm run build` passed。
 - 本文件為目前穩定節點同步整理；目前不實作退款、不做 AR / AP / cash / invoice / reports 整合、不做 PDF / Excel、不做圖片上傳、不新增 profit / gross margin / 毛利 payload，完整 security hardening 之後再做。
@@ -50,6 +50,7 @@
 - Accounting Event Phase 4C Account Mapping Spec
 - Accounting Event Phase 4C-2 Config-based Mapping Foundation
 - Accounting Event Phase 4D-1 Convert Skeleton
+- Accounting Event Phase 4D-2 Journal Draft Generation Spec
 - Confirm Delivery / Transaction Completion Spec
 - Sales / Payments / Delivery semantics UI hints
 - Transaction Completion / Confirm Delivery MVP：Completion RBAC、Completion data fields、Completion backend action、Completion payload、Completion UI、Completion audit event、Manual QA checklist
@@ -269,6 +270,21 @@
 - Focused regression：`./vendor/bin/sail artisan test tests/Feature/AccountingEventReviewTest.php tests/Feature/AccountingEventVoidTest.php tests/Feature/AccountingEventMappingConfigTest.php tests/Feature/StaffPermissionRoleMatrixTest.php` passed：58 tests / 631 assertions。
 - Full test：`./vendor/bin/sail artisan test` passed：384 tests / 3567 assertions。
 - Build verification：`npm run build` passed。
+
+## Accounting Event Phase 4D-2 Journal Draft Generation Spec
+
+- Accounting Event Phase 4D-2 Journal Draft Generation Spec completed。
+- `docs/accounting-event-journal-draft-generation-spec.md` added。
+- This is docs-only。
+- Defines future draft header / line / permission / transaction / audit / testing boundaries。
+- Recommends future runtime split: 4D-2A preflight only, 4D-2B revenue-side draft generation only。
+- No runtime code changed。
+- No journal draft generation。
+- No journal lines。
+- No converted status。
+- No `converted_journal_entry_id` write。
+- No `AccountingEventConvertService`。
+- No COGS / tax / overpayment / refund / AR / AP / Cash / Bank / Invoice / Reports。
 
 ## Accounting Module Boundaries
 
@@ -535,8 +551,9 @@ Audit 資料原則：
 
 - Phase B 已完成：Sales / Payments / Delivery semantics UI hints。
 - Manual browser QA execution if not yet done。
-- Phase 0 / 1 / 2 / 3 / 4A / 4B / 4C / 4C-2 / 4D-1 已完成：Accounting Event spec、foundation、readonly workspace、Completion → pending Accounting Event、pending → reviewed、pending / reviewed → voided、Account Mapping Spec、config-based mapping foundation、convert skeleton。
-- 後續可做：Accounting Event Phase 4D-2 journal draft generation spec。
+- Phase 0 / 1 / 2 / 3 / 4A / 4B / 4C / 4C-2 / 4D-1 / 4D-2-spec 已完成：Accounting Event spec、foundation、readonly workspace、Completion → pending Accounting Event、pending → reviewed、pending / reviewed → voided、Account Mapping Spec、config-based mapping foundation、convert skeleton、journal draft generation spec。
+- 後續可做：Accounting Event Phase 4D-2A convert preflight service only。
+- 後續可做：Accounting Event Phase 4D-2B revenue-side journal draft generation only。
 - 後續可做：Account Mapping UI / database-backed mapping。
 - 後續可做：Accounting Event → Journal Draft。
 - 後續可做：Revenue Recognition。

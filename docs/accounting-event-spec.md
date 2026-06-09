@@ -1,8 +1,8 @@
 # Accounting Event Foundation Spec
 
-> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed.
+> Status: Spec completed + Phase 1 foundation completed + Phase 2 readonly workspace completed + Phase 3 completion integration completed + Phase 4A review workflow completed + Phase 4B void workflow completed + Phase 4C account mapping spec completed + Phase 4C-2 config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed.
 > Scope: define Accounting Event product semantics, current foundation state, future data direction, status flow, source documents, tenant / permission / audit principles, and future Journal Draft / Revenue / COGS integration direction.
-> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. Phase 4A has implemented pending -> reviewed. Phase 4B has implemented pending / reviewed -> voided. Phase 4C completed the account mapping design spec. Phase 4C-2 implemented config-based mapping foundation metadata. Phase 4D-1 implemented convert skeleton. It does not implement create workflows, successful journal draft conversion, journal draft generation, or accounting recognition runtime behavior.
+> Phase 1 has implemented the minimal table, model, config, and tests. Phase 2 has implemented a readonly index/show workspace. Phase 3 has implemented successful completion -> one pending Accounting Event. Phase 4A has implemented pending -> reviewed. Phase 4B has implemented pending / reviewed -> voided. Phase 4C completed the account mapping design spec. Phase 4C-2 implemented config-based mapping foundation metadata. Phase 4D-1 implemented convert skeleton. Phase 4D-2 completed journal draft generation spec only. It does not implement create workflows, successful journal draft conversion, journal draft generation runtime, or accounting recognition runtime behavior.
 
 ## 1. Purpose
 
@@ -87,6 +87,7 @@ ConvertAccountingEventRequest
 AccountingEventPolicy::convert
 AccountingEventController::convert
 AccountingEventConvertTest
+docs/accounting-event-journal-draft-generation-spec.md
 ```
 
 `AccountingEventTest` covers schema, casts, relationships, config, tenant scoped query, and completion regression. The completion regression confirms a successful completion action creates one pending Accounting Event.
@@ -124,6 +125,7 @@ The current Accounting Event mapping foundation includes:
 - Mapping is disabled for runtime conversion.
 - Journal line templates are disabled metadata only.
 - Mapping config has no runtime account IDs and no fixed account codes.
+- `docs/accounting-event-journal-draft-generation-spec.md` exists as docs-only Phase 4D-2 specification.
 
 The following are not completed yet:
 
@@ -197,6 +199,7 @@ Important boundaries:
 - Phase 4C has now completed Account Mapping Config design spec.
 - Phase 4C-2 has now added config-based mapping foundation metadata.
 - Phase 4D-1 has now added convert permission / route / request / policy / controller skeleton.
+- Phase 4D-2 has now added journal draft generation design spec only.
 - Future phases still must not assume journal draft or accounting recognition runtime exists.
 - `payload` must not store sensitive personal data.
 - `payload` must not store profit / gross margin.
@@ -531,8 +534,10 @@ Phase 4C: Account mapping config design spec completed.
 Phase 4C-2: Config-based mapping foundation completed.
 Phase 4D-1: Convert permission / route / request / policy / controller skeleton completed, no journal draft generation because mapping remains disabled fail-safe.
 Phase 4D-1-docs: Documentation status sync completed by this change.
-Phase 4D-2: Journal draft generation service using mapping.
-Phase 5: Revenue / COGS draft mapping after account configuration exists.
+Phase 4D-2-spec: Journal draft generation design spec completed, docs-only.
+Phase 4D-2A: Convert preflight service only, future.
+Phase 4D-2B: Revenue-side draft generation only, future.
+Phase 5: COGS / vehicle cost basis / inventory mapping after cost capitalization rules are reliable.
 Phase 6: Reversal / refund / return flow.
 ```
 
@@ -548,6 +553,7 @@ Phase 3 directly connects successful completion to one pending Accounting Event 
 - Accounting Event Phase 4B void workflow exists.
 - Accounting Event Phase 4C-2 config-based mapping foundation exists.
 - Accounting Event Phase 4D-1 Convert Skeleton exists.
+- Accounting Event Phase 4D-2 Journal Draft Generation Spec exists.
 - Mapping config is metadata only.
 - Mapping config contains no actual account IDs or fixed account codes.
 - Mapping config is disabled for runtime conversion.
