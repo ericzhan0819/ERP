@@ -2,6 +2,7 @@
 
 use App\Models\AccountingAccount;
 use App\Models\AccountingEvent;
+use App\Models\AccountingEventAccountMapping;
 use App\Models\AccountingJournalEntry;
 use App\Models\AccountingJournalEntryLine;
 use App\Models\User;
@@ -111,10 +112,27 @@ function aePreflightEnableMapping(AccountingAccount $receivable, AccountingAccou
 {
     $mapping = config('accounting_event_mappings.event_types.vehicle_sale_completed');
     $mapping['enabled'] = true;
-    $mapping['mapping_keys']['accounts_receivable_account']['runtime_account_id'] = $receivable->id;
-    $mapping['mapping_keys']['sales_revenue_account']['runtime_account_id'] = $revenue->id;
 
     config(['accounting_event_mappings.event_types.vehicle_sale_completed' => array_replace_recursive($mapping, $overrides)]);
+}
+
+function aePreflightCreateMapping(AccountingEvent $event, string $key, AccountingAccount $account, array $overrides = []): AccountingEventAccountMapping
+{
+    return AccountingEventAccountMapping::create(array_merge([
+        'company_id' => $event->company_id,
+        'branch_id' => null,
+        'event_type' => $event->event_type,
+        'source_type' => $event->source_type,
+        'mapping_key' => $key,
+        'account_id' => $account->id,
+        'is_active' => true,
+    ], $overrides));
+}
+
+function aePreflightCreateRequiredMappings(AccountingEvent $event, AccountingAccount $receivable, AccountingAccount $revenue): void
+{
+    aePreflightCreateMapping($event, 'accounts_receivable_account', $receivable);
+    aePreflightCreateMapping($event, 'sales_revenue_account', $revenue);
 }
 
 function aePreflightPreview(AccountingEvent $event, User $user): array
@@ -241,6 +259,7 @@ it('enabled mapping with valid runtime accounts returns preview header and two r
     $revenue = aePreflightMakeAccount($user, 'revenue');
     aePreflightEnableMapping($receivable, $revenue);
     $event = aePreflightMakeReviewedEvent($user, ['amount' => 150000]);
+    aePreflightCreateRequiredMappings($event, $receivable, $revenue);
 
     $preview = aePreflightPreview($event, $user);
 
@@ -267,6 +286,7 @@ it('preview debit and credit lines use required mapping accounts and stay balanc
     $revenue = aePreflightMakeAccount($user, 'revenue');
     aePreflightEnableMapping($receivable, $revenue);
     $event = aePreflightMakeReviewedEvent($user, ['amount' => 230000]);
+    aePreflightCreateRequiredMappings($event, $receivable, $revenue);
 
     $preview = aePreflightPreview($event, $user);
     $debitLine = $preview['lines'][0];
@@ -293,6 +313,7 @@ it('invalid mapped accounts are rejected', function (callable $accountFactory): 
     $invalidReceivable = $accountFactory($user);
     aePreflightEnableMapping($invalidReceivable, $validRevenue);
     $event = aePreflightMakeReviewedEvent($user);
+    aePreflightCreateRequiredMappings($event, $invalidReceivable, $validRevenue);
 
     aePreflightExpectValidationMessage(
         fn () => aePreflightPreview($event, $user),
@@ -315,13 +336,14 @@ it('invalid mapped accounts are rejected', function (callable $accountFactory): 
     'wrong account type' => [fn (User $user): AccountingAccount => aePreflightMakeAccount($user, 'expense')],
 ]);
 
-it('missing required runtime account id is rejected', function (): void {
+it('enabled config runtime account ids are ignored without database mappings', function (): void {
     $user = aePreflightMakeUser();
     $receivable = aePreflightMakeAccount($user, 'asset');
     $revenue = aePreflightMakeAccount($user, 'revenue');
     aePreflightEnableMapping($receivable, $revenue, [
         'mapping_keys' => [
-            'sales_revenue_account' => ['runtime_account_id' => null],
+            'accounts_receivable_account' => ['runtime_account_id' => $receivable->id],
+            'sales_revenue_account' => ['runtime_account_id' => $revenue->id],
         ],
     ]);
     $event = aePreflightMakeReviewedEvent($user);
@@ -340,6 +362,7 @@ it('preview excludes sensitive recognition keys and non revenue side lines', fun
     $revenue = aePreflightMakeAccount($user, 'revenue');
     aePreflightEnableMapping($receivable, $revenue);
     $event = aePreflightMakeReviewedEvent($user);
+    aePreflightCreateRequiredMappings($event, $receivable, $revenue);
 
     $preview = aePreflightPreview($event, $user);
     $encoded = json_encode($preview, JSON_THROW_ON_ERROR);

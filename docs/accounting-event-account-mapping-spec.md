@@ -1,8 +1,8 @@
 # Accounting Event Account Mapping Spec
 
-Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed.
-Scope: config-based mapping foundation, convert skeleton, and preflight preview exist; mapping runtime journal generation remains disabled.
-This document does not implement mapping management migrations, models, React pages, journal draft creation, journal lines creation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or successful runtime conversion.
+Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + Phase 4D-2A-2 Database-backed Mapping Foundation completed.
+Scope: config metadata, convert skeleton, preflight preview, and DB-backed account mapping resolver exist; mapping runtime journal generation remains disabled.
+This document does not implement mapping management React pages, routes, permissions, seeders, journal draft creation, journal lines creation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or successful runtime conversion.
 
 ## 1. Purpose
 
@@ -36,6 +36,7 @@ Boundaries:
 - This document defines runtime draft generation direction. Phase 4D-1 convert skeleton exists but mapping remains disabled and does not produce a draft.
 - Detailed draft generation runtime boundary is defined in `docs/accounting-event-journal-draft-generation-spec.md`.
 - Runtime mapping decision is defined in `docs/accounting-event-runtime-mapping-decision-spec.md`.
+- Phase 4D-2A-2 added `accounting_event_account_mappings`, `AccountingEventAccountMapping`, and `AccountingEventAccountMappingResolver`.
 
 ## 2. Current Repo State
 
@@ -125,6 +126,17 @@ Accounting Event Phase 4D-2A-1:
 - config override must not be treated as production runtime setup
 - next runtime implementation should be database-backed mapping foundation before 4D-2B draft generation
 
+Accounting Event Phase 4D-2A-2:
+
+- `accounting_event_account_mappings` table exists
+- `AccountingEventAccountMapping` model exists
+- `AccountingEventAccountMappingResolver` service exists
+- Preflight now uses DB-backed mapping resolver after config metadata enabled check
+- committed config remains metadata-only and disabled by default
+- no UI / route / permission / seeder changes
+- no journal draft / lines / converted status / converted_journal_entry_id / converted audit
+- MySQL nullable `branch_id` unique behavior is documented; resolver and future UI validation remain responsible for company-default duplicate prevention in this stage
+
 Currently not completed:
 
 - Accounting Event -> Journal Draft still not completed
@@ -141,6 +153,7 @@ Currently not completed:
 - Cash / Bank
 - Invoice
 - Reports
+- Phase 4D-2A-3 mapping admin UI remains optional future backlog
 
 ## 3. Design Principles
 

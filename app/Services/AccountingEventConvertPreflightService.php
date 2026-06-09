@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\AccountingAccount;
 use App\Models\AccountingEvent;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
@@ -11,6 +10,7 @@ class AccountingEventConvertPreflightService
 {
     public function __construct(
         private readonly AccountingJournalValidator $journalValidator,
+        private readonly AccountingEventAccountMappingResolver $mappingResolver,
     ) {}
 
     /**
@@ -43,7 +43,7 @@ class AccountingEventConvertPreflightService
             throw ValidationException::withMessages(['mapping' => '會計事件映射尚未啟用，無法產生傳票草稿。']);
         }
 
-        $accounts = $this->resolveRequiredAccounts($event, $mapping);
+        $accounts = $this->mappingResolver->resolveRequiredAccounts($event, $mapping);
         $memo = '車輛交易完成轉傳票：'.$event->source_number;
         $lines = [
             [
@@ -124,62 +124,4 @@ class AccountingEventConvertPreflightService
         }
     }
 
-    /**
-     * 技術註解：科目解析只信任後端 mapping metadata，不接受前端 account_id，防止 IDOR、跨租戶科目引用與錯誤科目類型導致錯誤認列。
-     *
-     * @param array<string, mixed> $mapping
-     * @return array<string, array{account: AccountingAccount, label: string}>
-     */
-    private function resolveRequiredAccounts(AccountingEvent $event, array $mapping): array
-    {
-        $requiredKeys = $mapping['required_mapping_keys'] ?? null;
-        $mappingKeys = $mapping['mapping_keys'] ?? null;
-
-        if (! is_array($requiredKeys) || ! is_array($mappingKeys)) {
-            throw ValidationException::withMessages(['mapping' => '會計事件映射尚未指定必要科目，無法產生傳票草稿。']);
-        }
-
-        $resolved = [];
-
-        foreach ($requiredKeys as $key) {
-            $metadata = is_string($key) ? ($mappingKeys[$key] ?? null) : null;
-
-            if (! is_string($key) || ! is_array($metadata) || empty($metadata['runtime_account_id'])) {
-                throw ValidationException::withMessages(['mapping' => '會計事件映射尚未指定必要科目，無法產生傳票草稿。']);
-            }
-
-            $account = AccountingAccount::query()->find((int) $metadata['runtime_account_id']);
-
-            if (! $account || ! $this->isValidMappedAccount($event, $account, $metadata)) {
-                throw ValidationException::withMessages(['mapping' => '會計事件映射科目無效，無法產生傳票草稿。']);
-            }
-
-            $resolved[$key] = [
-                'account' => $account,
-                'label' => (string) ($metadata['label'] ?? $key),
-            ];
-        }
-
-        foreach (['accounts_receivable_account', 'sales_revenue_account'] as $requiredPreviewKey) {
-            if (! array_key_exists($requiredPreviewKey, $resolved)) {
-                throw ValidationException::withMessages(['mapping' => '會計事件映射尚未指定必要科目，無法產生傳票草稿。']);
-            }
-        }
-
-        return $resolved;
-    }
-
-    /**
-     * @param array<string, mixed> $metadata
-     */
-    private function isValidMappedAccount(AccountingEvent $event, AccountingAccount $account, array $metadata): bool
-    {
-        $intendedTypes = $metadata['intended_account_types'] ?? [];
-
-        return (int) $account->company_id === (int) $event->company_id
-            && ($account->branch_id === null || (int) $account->branch_id === (int) $event->branch_id)
-            && $account->is_active === true
-            && is_array($intendedTypes)
-            && in_array($account->type, $intendedTypes, true);
-    }
 }

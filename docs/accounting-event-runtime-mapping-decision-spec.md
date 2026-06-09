@@ -4,8 +4,9 @@
 
 - Accounting Event Runtime Mapping Decision Spec completed.
 - Phase 4D-2A Convert Preflight Service completed.
-- Phase 4D-2B revenue-side journal draft generation is still blocked by runtime account mapping source.
-- This is docs-only and adds no PHP / JSX / route / seeder / config / migration / test runtime code.
+- Phase 4D-2A-2 Database-backed Mapping Foundation completed.
+- Phase 4D-2B revenue-side journal draft generation remains backlog.
+- Runtime foundation now exists without UI / route / permission / seeder / journal draft generation.
 
 ## Decision
 
@@ -23,15 +24,15 @@
 - Mapping changes require audit trail because they affect accounting output.
 - Mapping validation must stay consistent with `AccountingAccount` company / branch / active / type rules.
 
-## Future Database-backed Mapping Foundation
+## Database-backed Mapping Foundation
 
-Table candidate:
+Table:
 
 ```txt
 accounting_event_account_mappings
 ```
 
-Field candidates:
+Fields:
 
 - `id`
 - `company_id`
@@ -57,9 +58,9 @@ Branch rule:
 - `branch_id = null` means company default.
 - Branch-specific mapping can override company default later.
 
-This document does not add a migration.
+Phase 4D-2A-2 added the migration, model, and resolver. Because MySQL allows multiple `NULL` values in unique indexes, branch-null company-default uniqueness is still backed by resolver behavior and should be reinforced by future UI / service validation rather than generated-column tricks in this phase.
 
-## Future Resolver Priority
+## Resolver Priority
 
 Resolution should:
 
@@ -113,7 +114,7 @@ This decision spec does not allow:
 
 - Phase 4D-2A completed: preflight service.
 - Phase 4D-2A-1 completed: runtime mapping decision spec.
-- Phase 4D-2A-2 future: database-backed mapping foundation, no UI, no draft generation.
+- Phase 4D-2A-2 completed: database-backed mapping foundation, no UI, no draft generation.
 - Phase 4D-2A-3 future: mapping admin UI, optional.
 - Phase 4D-2B future: revenue-side journal draft generation only.
 - Phase 5 future: COGS / vehicle cost basis / tax / overpayment / refund / reversal.

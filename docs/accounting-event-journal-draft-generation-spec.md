@@ -6,6 +6,7 @@
 - Phase 4D-1 Convert Skeleton completed
 - Phase 4D-2A Convert Preflight Service completed
 - Phase 4D-2A-1 Runtime Mapping Decision Spec completed
+- Phase 4D-2A-2 Database-backed Mapping Foundation completed
 - Runtime journal draft generation not implemented
 
 ## Scope
@@ -33,6 +34,7 @@ Completed accounting and accounting event phases:
 - Accounting Event Phase 4C-2: config-based mapping foundation
 - Accounting Event Phase 4D-1: convert skeleton
 - Accounting Event Phase 4D-2A: convert preflight service
+- Accounting Event Phase 4D-2A-2: database-backed mapping foundation
 
 Current Phase 4D-1 behavior:
 
@@ -57,7 +59,8 @@ Current mapping state:
 - Runtime account IDs remain null.
 - Journal line templates remain disabled metadata.
 - Runtime mapping decision is documented in `docs/accounting-event-runtime-mapping-decision-spec.md`.
-- 4D-2B draft generation remains blocked by runtime account mapping source.
+- `accounting_event_account_mappings` now provides the DB-backed account source for future runtime.
+- 4D-2B draft generation remains backlog and is not implemented.
 
 ## Phase 4D-2A Runtime Boundary
 
@@ -81,6 +84,18 @@ Current mapping state:
 - The next runtime implementation should be database-backed mapping foundation before 4D-2B revenue-side journal draft generation。
 - Database-backed mapping is preferred because this project is SaaS / tenant scoped, company / branch mappings may differ, account IDs are database data, mapping changes need audit trail, and mapping validation must align with AccountingAccount company / branch / active / type rules。
 
+## Phase 4D-2A-2 Database-backed Mapping Foundation
+
+- Added `accounting_event_account_mappings` table。
+- Added `AccountingEventAccountMapping` model。
+- Added `AccountingEventAccountMappingResolver` service。
+- Preflight now uses DB-backed mapping resolver after config metadata enabled check。
+- Committed config remains metadata-only and disabled by default。
+- No UI / route / permission / seeder changes。
+- No journal draft / lines / converted status / `converted_journal_entry_id` / converted audit。
+- Phase 4D-2A-3 mapping admin UI remains optional future backlog。
+- Phase 5 COGS / vehicle cost basis / tax / overpayment / refund / reversal remains backlog。
+
 ## Non-goals
 
 - No runtime code
@@ -100,7 +115,6 @@ Current mapping state:
 - No Reports
 - No refund / reversal
 - No mapping UI
-- No database-backed mapping table
 - No route / permission / migration / model / policy / controller / request / seeder changes
 - No Odoo code / CSS / XML / Python copy
 
