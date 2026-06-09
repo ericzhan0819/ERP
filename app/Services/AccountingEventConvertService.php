@@ -9,6 +9,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * 技術註解：此 service 是未來 Phase 4D-2B revenue-side draft generation 的候選實作，
+ * 目前不得由 AccountingEventController::convert() 啟用；正式啟用前必須完成 DB-backed mapping
+ * foundation verification、manual QA checklist、audit review 與 route regression。
+ */
 class AccountingEventConvertService
 {
     public function __construct(

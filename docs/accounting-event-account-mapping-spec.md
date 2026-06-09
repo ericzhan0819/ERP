@@ -1,8 +1,8 @@
 # Accounting Event Account Mapping Spec
 
-Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed.
-Scope: config metadata, convert skeleton, and `AccountingEventJournalDraftPreflightService` preview exist; detailed draft generation runtime boundary is documented in `docs/accounting-event-journal-draft-generation-spec.md`.
-This document does not implement mapping management React pages, routes, permissions, seeders, journal draft creation, journal lines creation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or successful runtime conversion.
+Status: Spec completed + config-based mapping foundation completed + Phase 4D-1 Convert Skeleton completed + Phase 4D-2 Journal Draft Generation Spec completed + Phase 4D-2A Convert Preflight Service completed + Phase 4D-2A-1 Runtime Mapping Decision Spec completed + DB-backed mapping foundation code exists and requires focused verification / normalization before stable Phase 4D-2A-2 acceptance.
+Scope: config metadata, DB-backed mapping migration / model / resolver / controller / UI / routes / permissions may already exist; `AccountingEventJournalDraftPreflightService` preview exists; detailed draft generation runtime boundary is documented in `docs/accounting-event-journal-draft-generation-spec.md`.
+This document does not accept 4D-2B journal draft creation, journal lines creation, posting, revenue recognition, COGS recognition, tax handling, refund / reversal, or successful runtime conversion as active route behavior.
 
 ## 1. Purpose
 
@@ -116,8 +116,9 @@ Accounting Event Phase 4D-2A:
 - runtime still does not write `converted_journal_entry_id`
 - runtime still does not write `accounting_event.converted` audit
 - mapping config default remains disabled and no actual runtime account IDs in committed config
-- Phase 4D-2B Revenue-side Draft Generation only remains the next step
+- Phase 4D-2A-2 Verification / Normalization remains the next step before any direct 4D-2B work
 - COGS / tax / overpayment / refund / reversal remains backlog
+- Convert route still calls `AccountingEventJournalDraftPreflightService` only；`AccountingEventConvertService` exists but is not wired into `AccountingEventController::convert()`。
 
 Currently not completed:
 
@@ -135,7 +136,7 @@ Currently not completed:
 - Cash / Bank
 - Invoice
 - Reports
-- Phase 4D-2A-3 mapping admin UI remains optional future backlog
+- Mapping admin UI code may already exist and must remain limited to AR / Sales Revenue mapping management until verified; COGS / tax / overpayment keys remain future-disabled.
 
 ## 3. Design Principles
 
@@ -647,9 +648,9 @@ Phase 4D-2-spec completed and documents that first runtime should split into pre
 
 Next runtime step should be Phase 4D-2A preflight service only.
 
-Phase 4D-2A is completed. Next runtime step should be Phase 4D-2A-2 database-backed mapping foundation, no UI, no draft generation.
+Phase 4D-2A is completed. Next runtime step should be Phase 4D-2A-2 database-backed mapping foundation verification / normalization, no draft generation.
 
-Convert must fail safely while committed mapping `enabled = false` and runtime mapping source is not implemented.
+Convert must remain preflight-only while DB-backed mapping foundation is verified / normalized.
 
 Actual draft generation must wait for mapping activation / validation decision.
 
@@ -663,9 +664,7 @@ Runtime mapping decision is defined in `docs/accounting-event-runtime-mapping-de
 
 This document does not do:
 
-- No React page.
-- No database-backed mapping.
-- No mapping UI.
+- No acceptance of React page / database-backed mapping / mapping UI as stable without Phase 4D-2A-2 verification / normalization.
 - No successful draft generation.
 - No journal draft generation.
 - No journal line generation.
@@ -690,7 +689,7 @@ This document does not do:
 - This spec reflects Phase 4D-1 Convert Skeleton completed.
 - This spec adds no runtime behavior.
 - This spec does not change database schema.
-- Convert route / permission skeleton exists; mapping management routes / permissions do not exist.
+- Convert route / permission skeleton exists; mapping management routes / permissions may already exist and require Phase 4D-2A-2 verification / normalization.
 - This spec does not change React pages.
 - Mapping config remains disabled.
 - Mapping config contains no actual account IDs or fixed account codes.

@@ -4,20 +4,22 @@
 
 Status:
 
-- Spec completed only
+- Phase 4D-2A-1 Runtime Mapping Decision Spec completed
 - Phase 4D-2A Convert Preflight Service completed
 - Runtime mapping decision documented
-- Database-backed mapping implementation not yet started
+- DB-backed mapping foundation code may already exist in repo and requires dedicated verification / normalization before stable Phase 4D-2A-2 acceptance
 
 Scope:
 
 - Decide how future Accounting Event -> Journal Draft runtime account mapping should be provided
 - Compare config-based mapping vs database-backed mapping
 - Recommend next implementation path
-- No runtime code in this task
-- No migration in this task
-- No model / controller / policy / request / UI in this task
+- This decision spec did not add runtime code, but later repo state may already include DB-backed mapping migration / model / resolver / controller / UI / routes / permissions
+- This checkpoint is not 4D-2B
+- Convert route still calls `AccountingEventJournalDraftPreflightService`
+- `AccountingEventConvertService` exists but is not wired into `AccountingEventController::convert()`
 - No journal draft generation in this task
+- Next required step is Phase 4D-2A-2 Verification / Normalization, not direct 4D-2B
 
 ## 2. Current Problem
 
@@ -138,7 +140,7 @@ Decision rationale:
 
 ## 6. Proposed Table Design
 
-Design only. No migration is added in this task.
+Decision-spec design only. A later repo state may already contain the migration; treat that code as requiring Phase 4D-2A-2 verification / normalization before stable acceptance.
 
 Recommended table:
 
@@ -338,7 +340,7 @@ Not included:
 
 ```txt
 Phase 4D-2A-1: Runtime Mapping Decision Spec only
-Phase 4D-2A-2: Database-backed Mapping Foundation
+Phase 4D-2A-2: Database-backed Mapping Foundation verification / normalization
 Phase 4D-2A-3: Minimal Mapping Management UI
 Phase 4D-2A-4: Preflight reads DB-backed mapping instead of config runtime_account_id
 Phase 4D-2B: Revenue-side Journal Draft Generation only
@@ -348,7 +350,7 @@ Phase 6: tax / overpayment / refund / reversal
 
 ## 13. Phase 4D-2A-2 Future Scope
 
-Future Phase 4D-2A-2 should add:
+Phase 4D-2A-2 should verify / normalize existing or future DB-backed mapping foundation:
 
 - migration for `accounting_event_account_mappings`
 - model `AccountingEventAccountMapping`

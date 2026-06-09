@@ -6,7 +6,7 @@ Status:
 - Phase 4D-1 Convert Skeleton completed
 - Phase 4D-2A Convert Preflight Service completed
 - Phase 4D-2A-1 Runtime Mapping Decision Spec completed
-- Phase 4D-2A-2 DB-backed mapping foundation remains the next step
+- Phase 4D-2A-2 DB-backed mapping foundation code may already exist and requires focused verification / normalization before stable acceptance
 
 Scope:
 
@@ -18,6 +18,8 @@ Scope:
 - No status = converted in this phase
 - No converted_journal_entry_id write in this phase
 - No `AccountingJournalNumberService::generate()` call in preflight
+- Convert route still calls `AccountingEventJournalDraftPreflightService` only
+- `AccountingEventConvertService` exists as candidate future 4D-2B logic but is not wired into `AccountingEventController::convert()`
 
 ## Current Repo State
 
@@ -58,14 +60,15 @@ Current boundaries:
 - Accounting Event review exists, but review does not create journal drafts.
 - Accounting Event void exists, but void does not cancel journals or reverse posted journals.
 - Convert route exists, but it currently only runs preflight and does not return preview as a formal endpoint.
-- Config mapping metadata exists, default `vehicle_sale_completed.enabled = false`, and runtime account IDs are not committed.
+- Config mapping metadata exists and runtime account IDs are not committed.
+- DB-backed mapping migration / model / resolver / controller / UI / routes / permissions may already exist, but this checkpoint is not 4D-2B.
 - Existing Accounting Journal creation, validation, numbering, posting, and voiding workflows remain the only supported journal runtime paths.
 
 ## Non-goals
 
 This spec does not implement or approve:
 
-- No AccountingEventConvertService runtime draft generation in this phase
+- No active AccountingEventConvertService route-wired runtime draft generation in this phase
 - No AccountingJournalEntry creation
 - No AccountingJournalEntryLine creation
 - No converted_journal_entry_id write
@@ -80,8 +83,7 @@ This spec does not implement or approve:
 - No Invoice module
 - No Reports
 - No refund / reversal
-- No mapping UI
-- No database-backed mapping table
+- No acceptance of mapping UI / DB-backed mapping foundation as stable without Phase 4D-2A-2 verification / normalization
 - No Odoo code / CSS / XML / Python copy
 
 ## Journal Draft Generation Positioning
@@ -429,7 +431,7 @@ Future Phase 4D-2B tests:
 Phase 4D-2-spec: this documentation only
 Phase 4D-2A: Convert preflight service only, no writes
 Phase 4D-2A-1: Runtime mapping decision spec completed
-Phase 4D-2A-2: DB-backed mapping foundation next
+Phase 4D-2A-2: DB-backed mapping foundation verification / normalization next
 Phase 4D-2B: Revenue-side draft generation only
 Phase 4D-2C: optional preview UI / backend preview endpoint
 Phase 5: COGS / vehicle cost basis / inventory mapping after cost capitalization rules are reliable
