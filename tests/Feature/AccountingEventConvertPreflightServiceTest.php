@@ -163,6 +163,9 @@ function aePreflightExpectValidationMessage(callable $callback, string $message)
 it('mapping disabled fails safe without journal line or event mutation', function (): void {
     $user = aePreflightMakeUser();
     $event = aePreflightMakeReviewedEvent($user);
+    $mapping = config('accounting_event_mappings.event_types.vehicle_sale_completed');
+    $mapping['enabled'] = false;
+    config(['accounting_event_mappings.event_types.vehicle_sale_completed' => $mapping]);
 
     aePreflightExpectValidationMessage(
         fn () => aePreflightPreview($event, $user),

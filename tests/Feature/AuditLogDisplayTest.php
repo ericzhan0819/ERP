@@ -139,6 +139,7 @@ it('transaction completion and accounting journal audit labels are localized wit
     $user = makeAuditDisplayUser();
 
     createAuditDisplayLog('vehicle_sale.transaction_completed', ['module' => 'vehicle_sales'], 'Vehicle sale transaction completed');
+    createAuditDisplayLog('accounting_event.converted', ['module' => 'accounting_events'], 'Accounting event converted');
     createAuditDisplayLog('accounting_journal.posted', ['module' => 'accounting_journals'], '會計傳票已過帳');
     createAuditDisplayLog('accounting_journal.voided', ['module' => 'accounting_journals'], '會計傳票已作廢');
     createAuditDisplayLog('vehicle_sale.marked_sold_from_receivable', null, 'Vehicle sale marked sold from receivable');
@@ -156,6 +157,12 @@ it('transaction completion and accounting journal audit labels are localized wit
                     'module_label' => '車輛銷售',
                     'event_label' => '完成交易',
                     'description_label' => '完成交易',
+                ])
+                ->and(findAuditDisplayRow($props, 'accounting_event.converted')['display'])
+                ->toMatchArray([
+                    'module_label' => '會計事件',
+                    'event_label' => '會計事件轉傳票',
+                    'description_label' => '會計事件已轉傳票',
                 ])
                 ->and(findAuditDisplayRow($props, 'accounting_journal.posted')['display'])
                 ->toMatchArray([

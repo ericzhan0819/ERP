@@ -36,7 +36,7 @@ it('accounting event mappings config contains vehicle sale completed mapping', f
         ->and($mapping['source_type'] ?? null)->toBe('vehicle_sale_completion')
         ->and($mapping['required_status'] ?? null)->toBe('reviewed')
         ->and($mapping['creates_journal_status'] ?? null)->toBe('draft')
-        ->and($mapping['enabled'] ?? null)->toBeFalse();
+        ->and($mapping['enabled'] ?? null)->toBeTrue();
 });
 
 it('vehicle sale completed mapping defines required and optional mapping keys', function (): void {
@@ -76,14 +76,13 @@ it('mapping account type metadata is present', function (): void {
         ->and($mappingKeys['overpayment_account']['intended_account_types'])->toContain('liability');
 });
 
-it('journal line templates are disabled metadata only', function (): void {
+it('journal line templates do not imply posting or non revenue runtime', function (): void {
     $templates = accountingEventVehicleSaleCompletedMapping()['journal_line_templates'] ?? [];
 
     expect($templates)->not->toBeEmpty();
 
     foreach ($templates as $template) {
         expect($template)->toHaveKeys(['key', 'mapping_key', 'side', 'amount_source', 'enabled', 'description'])
-            ->and($template['enabled'])->toBeFalse()
             ->and($template['journal_status'] ?? null)->not->toBe('posted');
     }
 
@@ -97,10 +96,7 @@ it('mapping config explicitly preserves non-goals', function (): void {
     $nonGoals = accountingEventVehicleSaleCompletedMapping()['non_goals'] ?? [];
 
     expect($nonGoals)->toContain('no_runtime_account_ids')
-        ->and($nonGoals)->toContain('no_journal_draft_generation')
-        ->and($nonGoals)->toContain('no_journal_line_generation')
         ->and($nonGoals)->toContain('no_automatic_posting')
-        ->and($nonGoals)->toContain('no_revenue_recognition_runtime')
         ->and($nonGoals)->toContain('no_cogs_recognition_runtime')
         ->and($nonGoals)->toContain('no_profit_or_gross_margin_payload')
         ->and($nonGoals)->toContain('no_tax_runtime')
@@ -147,11 +143,16 @@ it('mapping config exposes convert skeleton route without mapping management rou
         ])->exists())->toBeFalse();
 });
 
-it('mapping config is not enabled for runtime conversion', function (): void {
+it('mapping config enables revenue side draft generation without automatic posting or future runtime', function (): void {
     $mapping = accountingEventVehicleSaleCompletedMapping();
     $templates = $mapping['journal_line_templates'] ?? [];
 
-    expect($mapping['enabled'])->toBeFalse()
-        ->and(collect($templates)->every(fn (array $template): bool => $template['enabled'] === false))->toBeTrue()
-        ->and(class_exists('App\\Services\\AccountingEventConvertService'))->toBeFalse();
+    expect($mapping['enabled'])->toBeTrue()
+        ->and(class_exists('App\\Services\\AccountingEventConvertService'))->toBeTrue()
+        ->and(collect($templates)->firstWhere('key', 'cogs_debit')['enabled'])->toBeFalse()
+        ->and(collect($templates)->firstWhere('key', 'vehicle_inventory_credit')['enabled'])->toBeFalse()
+        ->and($mapping['non_goals'])->toContain('no_automatic_posting')
+        ->and($mapping['non_goals'])->toContain('no_cogs_recognition_runtime')
+        ->and($mapping['non_goals'])->toContain('no_tax_runtime')
+        ->and($mapping['non_goals'])->toContain('no_profit_or_gross_margin_payload');
 });

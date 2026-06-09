@@ -1,8 +1,11 @@
 <?php
 
 use App\Models\AccountingEvent;
+use App\Models\AccountingAccount;
+use App\Models\AccountingEventAccountMapping;
 use App\Models\AccountingJournalEntry;
 use App\Models\AccountingJournalEntryLine;
+use App\Models\ActivityLog;
 use App\Models\Module;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
@@ -107,6 +110,40 @@ function aeConvertMakeReviewedEvent(User $creator, array $overrides = []): Accou
     ], $overrides));
 }
 
+function aeConvertMakeAccount(User $user, string $type, array $overrides = []): AccountingAccount
+{
+    return AccountingAccount::create(array_merge([
+        'company_id' => $user->company_id,
+        'branch_id' => null,
+        'code' => 'AEC-'.strtoupper($type).'-'.uniqid(),
+        'name' => 'AE Convert '.$type,
+        'type' => $type,
+        'opening_balance' => 0,
+        'is_active' => true,
+        'created_by' => $user->id,
+        'updated_by' => $user->id,
+    ], $overrides));
+}
+
+function aeConvertCreateMapping(AccountingEvent $event, string $key, AccountingAccount $account): void
+{
+    AccountingEventAccountMapping::create([
+        'company_id' => $event->company_id,
+        'branch_id' => null,
+        'event_type' => $event->event_type,
+        'source_type' => $event->source_type,
+        'mapping_key' => $key,
+        'account_id' => $account->id,
+        'is_active' => true,
+    ]);
+}
+
+function aeConvertCreateRequiredMappings(AccountingEvent $event, AccountingAccount $receivable, AccountingAccount $revenue): void
+{
+    aeConvertCreateMapping($event, 'accounts_receivable_account', $receivable);
+    aeConvertCreateMapping($event, 'sales_revenue_account', $revenue);
+}
+
 function aeConvertRoute(AccountingEvent $event): string
 {
     return route('employee-system.accounting.events.convert', $event->id);
@@ -124,9 +161,13 @@ function aeConvertAssertNoJournalMutation(AccountingEvent $event, string $status
 
 it('reviewed accounting event with convert permission fails safe when mapping is disabled', function (): void {
     aeConvertRegisterAccountingEventsModule();
+    Permission::findOrCreate('module.accounting.journals.create', 'web');
     $user = aeConvertMakeUser('aec-disabled@example.com');
-    $user->givePermissionTo(['module.accounting.events.view', 'module.accounting.events.convert']);
+    $user->givePermissionTo(['module.accounting.events.view', 'module.accounting.events.convert', 'module.accounting.journals.create']);
     $event = aeConvertMakeReviewedEvent($user);
+    $mapping = config('accounting_event_mappings.event_types.vehicle_sale_completed');
+    $mapping['enabled'] = false;
+    config(['accounting_event_mappings.event_types.vehicle_sale_completed' => $mapping]);
     $reviewedAt = $event->reviewed_at?->toDateTimeString();
     $reviewedBy = $event->reviewed_by;
 
@@ -143,6 +184,34 @@ it('reviewed accounting event with convert permission fails safe when mapping is
         ->and($event->reviewed_by)->toBe($reviewedBy)
         ->and(AccountingJournalEntry::count())->toBe(0)
         ->and(AccountingJournalEntryLine::count())->toBe(0);
+});
+
+it('reviewed accounting event with valid mappings converts into draft journal through route', function (): void {
+    aeConvertRegisterAccountingEventsModule();
+    Permission::findOrCreate('module.accounting.journals.create', 'web');
+    $user = aeConvertMakeUser('aec-route-success@example.com');
+    $user->givePermissionTo(['module.accounting.events.view', 'module.accounting.events.convert', 'module.accounting.journals.create']);
+    $event = aeConvertMakeReviewedEvent($user, ['amount' => 200000]);
+    $receivable = aeConvertMakeAccount($user, 'asset');
+    $revenue = aeConvertMakeAccount($user, 'revenue');
+    aeConvertCreateRequiredMappings($event, $receivable, $revenue);
+
+    $this->actingAs($user)
+        ->patch(aeConvertRoute($event))
+        ->assertRedirect(route('employee-system.accounting.events.show', $event->id))
+        ->assertSessionHas('success', '會計事件已產生傳票草稿。');
+
+    $event->refresh();
+    $journal = AccountingJournalEntry::query()->firstOrFail();
+
+    expect(AccountingJournalEntry::count())->toBe(1)
+        ->and(AccountingJournalEntryLine::count())->toBe(2)
+        ->and($journal->status)->toBe('draft')
+        ->and($journal->source_type)->toBe('accounting_event')
+        ->and($journal->source_id)->toBe($event->id)
+        ->and($event->status)->toBe('converted')
+        ->and($event->converted_journal_entry_id)->toBe($journal->id)
+        ->and(ActivityLog::query()->where('event', 'accounting_event.converted')->exists())->toBeTrue();
 });
 
 it('non convert permissions cannot convert reviewed accounting event', function (array $permissions): void {
@@ -167,7 +236,8 @@ it('non convert permissions cannot convert reviewed accounting event', function 
 it('non reviewed events cannot be converted', function (array $overrides, string $expectedStatus): void {
     aeConvertRegisterAccountingEventsModule();
     $user = aeConvertMakeUser('aec-status-'.$expectedStatus.'@example.com');
-    $user->givePermissionTo(['module.accounting.events.view', 'module.accounting.events.convert']);
+    Permission::findOrCreate('module.accounting.journals.create', 'web');
+    $user->givePermissionTo(['module.accounting.events.view', 'module.accounting.events.convert', 'module.accounting.journals.create']);
     $event = aeConvertMakeReviewedEvent($user, $overrides);
 
     $this->actingAs($user)
@@ -183,7 +253,8 @@ it('non reviewed events cannot be converted', function (array $overrides, string
 it('converted event cannot be converted again', function (): void {
     aeConvertRegisterAccountingEventsModule();
     $user = aeConvertMakeUser('aec-converted@example.com');
-    $user->givePermissionTo(['module.accounting.events.view', 'module.accounting.events.convert']);
+    Permission::findOrCreate('module.accounting.journals.create', 'web');
+    $user->givePermissionTo(['module.accounting.events.view', 'module.accounting.events.convert', 'module.accounting.journals.create']);
     $journal = AccountingJournalEntry::create([
         'company_id' => $user->company_id,
         'branch_id' => $user->branch_id,

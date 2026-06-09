@@ -7,11 +7,11 @@
 - Phase 4D-2A-2 Database-backed Mapping Foundation completed.
 - Accounting Event Phase 4D-2A-3 Minimal Mapping Management UI completed.
 - Accounting Event Phase 4D-2A-3 Manual QA Checklist completed.
+- Accounting Event Phase 4D-2B Revenue-side Journal Draft Generation completed.
 - Added `docs/accounting-event-mapping-manual-qa-checklist.md`.
-- This is docs-only.
-- No runtime code changed.
-- Phase 4D-2B revenue-side journal draft generation remains backlog.
-- Runtime foundation now includes minimal mapping management UI / route / controller / policy / requests / React pages / tests, without journal draft generation.
+- Runtime code now includes revenue-side draft generation.
+- Phase 4D-2B revenue-side journal draft generation creates draft journal header and AR / Sales Revenue lines only.
+- Runtime foundation now includes minimal mapping management UI plus draft generation guarded by reviewed status, enabled config, DB mappings, convert permission, and journal create permission.
 
 ## Decision
 
@@ -117,19 +117,14 @@ Optional / future keys remain backlog:
 
 This decision spec does not allow:
 
-- No journal draft generation.
-- No journal lines generation.
-- No converted status.
-- No `converted_journal_entry_id` write.
-- No `accounting_event.converted` audit.
 - No automatic posting.
-- No revenue recognition runtime.
 - No COGS runtime.
+- No inventory runtime.
 - No tax runtime.
 - No overpayment / refund / reversal.
 - No profit / gross margin payload.
 - No automatic posting.
-- No revenue / COGS recognition runtime.
+- No COGS recognition runtime.
 
 ## Phase Recommendation
 
@@ -137,7 +132,7 @@ This decision spec does not allow:
 - Phase 4D-2A-1 completed: runtime mapping decision spec.
 - Phase 4D-2A-2 completed: database-backed mapping foundation, no UI, no draft generation.
 - Phase 4D-2A-3 completed: minimal mapping management UI, no draft generation.
-- Phase 4D-2B future: revenue-side journal draft generation only.
+- Phase 4D-2B completed: revenue-side journal draft generation only.
 - Phase 5 future: COGS / vehicle cost basis / tax / overpayment / refund / reversal.
 
 ## Accounting Boundary

@@ -3,9 +3,9 @@
 ## Status
 
 - Accounting Event Phase 4D-2A-3 Minimal Mapping Management UI completed.
+- Accounting Event Phase 4D-2B Revenue-side Journal Draft Generation completed.
 - This checklist is docs-only.
-- Runtime journal draft generation is still not implemented.
-- Config remains disabled by default.
+- Runtime journal draft generation now creates draft AR / Sales Revenue lines only when config is enabled and DB mappings are valid.
 
 ## Preconditions
 
@@ -15,7 +15,7 @@
 - revenue 類型科目，用於 `sales_revenue_account`。
 - 已有完成交易後建立的 Accounting Event。
 - Accounting Event 可被 review。
-- Mapping config default remains disabled；所以 convert 仍不應成功建立 journal draft。
+- Mapping config default is enabled for `vehicle_sale_completed`；invalid or missing DB mapping still blocks convert。
 
 ## Permission / Sidebar QA
 
@@ -82,17 +82,16 @@
 
 ## Accounting Event Preflight Boundary QA
 
-目前 `config/accounting_event_mappings.php` 仍保持 `vehicle_sale_completed.enabled = false`，所以 expected behavior 是 fail-safe。
+Pre-4D-2B disabled fail-safe note is historical. Current expected behavior：with valid AR / Sales Revenue DB mappings, reviewed event convert creates a draft journal。
 
 - [ ] 建好 AR / Sales Revenue mapping 後，回到 reviewed Accounting Event。
 - [ ] 點 convert / 轉傳票。
-- [ ] 系統仍不建立 journal draft。
-- [ ] 系統仍不建立 journal lines。
-- [ ] 系統仍不改 accounting event status converted。
-- [ ] 系統仍不寫 `converted_journal_entry_id`。
-- [ ] 系統仍不寫 `accounting_event.converted` audit。
-- [ ] 若畫面出現 mapping disabled fail-safe，這是目前正確行為。
-- [ ] 真正 convert success 留到 Phase 4D-2B。
+- [ ] 系統建立一筆 draft journal。
+- [ ] 系統建立兩條 lines：AR debit / Sales Revenue credit。
+- [ ] 系統將 accounting event status 改為 converted。
+- [ ] 系統寫入 `converted_journal_entry_id`。
+- [ ] 系統寫入 `accounting_event.converted` audit。
+- [ ] 缺少或無效 mapping 仍應阻擋 convert 且不產生 mutation。
 
 ## Negative Security QA
 
@@ -106,11 +105,10 @@
 
 ## Accounting Boundary Confirmation
 
-- No journal draft generation.
-- No journal lines generation.
-- No converted status.
-- No `converted_journal_entry_id` write.
-- No `accounting_event.converted` audit.
+- Convert creates draft journal header only.
+- Convert creates two revenue-side lines only.
+- Convert writes converted status and `converted_journal_entry_id`.
+- Convert writes `accounting_event.converted` audit.
 - No automatic posting.
 - No revenue recognition runtime.
 - No COGS recognition runtime.
@@ -124,13 +122,13 @@
 - [ ] 所有 permission / sidebar checks pass。
 - [ ] admin/accounting 能完成 AR + Sales Revenue mapping。
 - [ ] invalid account / wrong tenant / duplicate active mapping rejected。
-- [ ] reviewed Accounting Event convert still does not generate journal draft while config disabled。
+- [ ] reviewed Accounting Event convert generates draft journal when config enabled and DB mappings are valid。
 - [ ] full test suite remains green。
 - [ ] npm build remains green。
 
 ## Next Step After QA
 
-- 若 QA pass，下一步才進 Accounting Event Phase 4D-2B Revenue-side Journal Draft Generation only。
+- Accounting Event Phase 4D-2B Revenue-side Journal Draft Generation only completed。
 - 4D-2B 只允許建立 draft journal + two lines：
 - Debit `accounts_receivable_account` = `event.amount`。
 - Credit `sales_revenue_account` = `event.amount`。

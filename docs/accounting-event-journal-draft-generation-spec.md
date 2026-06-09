@@ -7,16 +7,13 @@
 - Phase 4D-2A Convert Preflight Service completed
 - Phase 4D-2A-1 Runtime Mapping Decision Spec completed
 - Phase 4D-2A-2 Database-backed Mapping Foundation completed
-- Runtime journal draft generation not implemented
+- Phase 4D-2B Revenue-side Journal Draft Generation completed
 
 ## Scope
 
 - Define future reviewed Accounting Event -> Accounting Journal Draft generation rules
-- No PHP / JSX / migration / route / permission / seeder / config runtime changes
-- No journal draft generation in this commit
-- No journal lines generation in this commit
-- No status = converted in this commit
-- No converted_journal_entry_id write in this commit
+- Runtime converts reviewed Accounting Event to draft journal only when config is enabled and DB-backed AR / Sales Revenue mappings exist
+- Runtime creates draft journal header, two revenue-side lines, converted status, `converted_journal_entry_id`, and `accounting_event.converted` audit
 
 ## Current Repo State
 
@@ -36,7 +33,7 @@ Completed accounting and accounting event phases:
 - Accounting Event Phase 4D-2A: convert preflight service
 - Accounting Event Phase 4D-2A-2: database-backed mapping foundation
 
-Current Phase 4D-1 behavior:
+Current Phase 4D-2B behavior:
 
 ```txt
 reviewed Accounting Event
@@ -44,10 +41,10 @@ reviewed Accounting Event
 -> scoped tenant query
 -> policy convert guard
 -> mapping exists / source_type / enabled checks
--> mapping enabled=false
--> 422 fail-safe
--> no state change
--> no journal draft
+-> DB-backed AR / Sales Revenue mappings exist
+-> create draft journal + two lines
+-> accounting event status converted
+-> converted_journal_entry_id written
 ```
 
 Current mapping state:
@@ -55,25 +52,24 @@ Current mapping state:
 - `config/accounting_event_mappings.php` exists.
 - `vehicle_sale_completed` metadata exists.
 - `required_mapping_keys` contains `accounts_receivable_account` and `sales_revenue_account`.
-- `enabled = false`.
+- `enabled = true`.
 - Runtime account IDs remain null.
 - Journal line templates remain disabled metadata.
 - Runtime mapping decision is documented in `docs/accounting-event-runtime-mapping-decision-spec.md`.
 - `accounting_event_account_mappings` now provides the DB-backed account source for future runtime.
-- 4D-2B draft generation remains backlog and is not implemented.
+- 4D-2B draft generation is implemented for revenue-side AR / Sales Revenue lines only.
 
 ## Phase 4D-2A Runtime Boundary
 
 - Accounting Event Phase 4D-2A Convert Preflight Service completed。
 - Preflight only returns validated preview。
-- Runtime still does not create journal draft。
-- Runtime still does not create journal lines。
-- Runtime still does not set status converted。
-- Runtime still does not write `converted_journal_entry_id`。
-- Runtime still does not write `accounting_event.converted` audit。
-- 4D-2B revenue-side draft generation remains backlog。
+- Runtime now creates a draft journal and two revenue-side lines after successful preflight。
+- Runtime now sets status converted。
+- Runtime now writes `converted_journal_entry_id`。
+- Runtime now writes `accounting_event.converted` audit。
+- 4D-2B revenue-side draft generation completed。
 - COGS / tax / overpayment / refund / reversal remains backlog。
-- Mapping config default remains disabled and no actual runtime account IDs in committed config。
+- Mapping config default is enabled for 4D-2B and no actual runtime account IDs exist in committed config。
 
 ## Phase 4D-2A-1 Runtime Mapping Decision
 
@@ -98,15 +94,9 @@ Current mapping state:
 
 ## Non-goals
 
-- No runtime code
-- No convert service
-- No AccountingJournalEntry creation
-- No AccountingJournalEntryLine creation
-- No converted_journal_entry_id write
-- No accounting_events.status = converted
 - No automatic posting
-- No revenue recognition
 - No COGS recognition
+- No inventory recognition
 - No profit / gross margin payload
 - No tax runtime
 - No AR / AP module
@@ -244,7 +234,7 @@ Phase 4D-2A: Convert Preflight Service only, completed
 Phase 4D-2A-1: Runtime Mapping Decision Spec, completed
 Phase 4D-2A-2: Database-backed Mapping Foundation, future, no UI, no draft generation
 Phase 4D-2A-3: Mapping Admin UI, future, optional
-Phase 4D-2B: Revenue-side Draft Generation only, future
+Phase 4D-2B: Revenue-side Draft Generation only, completed
 Phase 5: COGS / inventory / tax / overpayment / refund decisions
 ```
 
