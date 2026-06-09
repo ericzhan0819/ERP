@@ -4,8 +4,14 @@
 
 - Accounting Event Phase 4D-2A-3 Minimal Mapping Management UI completed.
 - Accounting Event Phase 4D-2B Revenue-side Journal Draft Generation completed.
+- Accounting Event Phase 4D-2B Manual QA Checklist completed.
+- Added `docs/accounting-event-journal-draft-manual-qa-checklist.md`.
 - This checklist is docs-only.
+- No runtime code changed.
+- 4D-2B runtime already completed in commit `1cb20ee`.
 - Runtime journal draft generation now creates draft AR / Sales Revenue lines only when config is enabled and DB mappings are valid.
+- COGS / tax / refund / reversal remain backlog.
+- 4D-2B UI polish or Phase 5 decision spec remains next.
 
 ## Preconditions
 

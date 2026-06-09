@@ -8,6 +8,12 @@
 - Phase 4D-2A-1 Runtime Mapping Decision Spec completed
 - Phase 4D-2A-2 Database-backed Mapping Foundation completed
 - Phase 4D-2B Revenue-side Journal Draft Generation completed
+- Phase 4D-2B Manual QA Checklist completed
+- Added `docs/accounting-event-journal-draft-manual-qa-checklist.md`
+- This checklist update is docs-only; no runtime code changed
+- 4D-2B runtime already completed in commit `1cb20ee`
+- COGS / tax / refund / reversal remain backlog
+- 4D-2B UI polish or Phase 5 decision spec remains next
 
 ## Scope
 

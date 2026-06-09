@@ -8,10 +8,17 @@
 - Accounting Event Phase 4D-2A-3 Minimal Mapping Management UI completed.
 - Accounting Event Phase 4D-2A-3 Manual QA Checklist completed.
 - Accounting Event Phase 4D-2B Revenue-side Journal Draft Generation completed.
+- Accounting Event Phase 4D-2B Manual QA Checklist completed.
 - Added `docs/accounting-event-mapping-manual-qa-checklist.md`.
+- Added `docs/accounting-event-journal-draft-manual-qa-checklist.md`.
+- This checklist update is docs-only.
+- No runtime code changed.
+- 4D-2B runtime already completed in commit `1cb20ee`.
 - Runtime code now includes revenue-side draft generation.
 - Phase 4D-2B revenue-side journal draft generation creates draft journal header and AR / Sales Revenue lines only.
 - Runtime foundation now includes minimal mapping management UI plus draft generation guarded by reviewed status, enabled config, DB mappings, convert permission, and journal create permission.
+- COGS / tax / refund / reversal remain backlog.
+- 4D-2B UI polish or Phase 5 decision spec remains next.
 
 ## Decision
 
@@ -112,6 +119,16 @@ Optional / future keys remain backlog:
 - This is docs-only.
 - No runtime code changed.
 - 4D-2B revenue-side journal draft generation remains backlog.
+
+## Journal Draft Manual QA Checklist
+
+- Phase 4D-2B Manual QA Checklist completed.
+- Added `docs/accounting-event-journal-draft-manual-qa-checklist.md`.
+- This is docs-only.
+- No runtime code changed.
+- 4D-2B runtime already completed in commit `1cb20ee`.
+- Checklist confirms draft-only journal creation, two revenue-side lines, duplicate convert blocking, mapping validation, permission denial, audit safety, and no COGS / tax / refund / reversal behavior.
+- 4D-2B UI polish or Phase 5 decision spec remains next.
 
 ## Explicit Prohibitions
 
